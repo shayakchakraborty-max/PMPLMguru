@@ -11,6 +11,7 @@ const BRAIN = (process.env.BRAIN_URL || "").replace(/\/$/, "");
 const ENDPOINTS = {
   pm: ["/pm/plan", "/pipeline/plan", "/plan"],
   plm: ["/plm/execute", "/pipeline/execute", "/execute"],
+  workspace: ["/workspace/seed", "/workspace/create"],
 };
 
 async function tryBackend(paths, payload) {
