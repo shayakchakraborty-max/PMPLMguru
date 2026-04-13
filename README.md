@@ -1,143 +1,102 @@
-# 🤖 PMGuru v7 — Autonomous PM + Product Lifecycle Platform
+# PMGuru v12 — Three-Path Launcher
 
-> **Vision:** Enter an idea → AI generates plan → You approve → 8 self-improving AI agents autonomously execute the entire product lifecycle and ship a working prototype.
+## What changed in this push
 
-## 🏗️ Architecture (Cutting-Edge 2026 Stack)
-
-| Layer | Tech | Role |
-|---|---|---|
-| **Frontend** | Next.js 14 + React 18 + Tailwind | Beautiful approval/dashboard UI |
-| **Backend Brain** | FastAPI (Python) | Hosts the agent orchestration |
-| **Orchestration** | LangGraph-style state machine | Sequential phase execution with state passing |
-| **Agent Roles** | CrewAI-style definitions | 8 specialized agents with role/goal/backstory/tools |
-| **Smart Routing** | LiteLLM-style router | Auto-picks Groq/Gemini/HF, with fallback |
-| **Memory** | Self-improving JSON store | Lessons learned feed back into agent prompts |
-| **Simulations** | Pre-deployment test suite | Each agent verified before deploy |
-| **Deployment** | Vercel (frontend) + Render (backend) | Both have free tiers |
-
-## 🤖 The 8 AI Agents
-
-| Phase | Agent | Methods | Deliverables |
-|---|---|---|---|
-| 1 Discovery | Strategist | Lean, Agile, SAFe | Vision, OKRs, personas, market sizing |
-| 2 Ideation | Strategist | Lean, JTBD | RICE-prioritized features |
-| 3 Definition | Business Analyst | PMBOK, BABOK | User stories, AC, PRD |
-| 4 Design | UX Designer | Design Thinking | User flows, wireframes, design system |
-| 5 Development | Scrum Master | Scrum, Kanban, XP | Sprint plan, tasks, velocity |
-| 6 Testing | QA Lead | XP, Shift-Left | Test strategy, quality gates |
-| 7 Launch | DevOps Engineer | DevOps, SRE | CI/CD, infra, monitoring |
-| 8 Iterate | Stakeholder Comms | PMBOK, ADKAR | Launch comms, status reports |
-
-Plus: **Risk Manager** (cross-cutting on phases 3 & 7).
-
-## 🧠 Self-Improvement Loop
-
-After each run, the memory store logs performance metrics. Agents pull "lessons learned" from previous runs into their system prompts on subsequent executions, creating a feedback loop that improves output quality over time.
-
-## 🚀 Deployment Steps
-
-### Part A: Backend Brain (FastAPI on Render)
-
-1. **Push to GitHub:** Upload this entire folder to a new repo `pmguru-v7`
-2. **Sign up at [render.com](https://render.com)** (free tier)
-3. **New Web Service** → Connect GitHub repo
-4. **Settings:**
-   - Root directory: `backend`
-   - Build command: `pip install -r requirements.txt`
-   - Start command: `python main.py`
-   - Plan: **Free**
-5. **Add environment variables** in Render dashboard:
-   - `GROQ_API_KEY` — get from [console.groq.com](https://console.groq.com) (free, fastest)
-   - `GEMINI_API_KEY` — get from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (free, generous)
-   - `HF_API_KEY` — get from [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) (optional fallback)
-6. **Deploy** → Copy your URL: `https://pmguru-brain-xxxx.onrender.com`
-7. **Verify:** Visit `/health` endpoint — should return `{"status":"ok",...}`
-8. **Test simulations:** Visit `/simulations` — runs all 8 agents through their pre-deployment tests
-
-### Part B: Frontend (Next.js on Vercel)
-
-1. **Import same repo** at [vercel.com/new](https://vercel.com/new)
-2. **Settings:**
-   - Root directory: `frontend`
-   - Framework: Next.js (auto-detected)
-   - Install command: `npm install --legacy-peer-deps`
-3. **Add environment variable:**
-   - `BRAIN_URL` = your Render URL from Part A (e.g. `https://pmguru-brain-xxxx.onrender.com`)
-4. **Deploy** → Live in ~90 seconds
-
-### Part C: Use It! 🎉
-
-1. Visit your Vercel URL → click **"🚀 Launch Autopilot"**
-2. Enter your product idea in detail
-3. Click **"🧠 Generate Project Plan"** → Strategist creates initial plan
-4. Review the plan and the 8-agent pipeline
-5. Click **"✅ Approve & Execute All 8 Agents"**
-6. Watch agents work sequentially (~90 seconds total)
-7. Get full report + downloadable working prototype HTML
-
-## 🧪 Run Simulations Locally
-
-```bash
-cd backend
-pip install -r requirements.txt
-export GROQ_API_KEY=gsk_xxx
-python main.py
-# Then in another terminal:
-curl http://localhost:8000/simulations
-```
-
-## 📂 Project Structure
+The `/auto` flow now gives users **three independent paths** after they enter an idea,
+instead of jumping straight to the PM workspace.
 
 ```
-pmguru-v7/
-├── backend/                          # FastAPI Brain Server
-│   ├── main.py                       # API endpoints
-│   ├── agents/
-│   │   ├── definitions.py            # CrewAI-style agent specs + simulations
-│   │   └── router.py                 # LiteLLM smart router (Groq/Gemini/HF)
-│   ├── graph/
-│   │   └── workflow.py               # LangGraph-style 8-phase orchestrator
-│   ├── memory/
-│   │   └── store.py                  # Self-improvement memory + sim runner
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── render.yaml                   # Render deployment config
-└── frontend/                         # Next.js UI
-    ├── app/
-    │   ├── page.js                   # Landing page
-    │   ├── auto/page.js              # Main autopilot UI with approval flow
-    │   └── api/
-    │       ├── pipeline/route.js     # Proxy to brain /pipeline/*
-    │       └── prototype/route.js    # Proxy to brain /pipeline/prototype
-    ├── package.json
-    └── next.config.js
+  Enter idea
+      │
+      ▼
+ Classify (< 1s)
+      │
+      ▼
+  Three choices ─────────┬─────────────────┐
+      │                  │                 │
+      ▼                  ▼                 ▼
+  🗂️ PM Tool         📘 PLM Report    🎨 Prototype
+   /workspace            /plm             /prototype
 ```
 
-## 🎯 Key Endpoints
+All three paths share the same backend brain (`backend/main.py`, no changes).
+Only the frontend routes were revised.
 
-| Endpoint | Purpose |
-|---|---|
-| `POST /pipeline/plan` | Generate initial plan for approval |
-| `POST /pipeline/execute` | Run all 8 agents sequentially |
-| `POST /pipeline/prototype` | Generate working HTML prototype |
-| `GET /simulations` | Run pre-deployment agent tests |
-| `GET /memory/stats` | View self-improvement metrics |
-| `GET /agents` | List all agents and their roles |
+## Files in this push
 
-## 🔮 What Makes v7 Different
+| File | Status | Purpose |
+|------|--------|---------|
+| `frontend/app/auto/page.js` | **revised** | Two-step launcher: idea input → three-path chooser |
+| `frontend/app/plm/page.js` | **new** | Renders the 8-phase PLM report (Discovery → Iterate) |
+| `frontend/app/prototype/page.js` | **new** | Renders the generated HTML prototype in a device-framed iframe |
+| `frontend/app/workspace/page.js` | unchanged | The existing 8-view PM tool |
+| `frontend/app/api/pipeline/route.js` | unchanged | Already supports `stage: "pm" / "plm" / "workspace"` |
+| `frontend/app/api/prototype/route.js` | unchanged | Already proxies `/plm/prototype` |
+| `backend/main.py` | unchanged | Already exposes `/workspace/seed`, `/plm/execute`, `/plm/prototype` |
+| `backend/requirements.txt` | unchanged | `httpx==0.27.2` |
 
-1. **Approval gate** — User reviews plan before agents execute (true human-in-the-loop)
-2. **Sequential state passing** — Each agent sees outputs of previous agents
-3. **Smart provider routing** — Uses cheapest/fastest free LLM for each task type
-4. **Self-improvement** — Memory of past runs feeds into future agent prompts
-5. **Simulations** — Agents are tested before deployment, not in production
-6. **Working prototype** — Not just a plan, an actual downloadable HTML MVP
-7. **Production architecture** — Clean separation of concerns, scalable, observable
+## How to deploy
 
-## 💰 Total Cost
+### 1. Commit the new/revised files
 
-**$0/month** on free tiers (Render free + Vercel free + Groq free + Gemini free).
+Push these three files to your GitHub repo:
 
----
+```
+frontend/app/auto/page.js        ← replace
+frontend/app/plm/page.js         ← new folder + file
+frontend/app/prototype/page.js   ← new folder + file
+```
 
-Built with ❤️ by Shayak. Powered by Groq, Gemini, and the open-source AI ecosystem.
+### 2. Deploy to Vercel
+
+Vercel will auto-deploy on push. No environment variable changes needed — the existing
+`BRAIN_URL` continues to work for all three paths.
+
+### 3. Backend — nothing to do
+
+Your existing Render deployment already serves `/workspace/seed`, `/plm/execute`, and
+`/plm/prototype`. Just make sure it's warm:
+
+```
+curl https://your-render-url.onrender.com/health
+```
+
+## User flow
+
+1. User lands on `/auto` and enters an idea.
+2. Clicks **Analyze & choose path** → backend classifies in < 1s.
+3. Sees their idea with classification pills (methodology · industry · complexity)
+   plus a short "why this methodology" explanation.
+4. Sees **three action cards**:
+   - **🗂️ PM Tool Workspace** — generates full editable workspace, navigates to `/workspace`
+   - **📘 PLM Plan & Report** — generates 8-phase lifecycle report, navigates to `/plm`
+   - **🎨 Interactive Prototype** — generates working HTML, navigates to `/prototype`
+5. Each path is cached in `localStorage`, so the user can run all three on the same
+   idea and switch freely.
+6. Each destination page has a "← Back to launcher" link that returns to `/auto`.
+
+## PLM page features
+
+- **Phase rail** at the top for quick jumping
+- **Expand/collapse all** controls
+- **Print view** — clean CSS print styles strip chrome
+- **Export JSON** — download the full PLM data blob
+- All 8 phases render their specific data types (personas, RICE scores, user stories,
+  sprint plans, test cases, CI/CD pipelines, launch announcements, success metrics)
+
+## Prototype page features
+
+- **Device viewport toggle** — Desktop / Tablet / Mobile
+- **Fake browser chrome** for a polished share-ready look
+- **Regenerate** — re-runs the backend to get a fresh HTML variant
+- **Open in new tab** — browse the prototype standalone
+- **Download HTML** — save the file to share, deploy, or edit
+
+## Version history
+
+- **v11** — single path: idea → workspace only
+- **v12** — this push — three-path launcher with PM / PLM / Prototype
+
+## Zero LLM dependencies
+
+All three paths use the deterministic template engine. Groq is still optional evaluator-only.
