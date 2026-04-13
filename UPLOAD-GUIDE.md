@@ -1,111 +1,89 @@
-# 🎯 SUPER SIMPLE UPLOAD GUIDE (3 Minutes)
+# 🎨 PMGuru v10 Path A — Custom PM Tool Generator
 
-## Just Drag, Drop, Commit. Done.
+## ✨ What's New
 
-I've organized all 4 files in the **exact folder structure** that matches your GitHub repo. You don't need to think about paths or navigate deep folders.
+Your tool now generates a **fully working custom Kanban board** tailored to each project — like getting your own mini-Linear built specifically for every idea.
 
----
+**The new flow:**
+```
+💡 Idea → 🧠 PM Plan → 🛠️ Build Custom PM Tool → ⚡ PLM → 🎨 Prototype
+```
 
-## 📦 What's Inside the Zip
+After the PM plan is approved, a new **"PM Tool Architect" agent** generates a complete Kanban/Scrum board with:
+
+- ✅ Columns matching your chosen methodology (Scrum: Backlog/Sprint/In Progress/Review/Done)
+- ✅ 15-20 real cards pre-populated with tasks specific to your project
+- ✅ Drag-and-drop between columns (actually works!)
+- ✅ Team members with avatars and role colors
+- ✅ Story points totals per column
+- ✅ Priority badges (P0/P1/P2)
+- ✅ Filter by assignee
+- ✅ Click any card for full details modal
+- ✅ LocalStorage persistence (users can actually work with it)
+- ✅ Dark Linear-inspired UI with animations
+- ✅ Reset button to restore original state
+- ✅ Self-contained single HTML file (no dependencies, works offline)
+
+## 📦 Files to Upload (3 Files)
+
+Zip contains the exact folder structure matching your GitHub repo:
 
 ```
-pmguru-v9-ready/
+pmguru-v10/
 ├── backend/
-│   └── main.py                           ← Brain upgrade
+│   └── main.py                          ← Brain upgrade (PM Tool Architect)
 └── frontend/
     └── app/
         ├── auto/
-        │   └── page.js                   ← Stunning new UI
+        │   └── page.js                  ← New UI with PM tool stage
         └── api/
-            ├── pipeline/
-            │   └── route.js              ← API router
-            └── prototype/
-                └── route.js              ← Prototype route
+            └── pmtool/
+                └── route.js             ← NEW API route for PM tool
 ```
 
-This matches your GitHub repo structure exactly. No confusion.
-
----
-
-## 🚀 The 3-Step Upload
+## 🚀 The 3-Step Upload (Same as v9)
 
 ### Step 1: Download & Unzip
+Download `pmguru-v10.zip`, unzip it on your computer.
 
-1. Download `pmguru-v9-ready.zip` from the chat
-2. Unzip it on your computer (double-click the zip file)
-3. You'll see a folder called `pmguru-v9-ready` with `backend` and `frontend` inside
+### Step 2: Upload to GitHub
+1. Open your repo → click **"Add file"** → **"Upload files"**
+2. **Drag the `backend` folder** → drop on GitHub
+3. **Drag the `frontend` folder** → drop on GitHub
+4. Commit message: `Upgrade to v10 Path A - Custom PM Tool Generator`
+5. Click green **"Commit changes"**
 
-### Step 2: Upload to GitHub (Drag & Drop)
+### Step 3: Wait 2 Minutes
+Render + Vercel auto-deploy. No settings changes needed.
 
-1. Open GitHub → go to your repo: `github.com/shayakchakraborty-max/PMPLMguru`
-2. Click the **"Add file"** button (top-right of file list) → select **"Upload files"**
-3. **Drag the `backend` folder** from your unzipped folder → drop it onto the GitHub upload area
-4. **Drag the `frontend` folder** → drop it onto the same upload area
-5. GitHub will automatically merge them into your existing structure and show you all 4 changed files
-6. Scroll to the bottom → in the commit message box, type: `Upgrade to v9 - PM + PLM`
-7. Make sure **"Commit directly to the main branch"** is selected
-8. Click the green **"Commit changes"** button
+## ✅ How to Verify v10 Is Live
 
-That's it! GitHub will overwrite the 4 existing files with the new versions. No navigation into folders. No copy-paste. No editing files one by one.
+1. Visit your Render URL `/health` → should show `"version":"10.0"` with `"features":["pm_planning", "pm_tool_generator", "plm_execution", "prototype"]`
+2. Visit your Vercel URL → enter idea → generate PM plan
+3. After PM plan appears, you should see a **new purple/pink button**: **"🛠️ Build Custom PM Tool"**
+4. Click it → ~20 seconds → you see a gradient card with **"Download PM Tool (HTML)"** and **"👁️ Preview"** buttons
+5. Click Preview → a full Kanban board appears in an iframe
 
-### Step 3: Wait for Auto-Deploy (Do Nothing)
+If all 5 checks pass, v10 is working! 🎉
 
-Both Render and Vercel watch your GitHub repo and auto-deploy when they see new commits:
+## 🎬 User Experience
 
-- **Render** (backend) — Starts deploying automatically within 30 seconds. Takes ~90 seconds total.
-- **Vercel** (frontend) — Starts deploying automatically within 30 seconds. Takes ~90 seconds total.
+1. Type project idea → Click "Generate PM Strategic Plan"
+2. Review PM report (methodology, budget, phases) → Click **"🛠️ Build Custom PM Tool"**
+3. Watch as the PM Tool Architect builds your board (~20 seconds)
+4. Preview the board live in the dashboard
+5. Download as HTML to share with stakeholders
+6. Continue to PLM Execution → gets PLM report + prototype
+7. Final screen has 5 download buttons: PM PDF, PLM PDF, PM Tool HTML, Prototype HTML
 
-You literally don't have to click anything else. Just wait 2 minutes.
+## 🎯 Try These Ideas
 
----
+- **"AI grocery assistant for Indian kirana stores"** → Expect Scrum + Linear recommendation
+- **"Bank data migration tool with compliance"** → Expect Waterfall/PRINCE2 recommendation  
+- **"Content creator marketplace SaaS"** → Expect Agile/Kanban recommendation
 
-## ✅ How to Know It Worked
-
-### Check 1: Backend Deployed
-- Open your Render URL with `/health` at the end (e.g. `https://pmguru-brain-xxxx.onrender.com/health`)
-- You should see `"version":"9.0"` in the JSON response
-- If it says `"version":"7.2"` or `"8.0"`, wait 30 more seconds and refresh — Render is still deploying
-
-### Check 2: Frontend Deployed
-- Open your Vercel URL → click **"🚀 Launch Autopilot"**
-- You should see a **progress bar across the top** with 5 steps: `💡 Idea → 🧠 PM Plan → ✅ Approve → ⚡ PLM Execute → 🎨 Prototype`
-- If you don't see the progress bar, Vercel is still deploying — wait 30 seconds and hard-refresh (Ctrl+Shift+R)
-
-### Check 3: Full Flow Works
-- Enter an idea like: `AI grocery assistant for Indian kirana stores`
-- Click **"🧠 Generate PM Strategic Plan"**
-- Wait ~30 seconds
-- You should see a **stunning PM Report** with a giant methodology name, budget card, phased timeline, and risks
-
-If all 3 checks pass — **you're on v9!** 🎉
+Each will produce a different custom board with domain-specific tasks.
 
 ---
 
-## ⚠️ Important: "Upload Files" vs "Create File"
-
-When you're on GitHub, use **"Upload files"** (not "Create new file"). Upload files lets you drag folders and GitHub figures out the paths automatically. "Create new file" makes you type filenames manually which is error-prone.
-
-**Drag-and-drop is the fastest and most reliable way to update multiple files at once.**
-
----
-
-## 🆘 If Drag-and-Drop Doesn't Work
-
-Some browsers (especially on mobile) don't support folder drag-and-drop. In that case, do it one file at a time:
-
-1. GitHub → click **`backend`** folder → click **`main.py`** → pencil ✏️ → paste my backend `main.py` content → commit
-2. GitHub → click **`frontend`** → **`app`** → **`auto`** → **`page.js`** → pencil ✏️ → paste my page.js content → commit
-3. GitHub → click **`frontend`** → **`app`** → **`api`** → **`pipeline`** → **`route.js`** → pencil ✏️ → paste my pipeline route.js content → commit
-4. GitHub → click **`frontend`** → **`app`** → **`api`** → **`prototype`** → **`route.js`** → pencil ✏️ → paste my prototype route.js content → commit
-
-4 separate commits but still only takes 5 minutes.
-
----
-
-## 🎊 That's Literally It
-
-No Render settings to change. No Vercel settings to change. No environment variables to add. No redeploy buttons to click. Just upload to GitHub and wait 2 minutes.
-
-Your `GROQ_API_KEY` and `BRAIN_URL` are already set from before — they don't need to change for v9. The upgrade is 100% backwards-compatible with your existing deployment setup.
-
-Try it after upload and let me know! 🚀
+**That's it! Just drag, drop, commit, and wait. Your environment variables and deployment settings from v9 are unchanged.** 🚀

@@ -8,100 +8,34 @@ function PMReport({data}) {
   const agents = data.pm_agents;
   return (<div id="pm-report" className="space-y-4">
     <div className="bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white rounded-3xl p-10">
-      <div className="text-xs uppercase tracking-[3px] opacity-60">PROJECT MANAGEMENT STRATEGIC REPORT</div>
+      <div className="text-xs uppercase tracking-[3px] opacity-60">PM STRATEGIC REPORT</div>
       <h1 className="text-4xl font-black mt-2">{data.idea}</h1>
-      <div className="mt-4 text-sm opacity-70">PMGuru Advisory · {new Date().toLocaleDateString()} · Prepared by 4 PM Experts</div>
+      <div className="mt-4 text-sm opacity-70">PMGuru Advisory · {new Date().toLocaleDateString()}</div>
     </div>
-    
-    {/* Methodology Recommendation */}
     {agents["Methodology Expert"]?.data && (()=>{const m=agents["Methodology Expert"].data;return(
       <div className="bg-white rounded-2xl shadow-xl p-8 border-l-8 border-indigo-600 break">
         <div className="text-xs font-bold text-indigo-600 tracking-wider">🎯 METHODOLOGY RECOMMENDATION</div>
-        <div className="mt-3 flex items-baseline gap-4">
+        <div className="mt-3 flex items-baseline gap-4 flex-wrap">
           <h2 className="text-5xl font-black text-slate-900">{m.recommended_method}</h2>
           <span className="text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full font-bold">{m.confidence} Confidence</span>
         </div>
         <p className="text-slate-700 mt-3 italic border-l-4 border-slate-300 pl-4">{m.reasoning}</p>
-        
-        {m.method_details && <div className="grid md:grid-cols-2 gap-3 mt-5">
-          {m.method_details.roles && <div className="p-4 bg-indigo-50 rounded-xl"><div className="text-xs font-bold text-indigo-600">ROLES</div><div className="text-sm mt-2">{m.method_details.roles.join(", ")}</div></div>}
-          {m.method_details.ceremonies && <div className="p-4 bg-purple-50 rounded-xl"><div className="text-xs font-bold text-purple-600">CEREMONIES</div><div className="text-sm mt-2">{m.method_details.ceremonies.join(", ")}</div></div>}
-          {m.method_details.artifacts && <div className="p-4 bg-pink-50 rounded-xl"><div className="text-xs font-bold text-pink-600">ARTIFACTS</div><div className="text-sm mt-2">{m.method_details.artifacts.join(", ")}</div></div>}
-          {m.method_details.cadence && <div className="p-4 bg-emerald-50 rounded-xl"><div className="text-xs font-bold text-emerald-600">CADENCE</div><div className="text-sm mt-2">{m.method_details.cadence}</div></div>}
-        </div>}
-        
         {m.tool_recommendation && <div className="mt-5 p-5 bg-gradient-to-r from-slate-900 to-indigo-900 rounded-xl text-white">
-          <div className="text-xs font-bold opacity-60">RECOMMENDED TOOL</div>
+          <div className="text-xs font-bold opacity-60">RECOMMENDED PM TOOL</div>
           <div className="text-2xl font-black mt-1">{m.tool_recommendation.primary}</div>
-          <div className="text-xs mt-2 opacity-80">Alternatives: {(m.tool_recommendation.alternatives||[]).join(", ")}</div>
-          <div className="text-xs mt-1 opacity-70 italic">{m.tool_recommendation.reason}</div>
-        </div>}
-        
-        {m.why_not_others && <div className="mt-5"><div className="text-xs font-bold text-slate-500 mb-2">WHY NOT OTHER METHODS</div>
-          <div className="space-y-2">{m.why_not_others.map((w,i)=><div key={i} className="text-xs p-2 bg-slate-50 rounded border-l-2 border-slate-300"><b>{w.method}:</b> {w.reason}</div>)}</div>
-        </div>}
-        
-        {m.success_factors && <div className="mt-5 p-4 bg-amber-50 rounded-xl border border-amber-200">
-          <div className="text-xs font-bold text-amber-700">🌟 CRITICAL SUCCESS FACTORS</div>
-          <ul className="text-sm mt-2 space-y-1">{m.success_factors.map((s,i)=><li key={i}>✓ {s}</li>)}</ul>
+          <div className="text-xs mt-2 opacity-80">{m.tool_recommendation.reason}</div>
         </div>}
       </div>);})()}
-    
-    {/* Project Plan */}
     {agents["Project Planner"]?.data && (()=>{const p=agents["Project Planner"].data;return(
       <div className="bg-white rounded-2xl shadow-xl p-8 break">
         <div className="text-xs font-bold text-emerald-600 tracking-wider">📊 PROJECT PLAN</div>
         {p.executive_summary && <p className="mt-3 text-lg text-slate-700 italic">{p.executive_summary}</p>}
-        
-        {p.timeline && <div className="mt-4 p-4 bg-emerald-50 rounded-xl flex justify-between items-center">
-          <div><div className="text-xs text-slate-500">TIMELINE</div><div className="text-xl font-black">{p.timeline.total_duration}</div></div>
-          <div className="text-sm text-slate-600">{p.timeline.start} → {p.timeline.end}</div>
-        </div>}
-        
         {p.budget_estimate && <div className="mt-3 p-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl">
-          <div className="text-xs opacity-80">BUDGET ESTIMATE</div>
+          <div className="text-xs opacity-80">BUDGET</div>
           <div className="text-3xl font-black">{p.budget_estimate.total}</div>
-          {p.budget_estimate.breakdown && <div className="flex gap-3 mt-2 text-xs">{Object.entries(p.budget_estimate.breakdown).map(([k,v])=><div key={k}><b>{k}:</b> {v}</div>)}</div>}
         </div>}
-        
-        {p.phases && <div className="mt-5"><div className="text-xs font-bold text-slate-500 mb-2">PROJECT PHASES</div>
-          <div className="space-y-2">{p.phases.map((ph,i)=><div key={i} className={`p-4 rounded-xl bg-gradient-to-r ${C[i%8]} text-white`}>
-            <div className="flex justify-between"><b>{ph.name}</b><span className="text-xs bg-white/20 px-2 py-1 rounded">{ph.duration}</span></div>
-            {ph.milestones && <div className="text-xs mt-1 opacity-90">Milestones: {ph.milestones.join(" · ")}</div>}
-          </div>)}</div>
-        </div>}
-        
-        {p.team_composition && <div className="mt-5"><div className="text-xs font-bold text-slate-500 mb-2">TEAM</div>
-          <div className="flex gap-2 flex-wrap">{p.team_composition.map((t,i)=><div key={i} className="px-3 py-2 bg-slate-100 rounded-lg text-xs"><b>{t.count}×</b> {t.seniority} {t.role}</div>)}</div>
-        </div>}
-        
-        {p.kpis && <div className="mt-5"><div className="text-xs font-bold text-slate-500 mb-2">KPIs</div>
-          <div className="grid md:grid-cols-3 gap-2">{p.kpis.map((k,i)=><div key={i} className="p-3 bg-indigo-50 rounded-xl"><div className="text-xs text-slate-500">{k.metric}</div><div className="font-black text-indigo-700">{k.target}</div></div>)}</div>
-        </div>}
-      </div>);})()}
-    
-    {/* Risk & Governance */}
-    {agents["Risk & Governance"]?.data && (()=>{const r=agents["Risk & Governance"].data;return(
-      <div className="bg-white rounded-2xl shadow-xl p-8 break">
-        <div className="text-xs font-bold text-rose-600 tracking-wider">🛡️ RISK & GOVERNANCE</div>
-        {r.executive_summary && <p className="mt-3 text-slate-700 italic">{r.executive_summary}</p>}
-        {r.risk_register && <div className="mt-4 space-y-2">{r.risk_register.slice(0,6).map((risk,i)=><div key={i} className="p-3 bg-rose-50 rounded-xl border-l-4 border-rose-500">
-          <div className="flex justify-between"><b className="text-sm">{risk.id}: {risk.description}</b><span className="text-xs bg-rose-600 text-white px-2 py-1 rounded">P×I: {risk.score}</span></div>
-          <div className="text-xs mt-1 text-slate-600">→ {risk.mitigation} <b>({risk.owner})</b></div>
-        </div>)}</div>}
-        {r.governance && <div className="mt-4 p-4 bg-slate-50 rounded-xl text-sm">
-          <b>Governance:</b> {r.governance.steering_committee?.join(", ")} · {r.governance.meeting_cadence}
-        </div>}
-      </div>);})()}
-    
-    {/* Stakeholders */}
-    {agents["Stakeholder Strategist"]?.data && (()=>{const s=agents["Stakeholder Strategist"].data;return(
-      <div className="bg-white rounded-2xl shadow-xl p-8 break">
-        <div className="text-xs font-bold text-purple-600 tracking-wider">🤝 STAKEHOLDER STRATEGY</div>
-        {s.executive_summary && <p className="mt-3 text-slate-700 italic">{s.executive_summary}</p>}
-        {s.stakeholder_map && <div className="mt-4 grid md:grid-cols-2 gap-2">{s.stakeholder_map.map((st,i)=><div key={i} className="p-3 bg-purple-50 rounded-xl">
-          <div className="flex justify-between"><b className="text-sm">{st.name}</b><span className="text-xs bg-purple-600 text-white px-2 rounded">{st.strategy}</span></div>
-          <div className="text-xs mt-1">Power: {st.power} · Interest: {st.interest} · {st.frequency}</div>
+        {p.phases && <div className="mt-5 space-y-2">{p.phases.map((ph,i)=><div key={i} className={`p-4 rounded-xl bg-gradient-to-r ${C[i%8]} text-white`}>
+          <div className="flex justify-between"><b>{ph.name}</b><span className="text-xs bg-white/20 px-2 py-1 rounded">{ph.duration}</span></div>
         </div>)}</div>}
       </div>);})()}
   </div>);
@@ -111,9 +45,8 @@ function PLMReport({data}) {
   if (!data?.phases) return null;
   return(<div id="plm-report" className="space-y-4">
     <div className="bg-gradient-to-br from-emerald-600 via-teal-700 to-cyan-700 text-white rounded-3xl p-10">
-      <div className="text-xs uppercase tracking-[3px] opacity-60">PRODUCT LIFECYCLE EXECUTION REPORT</div>
+      <div className="text-xs uppercase tracking-[3px] opacity-60">PLM EXECUTION REPORT</div>
       <h1 className="text-4xl font-black mt-2">{data.idea}</h1>
-      <div className="mt-4 text-sm opacity-70">PMGuru PLM · {new Date().toLocaleDateString()} · 8 Specialist Agents</div>
     </div>
     {data.phases.map((ph,i)=>(<div key={ph.id} className={`p-6 rounded-2xl bg-gradient-to-br ${C[i%8]} text-white shadow-xl break`}>
       <div className="flex items-start gap-4">
@@ -122,7 +55,6 @@ function PLMReport({data}) {
           <h3 className="text-2xl font-black">{ph.agent_icon} {ph.name}</h3>
           <p className="text-xs opacity-90">{ph.agent_role} · {ph.duration}</p>
           {ph.data?.summary && <p className="mt-3 text-sm italic opacity-90 border-l-4 border-white/40 pl-3">{ph.data.summary}</p>}
-          <div className="mt-3 text-xs bg-white/10 p-3 rounded-lg whitespace-pre-wrap max-h-80 overflow-y-auto">{JSON.stringify(ph.data, null, 2).slice(0,800)}</div>
         </div>
       </div>
     </div>))}
@@ -130,12 +62,14 @@ function PLMReport({data}) {
 }
 
 export default function Auto() {
-  const [step, setStep] = useState("input"); // input | pm_running | pm_done | plm_running | plm_done
+  const [step, setStep] = useState("input");
   const [idea, setIdea] = useState("");
   const [pmData, setPmData] = useState(null);
+  const [pmTool, setPmTool] = useState(null);
   const [plmData, setPlmData] = useState(null);
   const [proto, setProto] = useState(null);
   const [cur, setCur] = useState(0);
+  const [showTool, setShowTool] = useState(false);
 
   const runPM = async () => {
     if (!idea) return;
@@ -145,6 +79,16 @@ export default function Auto() {
       setPmData(await r.json());
       setStep("pm_done");
     } catch(e) { setStep("input"); alert(e.message); }
+  };
+
+  const buildPMTool = async () => {
+    setStep("tool_running");
+    try {
+      const r = await fetch("/api/pmtool", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({idea, pm_plan: pmData})});
+      const j = await r.json();
+      setPmTool(j);
+      setStep("tool_done");
+    } catch(e) { alert(e.message); setStep("pm_done"); }
   };
 
   const runPLM = async () => {
@@ -168,6 +112,14 @@ export default function Auto() {
     setTimeout(()=>w.print(), 1500);
   };
 
+  const dlTool = () => {
+    if (!pmTool?.html) return;
+    const b = new Blob([pmTool.html], {type:"text/html"});
+    const u = URL.createObjectURL(b);
+    const a = document.createElement("a");
+    a.href = u; a.download = "pm-tool.html"; a.click();
+  };
+
   const dlProto = () => {
     const b = new Blob([proto], {type:"text/html"});
     const u = URL.createObjectURL(b);
@@ -177,14 +129,17 @@ export default function Auto() {
 
   return(<div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 p-6"><div className="max-w-6xl mx-auto">
     <header className="mb-6 bg-white rounded-2xl shadow-xl p-6 border-t-4 border-indigo-600">
-      <h1 className="text-4xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">🤖 PMGuru Autopilot v9</h1>
-      <p className="text-slate-600 mt-1">PM Strategy (BCG-grade) → Approve → PLM Execution → Production Prototype</p>
+      <h1 className="text-4xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">🤖 PMGuru v10 · Autopilot</h1>
+      <p className="text-slate-600 mt-1">PM Strategy → Custom PM Tool → PLM Execution → Prototype</p>
     </header>
 
-    {/* Progress steps */}
-    <div className="mb-6 bg-white rounded-2xl shadow p-4 flex items-center justify-between text-xs">
-      {["💡 Idea","🧠 PM Plan","✅ Approve","⚡ PLM Execute","🎨 Prototype"].map((s,i)=>{const active = ["input","pm_running","pm_done","plm_running","plm_done"].indexOf(step) >= i;
-        return(<div key={i} className={`flex-1 text-center ${active?"font-bold text-indigo-600":"text-slate-400"}`}>{s}</div>);
+    <div className="mb-6 bg-white rounded-2xl shadow p-4 flex items-center justify-between text-xs overflow-x-auto">
+      {["💡 Idea","🧠 PM Plan","🛠️ PM Tool","⚡ PLM","🎨 Prototype"].map((s,i)=>{
+        const steps = ["input","pm_running","pm_done","tool_running","tool_done","plm_running","plm_done"];
+        const progress = steps.indexOf(step);
+        const checkpoints = [0, 2, 4, 5, 6];
+        const active = progress >= checkpoints[i];
+        return(<div key={i} className={`flex-1 text-center px-2 ${active?"font-bold text-indigo-600":"text-slate-400"}`}>{s}</div>);
       })}
     </div>
 
@@ -197,16 +152,40 @@ export default function Auto() {
     {step==="pm_running" && <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
       <div className="text-6xl mb-4 animate-pulse">🧠</div>
       <h2 className="text-2xl font-black">4 PM Experts Analyzing...</h2>
-      <p className="text-slate-600 mt-2">Methodology Expert · Project Planner · Risk & Governance · Stakeholder Strategist</p>
+      <p className="text-slate-600 mt-2">Methodology · Planning · Risk · Stakeholders</p>
     </div>}
 
     {step==="pm_done" && pmData && <div className="space-y-6 animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-xl p-4 flex gap-3 flex-wrap no-print">
-        <button onClick={()=>dlPDF("pm-report","PM Strategic Report")} className="px-5 py-2 bg-indigo-600 text-white rounded-lg font-bold">📄 Download PM Report (PDF)</button>
-        <button onClick={runPLM} className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg font-bold">✅ Approve PM Plan & Run PLM</button>
-        <button onClick={()=>{setStep("input");setPmData(null);}} className="px-5 py-2 bg-slate-200 rounded-lg font-bold">↩️ Edit Idea</button>
+        <button onClick={()=>dlPDF("pm-report","PM Report")} className="px-5 py-2 bg-indigo-600 text-white rounded-lg font-bold">📄 PM Report PDF</button>
+        <button onClick={buildPMTool} className="px-5 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-bold shadow-lg">🛠️ Build Custom PM Tool</button>
+        <button onClick={()=>{setStep("input");setPmData(null);}} className="px-5 py-2 bg-slate-200 rounded-lg font-bold">↩️ Edit</button>
       </div>
       <PMReport data={pmData}/>
+    </div>}
+
+    {step==="tool_running" && <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
+      <div className="text-6xl mb-4 animate-pulse">🛠️</div>
+      <h2 className="text-2xl font-black">PM Tool Architect Building...</h2>
+      <p className="text-slate-600 mt-2">Designing columns, sprints, cards, and team for your project</p>
+    </div>}
+
+    {step==="tool_done" && pmTool && <div className="space-y-6 animate-fadeIn">
+      <div className="bg-gradient-to-br from-purple-600 via-pink-600 to-rose-600 text-white rounded-3xl shadow-2xl p-10">
+        <div className="text-xs uppercase tracking-widest opacity-80">🛠️ YOUR CUSTOM PM TOOL</div>
+        <h1 className="text-3xl font-black mt-2">{pmTool.board_data?.board_title || "Custom PM Board"}</h1>
+        <div className="text-sm mt-2 opacity-80">
+          {pmTool.board_data?.methodology} · {pmTool.board_data?.cards?.length || 0} tasks · {pmTool.board_data?.team_members?.length || 0} team members
+        </div>
+        <div className="flex gap-3 mt-6 flex-wrap">
+          <button onClick={dlTool} className="px-5 py-2 bg-white text-purple-600 rounded-lg font-bold shadow">💾 Download PM Tool (HTML)</button>
+          <button onClick={()=>setShowTool(!showTool)} className="px-5 py-2 bg-white/20 text-white rounded-lg font-bold">{showTool?"Hide":"👁️ Preview"}</button>
+          <button onClick={runPLM} className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg font-bold">✅ Continue to PLM Execution</button>
+        </div>
+      </div>
+      {showTool && <div className="bg-white rounded-2xl shadow-xl p-4">
+        <iframe srcDoc={pmTool.html} className="w-full h-[750px] rounded-xl border-2 border-purple-200"/>
+      </div>}
     </div>}
 
     {step==="plm_running" && <div className="bg-white rounded-2xl shadow-xl p-6">
@@ -219,10 +198,11 @@ export default function Auto() {
 
     {step==="plm_done" && plmData && <div className="space-y-6 animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-xl p-4 flex gap-3 flex-wrap no-print">
-        <button onClick={()=>dlPDF("pm-report","PM Strategic Report")} className="px-5 py-2 bg-indigo-600 text-white rounded-lg font-bold">📄 PM Report PDF</button>
-        <button onClick={()=>dlPDF("plm-report","PLM Execution Report")} className="px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold">📄 PLM Report PDF</button>
-        {proto && <button onClick={dlProto} className="px-5 py-2 bg-pink-600 text-white rounded-lg font-bold">🎨 Download Prototype</button>}
-        <button onClick={()=>{setStep("input");setIdea("");setPmData(null);setPlmData(null);setProto(null);}} className="px-5 py-2 bg-slate-200 rounded-lg font-bold">🔄 New Project</button>
+        <button onClick={()=>dlPDF("pm-report","PM Report")} className="px-5 py-2 bg-indigo-600 text-white rounded-lg font-bold">📄 PM Report PDF</button>
+        <button onClick={()=>dlPDF("plm-report","PLM Report")} className="px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold">📄 PLM Report PDF</button>
+        {pmTool && <button onClick={dlTool} className="px-5 py-2 bg-purple-600 text-white rounded-lg font-bold">🛠️ PM Tool</button>}
+        {proto && <button onClick={dlProto} className="px-5 py-2 bg-pink-600 text-white rounded-lg font-bold">🎨 Prototype</button>}
+        <button onClick={()=>{setStep("input");setIdea("");setPmData(null);setPmTool(null);setPlmData(null);setProto(null);}} className="px-5 py-2 bg-slate-200 rounded-lg font-bold">🔄 New Project</button>
       </div>
       <PMReport data={pmData}/>
       <PLMReport data={plmData}/>
