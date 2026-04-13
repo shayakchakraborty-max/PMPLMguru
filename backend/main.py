@@ -359,14 +359,15 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         try:
-            if path == "/pm/plan":
+            # Accept both new v9.1 paths and legacy v7/v8 paths for max compatibility
+            if path in ("/pm/plan", "/pipeline/plan", "/plan"):
                 self.handle_pm_plan(body)
-            elif path == "/plm/execute":
+            elif path in ("/plm/execute", "/pipeline/execute", "/execute"):
                 self.handle_plm_execute(body)
-            elif path == "/plm/prototype":
+            elif path in ("/plm/prototype", "/pipeline/prototype", "/prototype"):
                 self.handle_prototype(body)
             else:
-                self._send(404, {"error": "unknown endpoint", "path": path})
+                self._send(404, {"error": "unknown endpoint", "path": path, "available": ["/pm/plan", "/plm/execute", "/plm/prototype"]})
         except Exception as e:
             # Catch-all — NEVER let a 500 bubble up without detail
             print(f"[handler] UNCAUGHT at {path}: {e}", flush=True)

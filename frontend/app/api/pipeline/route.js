@@ -1,12 +1,58 @@
 // frontend/app/api/pipeline/route.js
 // Proxies PM planning and PLM execution requests to the Render backend brain.
-// Never returns a raw 500 - wraps every upstream failure in a 200 with an error field
-// so the UI can show a friendly message instead of "Server returned 500".
+// Auto-fallback: tries v9.1 paths first, falls back to legacy /pipeline/* paths on 404.
+// Never returns a raw 500 - always wraps upstream failures in a 200 with an error field.
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const BRAIN = (process.env.BRAIN_URL || "").replace(/\/$/, "");
+
+const ENDPOINTS = {
+  pm: ["/pm/plan", "/pipeline/plan", "/plan"],
+  plm: ["/plm/execute", "/pipeline/execute", "/execute"],
+};
+
+async function tryBackend(paths, payload) {
+  let lastError = null;
+  for (const path of paths) {
+    const url = `${BRAIN}${path}`;
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const text = await r.text();
+
+      if (r.status === 404) {
+        lastError = `${path} -> 404`;
+        continue;
+      }
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        lastError = `${path} -> non-JSON (HTTP ${r.status}): ${text.slice(0, 200)}`;
+        continue;
+      }
+
+      if (!r.ok) {
+        return { ok: false, error: `Backend ${path} returned HTTP ${r.status}`, detail: data };
+      }
+
+      return { ok: true, data, used: path };
+    } catch (e) {
+      lastError = `${path} -> ${e.message}`;
+      continue;
+    }
+  }
+  return {
+    ok: false,
+    error: `All backend endpoints failed. Last error: ${lastError}. Render may be sleeping (wait 30s) or the backend wasn't updated. Check ${BRAIN}/health to see which version is running.`,
+  };
+}
 
 export async function POST(req) {
   if (!BRAIN) {
@@ -19,44 +65,21 @@ export async function POST(req) {
   let body;
   try {
     body = await req.json();
-  } catch (e) {
+  } catch {
     return Response.json({ error: "Invalid JSON in request body" }, { status: 200 });
   }
 
-  // stage: "pm" -> /pm/plan, "plm" -> /plm/execute
   const stage = body.stage || "pm";
-  const endpoint = stage === "plm" ? "/plm/execute" : "/pm/plan";
-  const url = `${BRAIN}${endpoint}`;
+  const paths = ENDPOINTS[stage] || ENDPOINTS.pm;
+  const payload = { idea: body.idea, pm_plan: body.pm_plan || null };
 
-  try {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idea: body.idea, pm_plan: body.pm_plan || null }),
-    });
+  const result = await tryBackend(paths, payload);
 
-    const text = await r.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { error: `Backend returned non-JSON (HTTP ${r.status}): ${text.slice(0, 500)}` };
-    }
-
-    if (!r.ok) {
-      return Response.json(
-        { error: `Backend ${endpoint} returned HTTP ${r.status}`, detail: data },
-        { status: 200 }
-      );
-    }
-
-    return Response.json(data, { status: 200 });
-  } catch (e) {
-    return Response.json(
-      { error: `Failed to reach backend at ${url}. It may be sleeping (Render free tier) - wait 30s and retry. Detail: ${e.message}` },
-      { status: 200 }
-    );
+  if (!result.ok) {
+    return Response.json({ error: result.error, detail: result.detail }, { status: 200 });
   }
+
+  return Response.json(result.data, { status: 200 });
 }
 
 export async function GET() {
@@ -65,7 +88,8 @@ export async function GET() {
   }
   try {
     const r = await fetch(`${BRAIN}/health`);
-    return Response.json(await r.json(), { status: 200 });
+    const data = await r.json();
+    return Response.json(data, { status: 200 });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 200 });
   }
