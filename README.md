@@ -1,102 +1,78 @@
-# PMGuru v12 — Three-Path Launcher
+# PMGuru v12 — Root 404 Hotfix
 
-## What changed in this push
+## The problem
 
-The `/auto` flow now gives users **three independent paths** after they enter an idea,
-instead of jumping straight to the PM workspace.
+After deploying v12 to Vercel, visiting the root URL
+(`https://your-url.vercel.app/`) returns:
 
 ```
-  Enter idea
-      │
-      ▼
- Classify (< 1s)
-      │
-      ▼
-  Three choices ─────────┬─────────────────┐
-      │                  │                 │
-      ▼                  ▼                 ▼
-  🗂️ PM Tool         📘 PLM Report    🎨 Prototype
-   /workspace            /plm             /prototype
+404: NOT_FOUND
+Code: NOT_FOUND
 ```
 
-All three paths share the same backend brain (`backend/main.py`, no changes).
-Only the frontend routes were revised.
+## Why
 
-## Files in this push
+Next.js App Router only serves URLs that have a matching `page.js` file.
+Your app has pages at `/auto`, `/workspace`, `/plm`, `/prototype` — but
+**nothing at the root**. So hitting `/` returns 404. This is not a broken
+deployment — it's a missing file.
+
+## Immediate workaround (no code change)
+
+Open `https://your-url.vercel.app/auto` directly. Bookmark that.
+Everything works from there.
+
+## Proper fix — add one file
+
+Add `frontend/app/page.js` with exactly this content:
+
+```js
+import { redirect } from "next/navigation";
+
+export default function RootPage() {
+  redirect("/auto");
+}
+```
+
+That's it. Four lines. The `redirect()` helper is a built-in Next.js
+server function — no extra dependencies, no environment variables.
+
+## Push steps
+
+1. Copy `frontend/app/page.js` from this hotfix zip into your repo at
+   the **same path**: `frontend/app/page.js`
+2. Commit and push to GitHub
+3. Vercel auto-redeploys in ~60 seconds
+4. Visit the root URL → you'll be forwarded to `/auto`
+
+## Debug checklist (if it still 404s)
+
+If `/auto` also 404s after the redirect is live:
+
+1. **Check the Vercel deployment log.** If the build failed, Vercel
+   serves the last successful deploy. A fresh failed deploy can look
+   like "deployed" in the dashboard but actually be broken.
+
+2. **Verify the Root Directory setting in Vercel.** Go to
+   Project → Settings → General → Root Directory. It should be
+   `frontend` (not the repo root) because your Next.js project lives
+   inside `frontend/`.
+
+3. **Check that the new folders were committed.** On GitHub, navigate to
+   `frontend/app/` and confirm you can see `auto/`, `plm/`, `prototype/`,
+   `workspace/`, and now `page.js`. If a folder is missing, git may not
+   have picked up empty directories — make sure each has its `page.js`.
+
+4. **Test the backend directly.** Hit
+   `https://your-render-url.onrender.com/health` — if that also 404s,
+   Render is asleep or misdeployed. Wait 30s and retry.
+
+5. **Check `BRAIN_URL` is set in Vercel.** Project → Settings →
+   Environment Variables → `BRAIN_URL` should match your Render URL,
+   with no trailing slash.
+
+## File list in this hotfix
 
 | File | Status | Purpose |
 |------|--------|---------|
-| `frontend/app/auto/page.js` | **revised** | Two-step launcher: idea input → three-path chooser |
-| `frontend/app/plm/page.js` | **new** | Renders the 8-phase PLM report (Discovery → Iterate) |
-| `frontend/app/prototype/page.js` | **new** | Renders the generated HTML prototype in a device-framed iframe |
-| `frontend/app/workspace/page.js` | unchanged | The existing 8-view PM tool |
-| `frontend/app/api/pipeline/route.js` | unchanged | Already supports `stage: "pm" / "plm" / "workspace"` |
-| `frontend/app/api/prototype/route.js` | unchanged | Already proxies `/plm/prototype` |
-| `backend/main.py` | unchanged | Already exposes `/workspace/seed`, `/plm/execute`, `/plm/prototype` |
-| `backend/requirements.txt` | unchanged | `httpx==0.27.2` |
-
-## How to deploy
-
-### 1. Commit the new/revised files
-
-Push these three files to your GitHub repo:
-
-```
-frontend/app/auto/page.js        ← replace
-frontend/app/plm/page.js         ← new folder + file
-frontend/app/prototype/page.js   ← new folder + file
-```
-
-### 2. Deploy to Vercel
-
-Vercel will auto-deploy on push. No environment variable changes needed — the existing
-`BRAIN_URL` continues to work for all three paths.
-
-### 3. Backend — nothing to do
-
-Your existing Render deployment already serves `/workspace/seed`, `/plm/execute`, and
-`/plm/prototype`. Just make sure it's warm:
-
-```
-curl https://your-render-url.onrender.com/health
-```
-
-## User flow
-
-1. User lands on `/auto` and enters an idea.
-2. Clicks **Analyze & choose path** → backend classifies in < 1s.
-3. Sees their idea with classification pills (methodology · industry · complexity)
-   plus a short "why this methodology" explanation.
-4. Sees **three action cards**:
-   - **🗂️ PM Tool Workspace** — generates full editable workspace, navigates to `/workspace`
-   - **📘 PLM Plan & Report** — generates 8-phase lifecycle report, navigates to `/plm`
-   - **🎨 Interactive Prototype** — generates working HTML, navigates to `/prototype`
-5. Each path is cached in `localStorage`, so the user can run all three on the same
-   idea and switch freely.
-6. Each destination page has a "← Back to launcher" link that returns to `/auto`.
-
-## PLM page features
-
-- **Phase rail** at the top for quick jumping
-- **Expand/collapse all** controls
-- **Print view** — clean CSS print styles strip chrome
-- **Export JSON** — download the full PLM data blob
-- All 8 phases render their specific data types (personas, RICE scores, user stories,
-  sprint plans, test cases, CI/CD pipelines, launch announcements, success metrics)
-
-## Prototype page features
-
-- **Device viewport toggle** — Desktop / Tablet / Mobile
-- **Fake browser chrome** for a polished share-ready look
-- **Regenerate** — re-runs the backend to get a fresh HTML variant
-- **Open in new tab** — browse the prototype standalone
-- **Download HTML** — save the file to share, deploy, or edit
-
-## Version history
-
-- **v11** — single path: idea → workspace only
-- **v12** — this push — three-path launcher with PM / PLM / Prototype
-
-## Zero LLM dependencies
-
-All three paths use the deterministic template engine. Groq is still optional evaluator-only.
+| `frontend/app/page.js` | **new** | Root redirect to `/auto` |
