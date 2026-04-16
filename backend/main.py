@@ -26,7 +26,7 @@ except Exception:
 
 import httpx
 
-VERSION = "11.0"
+VERSION = "12.0"
 
 # ============================================================
 # KNOWLEDGE BASE - Methodology templates trained on real examples
@@ -580,6 +580,599 @@ PM_AGENT_SPECS = {
 
 
 # ============================================================
+# CONSULTING REPORT GENERATORS - Big 3 blended style
+# Each function returns a section dict that the frontend renders.
+# Pure templates - no LLM dependency, sub-second response.
+# ============================================================
+
+# Tech stack recommendations by industry
+TECH_STACKS = {
+    "Retail/SMB": {
+        "frontend": ["Next.js 14 (App Router)", "React 18", "Tailwind CSS", "Progressive Web App"],
+        "backend": ["Node.js + Fastify", "Python FastAPI for AI", "PostgreSQL via Supabase"],
+        "infrastructure": ["Vercel (frontend, free tier)", "Supabase (DB + auth, free tier)", "Cloudflare R2 (storage)"],
+        "ai_ml": ["OpenAI GPT-4o-mini for inference", "Bhashini for vernacular voice", "Local Whisper for offline"],
+        "integrations": ["WhatsApp Business API", "UPI for payments", "GST/eInvoice APIs", "ONDC connectors"],
+        "rationale": "Free-tier-friendly stack optimized for low-data-cost mobile users. WhatsApp-native interface lowers adoption friction for kirana segment. Vernacular AI essential for vendor reach.",
+    },
+    "SaaS/Product": {
+        "frontend": ["Next.js 14", "React 18", "Tailwind CSS", "shadcn/ui components"],
+        "backend": ["Node.js + tRPC", "PostgreSQL + Prisma ORM", "Redis for sessions"],
+        "infrastructure": ["Vercel (web)", "Railway or Render (services)", "Cloudflare (CDN + WAF)"],
+        "ai_ml": ["Anthropic Claude or OpenAI for features", "Vector DB (Pinecone/Qdrant)"],
+        "integrations": ["Stripe billing", "Auth0 or Clerk", "Sentry, PostHog", "Slack notifications"],
+        "rationale": "Type-safe full-stack with tRPC eliminates API boilerplate. Vercel + Railway gives developer-velocity comparable to a 10-person team at 1-person cost.",
+    },
+    "AI/ML": {
+        "frontend": ["Next.js 14 with streaming", "React Server Components"],
+        "backend": ["Python FastAPI", "LangChain or LlamaIndex orchestration", "PostgreSQL + pgvector"],
+        "infrastructure": ["Modal or Replicate (GPU inference)", "Vercel (frontend)", "S3 (model artifacts)"],
+        "ai_ml": ["Foundation models via API (Anthropic, OpenAI, Google)", "Open-weights via Together/Groq", "Evaluation harness (Promptfoo, LangSmith)"],
+        "integrations": ["Webhooks for async pipelines", "Slack/Discord for alerts", "Datadog for observability"],
+        "rationale": "Hybrid hosted + open-weights strategy balances cost and capability. pgvector keeps RAG infra simple. Streaming UI critical for user-perceived latency on long generations.",
+    },
+    "Fintech": {
+        "frontend": ["Next.js 14 with strict CSP", "React 18"],
+        "backend": ["Java Spring Boot or Go", "PostgreSQL with row-level security", "Kafka for event streams"],
+        "infrastructure": ["AWS or Azure (regulated tier)", "Encrypted at rest, TLS 1.3", "WAF + DDoS protection"],
+        "ai_ml": ["On-prem ML for credit scoring", "Audit-logged inference"],
+        "integrations": ["UPI, IMPS, NEFT", "Account Aggregator framework", "CKYC, Aadhaar eKYC", "Bureau APIs (CIBIL, Experian)"],
+        "rationale": "Regulated stack required by RBI. Kafka enables audit trail for every transaction. Account Aggregator is the future of consent-based data sharing in Indian fintech.",
+    },
+    "Healthcare": {
+        "frontend": ["React with WCAG 2.1 AA compliance", "PWA for clinical use"],
+        "backend": ["Java/.NET (regulated languages)", "FHIR-compliant data layer", "HL7 message handling"],
+        "infrastructure": ["AWS HealthLake or Azure Health Data Services", "HIPAA/HITRUST certified hosting", "BAA with all vendors"],
+        "ai_ml": ["FDA-cleared models only for diagnosis", "Audit-logged predictions"],
+        "integrations": ["EHR systems (Epic, Cerner, Allscripts)", "DICOM for imaging", "ABHA (India)", "ICD-10 coding"],
+        "rationale": "Regulatory non-negotiables drive stack choice. FHIR is the global interop standard. ABHA integration mandatory for Indian healthcare.",
+    },
+    "Operations": {
+        "frontend": ["Next.js 14", "Real-time updates via WebSockets"],
+        "backend": ["Node.js + NestJS", "PostgreSQL + Redis", "BullMQ for job queues"],
+        "infrastructure": ["Vercel + Railway", "PagerDuty for alerts"],
+        "ai_ml": ["Classification models for triage", "Anomaly detection"],
+        "integrations": ["ServiceNow, Jira, Zendesk", "Slack, MS Teams", "PagerDuty, Opsgenie"],
+        "rationale": "Operations workloads are bursty - queues smooth load. Real-time UI critical for incident response. Existing tool integrations reduce change management.",
+    },
+    "Construction/Hardware": {
+        "frontend": ["React for web", "iOS/Android native (field use)", "Offline-first PWA"],
+        "backend": [".NET Core or Java", "SQL Server or PostgreSQL", "BIM/CAD file pipelines"],
+        "infrastructure": ["Azure (industry standard)", "On-prem optional", "Field device sync"],
+        "ai_ml": ["Computer vision for site inspection", "Schedule optimization"],
+        "integrations": ["Primavera P6, MS Project", "Procore, Autodesk", "ERP (SAP, Oracle)"],
+        "rationale": "Field connectivity drives offline-first design. Microsoft stack dominant in construction enterprises. Native mobile required for hard-hat conditions.",
+    },
+    "GovTech": {
+        "frontend": ["Next.js 14 with full accessibility", "Multi-language support"],
+        "backend": ["Java Spring or .NET", "Open-source DB (PostgreSQL)", "API gateway with rate limits"],
+        "infrastructure": ["MeghRaj cloud or AWS GovCloud", "Audit logging end-to-end"],
+        "ai_ml": ["Explainable AI only", "Bias auditing required"],
+        "integrations": ["Aadhaar, DigiLocker, eSign", "GST, Income Tax APIs", "Payment gateways (BharatPe)"],
+        "rationale": "Sovereign cloud requirements often mandate MeghRaj. Open-source preferred to avoid vendor lock-in. Aadhaar integration is the foundational identity layer.",
+    },
+    "Content/Media": {
+        "frontend": ["Next.js 14 with ISR", "Headless CMS integration"],
+        "backend": ["Node.js + Strapi or Sanity", "Image/video pipelines"],
+        "infrastructure": ["Vercel (web)", "Cloudflare Stream (video)", "Cloudinary (images)"],
+        "ai_ml": ["Auto-tagging, summarization", "Recommendation engines"],
+        "integrations": ["Social media APIs", "Email marketing (Mailchimp, Sendgrid)", "Analytics (GA4, PostHog)"],
+        "rationale": "ISR balances freshness with performance for content-heavy sites. Headless CMS gives editorial team independence from engineering.",
+    },
+    "Early-Stage": {
+        "frontend": ["Next.js 14 (everything in one repo)", "Tailwind for speed"],
+        "backend": ["Supabase (DB + auth + storage)", "Vercel serverless functions"],
+        "infrastructure": ["Vercel + Supabase free tiers", "Sentry for errors", "PostHog for analytics"],
+        "ai_ml": ["GPT-4o-mini for any AI features", "Defer ML training until PMF"],
+        "integrations": ["Stripe (when ready)", "Loops or Resend (email)"],
+        "rationale": "Boring stack maximizes iteration speed before PMF. Supabase replaces 5 separate services. Defer everything that doesn't directly validate hypotheses.",
+    },
+    "B2B": {
+        "frontend": ["Next.js 14", "Enterprise SSO support (SAML, OIDC)"],
+        "backend": ["Node.js + NestJS or Python FastAPI", "PostgreSQL with multi-tenancy"],
+        "infrastructure": ["AWS or Azure (enterprise expectation)", "SOC 2 audit trail"],
+        "ai_ml": ["Customer-data-isolated inference", "On-prem option for large clients"],
+        "integrations": ["Salesforce, HubSpot", "Workday, NetSuite", "Slack, MS Teams"],
+        "rationale": "Enterprise procurement requires SSO, SOC 2, and compliance documentation from day one. Multi-tenancy isolation non-negotiable.",
+    },
+    "EdTech": {
+        "frontend": ["Next.js 14 with accessibility", "Mobile-first (low-end Android)"],
+        "backend": ["Node.js or Python", "PostgreSQL", "WebRTC for live classes"],
+        "infrastructure": ["Vercel + Supabase", "Cloudflare (low-latency global)", "100ms or Daily for video"],
+        "ai_ml": ["Personalized learning paths", "Auto-grading for objective tests"],
+        "integrations": ["Google Classroom, Microsoft Teams for Education", "LMS (Canvas, Moodle)", "Payment for parent users"],
+        "rationale": "Bandwidth optimization critical for tier 2/3 students. Recorded + live hybrid model reaches widest audience. LMS integration eases school adoption.",
+    },
+}
+
+# Market sizing templates by industry (in USD)
+MARKET_SIZES = {
+    "Retail/SMB":           {"tam": "850B", "sam": "65B", "som": "1.2B", "growth": "8.5% CAGR", "drivers": "Digitization of 12M+ Indian kirana stores; UPI penetration; ONDC rollout"},
+    "SaaS/Product":         {"tam": "720B", "sam": "180B", "som": "2.4B", "growth": "13.7% CAGR", "drivers": "Cloud migration; AI integration; SMB software adoption; vertical SaaS expansion"},
+    "AI/ML":                {"tam": "1.4T", "sam": "320B", "som": "4.5B", "growth": "37% CAGR", "drivers": "Generative AI inflection; enterprise AI adoption; foundation model commoditization"},
+    "Fintech":              {"tam": "490B", "sam": "85B", "som": "1.8B", "growth": "20% CAGR", "drivers": "UPI scale (India); financial inclusion; embedded finance; regulatory tailwinds"},
+    "Healthcare":           {"tam": "660B", "sam": "120B", "som": "2.1B", "growth": "15.5% CAGR", "drivers": "Aging populations; telehealth normalization; AI-assisted diagnosis; ABDM in India"},
+    "Operations":           {"tam": "180B", "sam": "32B", "som": "0.8B", "growth": "9% CAGR", "drivers": "Service desk automation; AI agents; remote ops; ITSM consolidation"},
+    "Construction/Hardware":{"tam": "12T", "sam": "85B", "som": "1.5B", "growth": "6% CAGR", "drivers": "Infrastructure spending; BIM adoption; smart cities; sustainability mandates"},
+    "GovTech":              {"tam": "550B", "sam": "75B", "som": "0.9B", "growth": "11% CAGR", "drivers": "Digital India initiatives; e-governance; citizen services digitization"},
+    "Content/Media":        {"tam": "2.3T", "sam": "180B", "som": "1.1B", "growth": "7% CAGR", "drivers": "Streaming consolidation; creator economy; vernacular content; programmatic advertising"},
+    "Early-Stage":          {"tam": "varies", "sam": "varies", "som": "validate first", "growth": "TBD", "drivers": "Hypothesis-dependent; quantify after problem validation"},
+    "B2B":                  {"tam": "950B", "sam": "210B", "som": "3.2B", "growth": "12% CAGR", "drivers": "Enterprise digital transformation; vertical SaaS; AI-native B2B tools"},
+    "EdTech":               {"tam": "410B", "sam": "65B", "som": "0.9B", "growth": "16% CAGR", "drivers": "Personalized learning; upskilling demand; K-12 digitization; lifelong learning"},
+}
+
+# Competitor landscape templates
+COMPETITORS = {
+    "Retail/SMB": [
+        {"name": "Khatabook", "strength": "30M+ user base, vernacular UX", "weakness": "Limited beyond ledger; weak inventory module", "moat": "Network effects in tier-3 cities"},
+        {"name": "OkCredit", "strength": "Strong credit ledger, brand recall", "weakness": "Stalled product roadmap post-funding crunch", "moat": "Existing merchant trust"},
+        {"name": "Vyapar", "strength": "Comprehensive billing + GST", "weakness": "Desktop-first, weak mobile UX", "moat": "Accountant ecosystem integration"},
+        {"name": "Pine Labs", "strength": "POS hardware + lending", "weakness": "Higher-tier merchants only", "moat": "Hardware + capital combined"},
+    ],
+    "SaaS/Product": [
+        {"name": "Notion", "strength": "Flexible, viral product-led growth", "weakness": "Performance at enterprise scale", "moat": "Network effect of templates"},
+        {"name": "Airtable", "strength": "Database + collaboration", "weakness": "Pricing complexity", "moat": "API ecosystem"},
+        {"name": "ClickUp", "strength": "Feature breadth", "weakness": "UI complexity", "moat": "All-in-one positioning"},
+    ],
+    "AI/ML": [
+        {"name": "OpenAI", "strength": "Frontier models, brand", "weakness": "Pricing, enterprise governance", "moat": "Model capability lead"},
+        {"name": "Anthropic", "strength": "Safety-focused, long context", "weakness": "Smaller model selection", "moat": "Constitutional AI brand"},
+        {"name": "Hugging Face", "strength": "Open ecosystem", "weakness": "Operational complexity", "moat": "Developer mindshare"},
+    ],
+    "Fintech": [
+        {"name": "Razorpay", "strength": "Payments + neobanking", "weakness": "MSME segment underserved", "moat": "Developer-first APIs"},
+        {"name": "Cred", "strength": "Premium consumer brand", "weakness": "Narrow demographic", "moat": "Affluent user data"},
+        {"name": "Lendingkart", "strength": "MSME credit specialization", "weakness": "Underwriting at scale", "moat": "Risk model + bank partnerships"},
+    ],
+    "Healthcare": [
+        {"name": "Practo", "strength": "Doctor discovery scale", "weakness": "Care delivery weak", "moat": "Doctor relationships"},
+        {"name": "Tata 1mg", "strength": "Pharmacy + diagnostics", "weakness": "Clinical depth limited", "moat": "Tata brand + capital"},
+        {"name": "Epic", "strength": "EHR market leader (US)", "weakness": "Slow innovation, costly", "moat": "Switching costs"},
+    ],
+    "Operations": [
+        {"name": "Zendesk", "strength": "Mature ticketing platform", "weakness": "AI integration lagging", "moat": "Customer base inertia"},
+        {"name": "ServiceNow", "strength": "Enterprise ITSM standard", "weakness": "Implementation cost", "moat": "Workflow customization depth"},
+        {"name": "Freshworks", "strength": "Mid-market pricing", "weakness": "Product depth vs leaders", "moat": "Indian engineering cost advantage"},
+    ],
+    "Construction/Hardware": [
+        {"name": "Procore", "strength": "Construction management leader", "weakness": "US-focused, expensive", "moat": "Subcontractor network"},
+        {"name": "Autodesk", "strength": "BIM/CAD ecosystem", "weakness": "Cloud transition incomplete", "moat": "Industry standard tools"},
+    ],
+    "GovTech": [
+        {"name": "TCS", "strength": "Govt contract scale", "weakness": "Innovation velocity", "moat": "Existing relationships"},
+        {"name": "Infosys", "strength": "Digital govt projects", "weakness": "Custom-build cost", "moat": "Compliance expertise"},
+        {"name": "Wipro Infotech", "strength": "Smart city projects", "weakness": "Margin pressure", "moat": "Local presence"},
+    ],
+    "Content/Media": [
+        {"name": "WordPress (Automattic)", "strength": "Open-source dominance", "weakness": "Modern UX gap", "moat": "Plugin ecosystem"},
+        {"name": "Substack", "strength": "Creator monetization", "weakness": "Discovery weak", "moat": "Network of writers"},
+    ],
+    "Early-Stage": [
+        {"name": "Direct competitors", "strength": "Validate during interviews", "weakness": "TBD from research", "moat": "TBD from positioning"},
+    ],
+    "B2B": [
+        {"name": "Salesforce", "strength": "Platform breadth", "weakness": "Cost, complexity", "moat": "Ecosystem lock-in"},
+        {"name": "HubSpot", "strength": "Mid-market UX", "weakness": "Enterprise depth", "moat": "Inbound marketing brand"},
+    ],
+    "EdTech": [
+        {"name": "BYJU'S", "strength": "Brand and content library", "weakness": "Unit economics challenges", "moat": "Content + sales team"},
+        {"name": "Unacademy", "strength": "Educator marketplace", "weakness": "Profitability path unclear", "moat": "Top educator relationships"},
+        {"name": "PhysicsWallah", "strength": "Profitable freemium model", "weakness": "Limited beyond test prep", "moat": "Founder brand + low pricing"},
+    ],
+}
+
+# Financial projection multipliers by complexity
+FINANCIAL_MULTIPLIERS = {
+    "low":       {"y1_revenue": 150000,  "y2_revenue": 600000,   "y3_revenue": 1800000,  "burn_y1": 145000, "y1_users": 1000,   "y3_users": 25000},
+    "medium":    {"y1_revenue": 450000,  "y2_revenue": 1800000,  "y3_revenue": 5400000,  "burn_y1": 265000, "y1_users": 5000,   "y3_users": 120000},
+    "high":      {"y1_revenue": 1200000, "y2_revenue": 4800000,  "y3_revenue": 14400000, "burn_y1": 582000, "y1_users": 15000,  "y3_users": 350000},
+    "very_high": {"y1_revenue": 3500000, "y2_revenue": 14000000, "y3_revenue": 42000000, "burn_y1": 1155000, "y1_users": 25000, "y3_users": 800000},
+}
+
+# GTM strategy templates
+GTM_STRATEGIES = {
+    "Retail/SMB":           {"motion": "Field sales + WhatsApp groups", "cac": "$8-15", "ltv": "$120-180", "channels": ["Field reps in tier-2 cities", "Distributor partnerships", "WhatsApp viral loops", "FMCG company co-sell"]},
+    "SaaS/Product":         {"motion": "Product-led growth", "cac": "$120-250", "ltv": "$1,800-3,200", "channels": ["Free tier with viral loop", "SEO content marketing", "Product Hunt + community", "Outbound to ICP"]},
+    "AI/ML":                {"motion": "Developer-led + enterprise sales", "cac": "$400-800", "ltv": "$8,000-25,000", "channels": ["Open-source distribution", "Developer conferences", "Hackathons", "Enterprise pilots"]},
+    "Fintech":              {"motion": "Partnership-led + paid acquisition", "cac": "$25-60 retail / $500+ B2B", "ltv": "$300-800 retail / $25k+ B2B", "channels": ["Bank partnerships", "Aggregator platforms", "Performance marketing", "Affiliate networks"]},
+    "Healthcare":           {"motion": "Long enterprise sales cycle", "cac": "$5,000-25,000", "ltv": "$50,000-500,000", "channels": ["Hospital network sales", "KOL partnerships", "Industry conferences", "Pilot-to-rollout playbook"]},
+    "Operations":           {"motion": "Inside sales + free trial", "cac": "$200-500", "ltv": "$3,000-12,000", "channels": ["Free trial conversion", "G2 Crowd / Capterra", "ServiceNow / Salesforce app exchange", "Outbound to ITSM teams"]},
+    "Construction/Hardware":{"motion": "Long enterprise sales", "cac": "$8,000+", "ltv": "$100,000+", "channels": ["Trade shows", "Industry associations", "Reseller network", "BIM consultant partnerships"]},
+    "GovTech":              {"motion": "Tender-driven + relationship sales", "cac": "$25,000+", "ltv": "$500,000+ multi-year contract", "channels": ["GeM portal listings", "Empanelment with PSUs", "Industry body memberships", "Reference customer leverage"]},
+    "Content/Media":        {"motion": "Self-serve + creator outreach", "cac": "$15-50", "ltv": "$120-600", "channels": ["Creator partnerships", "SEO + organic social", "Newsletter cross-promotion", "Conference sponsorships"]},
+    "Early-Stage":          {"motion": "Founder-led", "cac": "$0 (pre-PMF)", "ltv": "TBD", "channels": ["Direct founder outreach", "100 customer interviews", "Beta waitlist", "Lean experiments"]},
+    "B2B":                  {"motion": "Enterprise outbound + ABM", "cac": "$1,500-8,000", "ltv": "$30,000-250,000", "channels": ["ABM with named accounts", "Outbound SDR team", "Industry analyst engagement", "Customer advisory board"]},
+    "EdTech":               {"motion": "Performance marketing + counselor sales", "cac": "$30-80 B2C / $2,000+ B2B", "ltv": "$200-1,500 B2C / $20k+ B2B", "channels": ["Performance marketing (Meta, Google)", "Counselor call centers", "School district sales", "Influencer educators"]},
+}
+
+# Regulatory frameworks by industry
+REGULATIONS = {
+    "Retail/SMB":           {"key_regs": ["GST compliance", "Shops & Establishments Act", "Consumer Protection Act 2019", "DPDP Act 2023"], "certifications": ["GST registration", "FSSAI (if food)"], "data_residency": "India (DPDP)", "high_risk": ["Counterfeit goods liability", "GST input credit fraud"]},
+    "SaaS/Product":         {"key_regs": ["DPDP Act 2023", "GDPR (EU users)", "CCPA (California users)", "Industry-specific (PCI-DSS for payments)"], "certifications": ["SOC 2 Type II", "ISO 27001"], "data_residency": "Per customer requirement", "high_risk": ["Data breach disclosure", "Cross-border data transfer"]},
+    "AI/ML":                {"key_regs": ["EU AI Act (2024)", "DPDP Act 2023", "Algorithmic accountability laws", "Sector-specific (HIPAA, GLBA)"], "certifications": ["ISO 42001 (AI management)", "SOC 2"], "data_residency": "Model + training data jurisdiction", "high_risk": ["Bias claims", "IP infringement (training data)", "Hallucination liability"]},
+    "Fintech":              {"key_regs": ["RBI guidelines", "PMLA (anti-money laundering)", "PSS Act 2007", "FEMA (cross-border)", "NPCI rules (UPI)"], "certifications": ["PCI-DSS Level 1", "ISO 27001", "RBI authorization"], "data_residency": "India mandatory", "high_risk": ["KYC failures", "Fraud losses", "Regulatory fines (up to 4% revenue)"]},
+    "Healthcare":           {"key_regs": ["HIPAA (US)", "DPDP Act + ABDM (India)", "FDA 21 CFR Part 11", "Medical Device Rules 2017"], "certifications": ["HITRUST CSF", "FDA clearance (devices)", "NABH (hospitals)"], "data_residency": "Strict patient location rules", "high_risk": ["PHI breach (avg $10.9M)", "Misdiagnosis liability", "Off-label use"]},
+    "Operations":           {"key_regs": ["DPDP Act", "Industry SLA contracts", "Labor laws (worker monitoring)"], "certifications": ["ITIL alignment", "ISO 20000"], "data_residency": "Customer requirement", "high_risk": ["SLA penalties", "Outage liability"]},
+    "Construction/Hardware":{"key_regs": ["Building codes (IS, IBC)", "Occupational safety", "Environmental clearances", "Labor laws"], "certifications": ["ISO 45001 (safety)", "LEED/IGBC (green)"], "data_residency": "Project documentation retention", "high_risk": ["Site accident liability", "Schedule penalties", "Quality defects"]},
+    "GovTech":              {"key_regs": ["IT Act 2000", "DPDP Act", "GFR 2017", "CERT-In guidelines"], "certifications": ["MeitY empanelment", "STQC certification", "ISO 27001"], "data_residency": "Sovereign cloud (MeghRaj)", "high_risk": ["Data sovereignty breach", "Tender disputes", "Compliance audit failures"]},
+    "Content/Media":        {"key_regs": ["IT Rules 2021", "Copyright Act", "DPDP Act", "Cable Television Networks Act"], "certifications": ["Self-regulatory body membership"], "data_residency": "User data in India", "high_risk": ["Content takedown liability", "Copyright infringement", "Misinformation penalties"]},
+    "Early-Stage":          {"key_regs": ["Founders Agreement", "Basic compliance (GST if applicable)", "DPDP if collecting user data"], "certifications": ["Defer until PMF"], "data_residency": "Minimal data collection recommended", "high_risk": ["Co-founder disputes", "Premature scaling"]},
+    "B2B":                  {"key_regs": ["DPDP Act", "GDPR if EU customers", "Industry-specific (HIPAA, GLBA, etc.)", "Customer DPAs"], "certifications": ["SOC 2 Type II essential", "ISO 27001", "CSA STAR"], "data_residency": "Per customer contract", "high_risk": ["Customer data breach", "Indemnity exposure", "Audit findings"]},
+    "EdTech":               {"key_regs": ["DPDP Act with minor protections", "COPPA (US under-13)", "RTE Act (India)", "FERPA (US)"], "certifications": ["IS 17428 (children's data)", "Privacy seals"], "data_residency": "Minor data India-resident", "high_risk": ["Minor data breach", "Misleading claims", "Refund disputes"]},
+}
+
+
+def gen_executive_summary(idea, classification):
+    """McKinsey-style pyramid principle: situation, complication, recommendation."""
+    kb = KNOWLEDGE_BASE[classification["method_key"]]
+    market = MARKET_SIZES.get(classification["industry"], MARKET_SIZES["SaaS/Product"])
+    return {
+        "situation": f"The {classification['industry']} sector represents a ${market['tam']} TAM growing at {market['growth']}, driven by {market['drivers']}. The proposed initiative — {idea[:120]} — targets the underserved segment within this market.",
+        "complication": f"Existing solutions either fail to address the specific needs of this segment or lack the technical sophistication required to deliver durable value. Without a focused, well-architected approach, the opportunity will be captured by either incumbent platforms expanding downmarket or well-funded new entrants.",
+        "recommendation": f"We recommend proceeding with the {kb['name']} methodology and a {classification['complexity'].replace('_', ' ')}-complexity build profile. Total 3-year investment of approximately ${FINANCIAL_MULTIPLIERS[classification['complexity']]['burn_y1'] * 3:,} positions the initiative to capture ${market['som']} in addressable revenue with a defensible technology moat.",
+        "key_findings": [
+            f"Market timing is favorable: {market['growth']} growth + clear inflection drivers",
+            f"Technical risk is manageable with the {kb['name']} approach and mature stack choices",
+            f"Competitive moat achievable through {classification['industry']}-specific feature depth",
+            f"Capital efficiency strong: payback within 18-24 months at projected acquisition costs",
+        ],
+        "go_no_go": "GO" if classification["complexity"] != "very_high" else "GO with stage-gates",
+        "confidence_level": kb["confidence"],
+    }
+
+
+def gen_market_sizing(idea, classification):
+    """BCG-style market sizing with TAM/SAM/SOM and growth analysis."""
+    market = MARKET_SIZES.get(classification["industry"], MARKET_SIZES["SaaS/Product"])
+    return {
+        "summary": f"Bottoms-up sizing reveals a ${market['som']} serviceable obtainable market within the broader ${market['tam']} {classification['industry']} sector.",
+        "tam": {"value": f"${market['tam']}", "definition": "Total Addressable Market - the entire global revenue pool if 100% market share were achievable", "calculation": f"Industry-wide spend on {classification['industry']} solutions across all geographies and segments"},
+        "sam": {"value": f"${market['sam']}", "definition": "Serviceable Available Market - portion realistically reachable with current product and channels", "calculation": "TAM filtered by geography (initial markets), customer segment (target ICP), and product fit"},
+        "som": {"value": f"${market['som']}", "definition": "Serviceable Obtainable Market - realistic revenue capture in 3-5 years", "calculation": "SAM multiplied by realistic market share given competitive dynamics and execution capacity"},
+        "growth_rate": market["growth"],
+        "growth_drivers": market["drivers"],
+        "market_share_targets": [
+            {"year": "Year 1", "target": "0.05% of SAM", "rationale": "Beachhead establishment in 1-2 verticals"},
+            {"year": "Year 2", "target": "0.3% of SAM", "rationale": "Geographic and segment expansion"},
+            {"year": "Year 3", "target": "1.2% of SAM", "rationale": "Full GTM motion at scale"},
+        ],
+        "geographic_priorities": ["Initial: India (Tier 1 + Tier 2 cities)", "Year 2: Southeast Asia (Indonesia, Vietnam)", "Year 3: Middle East + select African markets"] if "India" in str(market.get("drivers", "")).lower() or "ondc" in str(market.get("drivers", "")).lower() else ["Initial: Domestic market", "Year 2: Adjacent English-speaking markets", "Year 3: Strategic expansion based on traction"],
+    }
+
+
+def gen_competitive_landscape(idea, classification):
+    """Bain-style competitive analysis with moat assessment."""
+    competitors = COMPETITORS.get(classification["industry"], COMPETITORS["SaaS/Product"])
+    return {
+        "summary": f"The {classification['industry']} competitive landscape contains {len(competitors)} primary competitors. Differentiation strategy must focus on {classification['industry']}-specific depth that incumbents cannot easily replicate without re-architecting their platforms.",
+        "competitors": competitors,
+        "competitive_positioning": {
+            "axis_x": "Feature breadth (horizontal expansion)",
+            "axis_y": "Vertical depth (industry-specific intelligence)",
+            "white_space": f"Upper-right quadrant: deep vertical features for {classification['industry']} that horizontal players ignore",
+            "our_position": "Initial focus: high vertical depth, narrow feature scope, then expand horizontally",
+        },
+        "differentiation_strategy": [
+            f"Vertical-first product depth that horizontal incumbents cannot match",
+            f"Lower TCO through modern stack vs legacy competitors",
+            f"AI-native workflows vs AI-bolted-on competitor products",
+            f"Faster time-to-value (days vs months for incumbents)",
+        ],
+        "moat_assessment": {
+            "data_network_effect": "Build over Year 2-3 as customer data accumulates",
+            "switching_costs": "Workflow integration depth creates lock-in after 6 months of use",
+            "brand": "Build via customer success stories in target vertical",
+            "regulatory": "Compliance certifications create barrier for new entrants",
+        },
+    }
+
+
+def gen_tech_stack(idea, classification):
+    """Tech stack recommendation with rationale."""
+    stack = TECH_STACKS.get(classification["industry"], TECH_STACKS["SaaS/Product"])
+    return {
+        "summary": f"Recommended stack optimizes for {classification['industry']}-specific requirements while preserving developer velocity and operational simplicity.",
+        "frontend": stack["frontend"],
+        "backend": stack["backend"],
+        "infrastructure": stack["infrastructure"],
+        "ai_ml": stack["ai_ml"],
+        "integrations": stack["integrations"],
+        "rationale": stack["rationale"],
+        "build_vs_buy": [
+            {"capability": "Authentication", "decision": "Buy (Clerk/Auth0/Supabase Auth)", "reason": "Commodity capability; security risk too high to home-grow"},
+            {"capability": "Payments", "decision": "Buy (Stripe/Razorpay)", "reason": "Regulatory complexity makes building uneconomic"},
+            {"capability": "Email/SMS", "decision": "Buy (Resend, Twilio, MSG91)", "reason": "Deliverability infrastructure not core to business"},
+            {"capability": "Core domain logic", "decision": "Build", "reason": "This is where defensibility lives"},
+            {"capability": "Analytics", "decision": "Buy (PostHog, Mixpanel)", "reason": "Solved problem with mature tools"},
+        ],
+        "scalability_path": [
+            "MVP: Single region, vertical scaling, managed services",
+            "Year 2: Multi-region read replicas, CDN, dedicated services for hot paths",
+            "Year 3+: Microservices for independently-scaling domains, dedicated infra team",
+        ],
+    }
+
+
+def gen_methodology_recommendation(idea, classification):
+    """Methodology choice with comparative justification (already strong in v11, enhanced here)."""
+    kb = KNOWLEDGE_BASE[classification["method_key"]]
+    return {
+        "recommended": kb["name"],
+        "confidence": kb["confidence"],
+        "summary": f"{kb['name']} is the optimal methodology for this initiative. Reasoning combines industry fit, complexity profile, and team scaling expectations.",
+        "primary_rationale": kb["reasoning"],
+        "method_details": kb["method_details"],
+        "tooling": kb["tool_recommendation"],
+        "alternatives_considered": kb["why_not_others"],
+        "implementation_keys": kb["success_factors"],
+        "ceremony_calendar": [
+            {"event": "Sprint Planning", "frequency": "Bi-weekly", "duration": "4 hours", "attendees": "Full team"},
+            {"event": "Daily Standup", "frequency": "Daily", "duration": "15 min", "attendees": "Dev team"},
+            {"event": "Sprint Review", "frequency": "Bi-weekly", "duration": "2 hours", "attendees": "Team + stakeholders"},
+            {"event": "Retrospective", "frequency": "Bi-weekly", "duration": "90 min", "attendees": "Full team"},
+            {"event": "Backlog Refinement", "frequency": "Weekly", "duration": "2 hours", "attendees": "PO + tech leads"},
+        ] if classification["method_key"] in ("scrum", "lean_startup") else [
+            {"event": "Phase Gate Review", "frequency": "Per phase", "duration": "Half day", "attendees": "Steering committee"},
+            {"event": "Weekly Status", "frequency": "Weekly", "duration": "1 hour", "attendees": "Project team"},
+            {"event": "Change Control Board", "frequency": "Bi-weekly", "duration": "1 hour", "attendees": "PM + sponsors"},
+            {"event": "Risk Review", "frequency": "Monthly", "duration": "2 hours", "attendees": "PM + risk owners"},
+        ],
+    }
+
+
+def gen_financial_projections(idea, classification):
+    """3-year financial model."""
+    fin = FINANCIAL_MULTIPLIERS[classification["complexity"]]
+    budget = COMPLEXITY_BUDGETS[classification["complexity"]]
+    y1_loss = fin["burn_y1"] - fin["y1_revenue"]
+    y2_breakeven = fin["y2_revenue"] - (fin["burn_y1"] * 1.4)
+    y3_profit = fin["y3_revenue"] - (fin["burn_y1"] * 1.8)
+    return {
+        "summary": f"3-year model shows path to profitability by Year {2 if y2_breakeven > 0 else 3}, with cumulative revenue of ${(fin['y1_revenue'] + fin['y2_revenue'] + fin['y3_revenue']):,} and total investment requirement of ${(fin['burn_y1'] * 4.2):,.0f}.",
+        "revenue_projection": [
+            {"year": "Year 1", "users": f"{fin['y1_users']:,}", "revenue": f"${fin['y1_revenue']:,}", "growth": "Launch year"},
+            {"year": "Year 2", "users": f"{fin['y1_users'] * 6:,}", "revenue": f"${fin['y2_revenue']:,}", "growth": f"{round(100 * (fin['y2_revenue'] / fin['y1_revenue'] - 1))}% YoY"},
+            {"year": "Year 3", "users": f"{fin['y3_users']:,}", "revenue": f"${fin['y3_revenue']:,}", "growth": f"{round(100 * (fin['y3_revenue'] / fin['y2_revenue'] - 1))}% YoY"},
+        ],
+        "cost_structure": budget,
+        "unit_economics": {
+            "blended_cac": f"${round(fin['burn_y1'] / fin['y1_users'])}",
+            "ltv_estimate": f"${round(fin['y3_revenue'] / fin['y3_users'] * 3)}",
+            "ltv_cac_target": "≥ 3:1 by end of Year 2",
+            "payback_period": "12-18 months",
+            "gross_margin": "65-78% depending on infrastructure efficiency",
+        },
+        "profit_loss": [
+            {"year": "Year 1", "revenue": fin["y1_revenue"], "costs": fin["burn_y1"], "net": y1_loss, "status": "Loss (investment phase)"},
+            {"year": "Year 2", "revenue": fin["y2_revenue"], "costs": int(fin["burn_y1"] * 1.4), "net": int(y2_breakeven), "status": "Approaching breakeven" if y2_breakeven > -100000 else "Loss (growth phase)"},
+            {"year": "Year 3", "revenue": fin["y3_revenue"], "costs": int(fin["burn_y1"] * 1.8), "net": int(y3_profit), "status": "Profitable" if y3_profit > 0 else "Path to profitability"},
+        ],
+        "funding_requirement": {
+            "seed": f"${(fin['burn_y1'] * 1.5):,.0f} - 18 month runway to PMF + early traction",
+            "series_a": f"${(fin['burn_y1'] * 4):,.0f} - 24 month runway to scale GTM",
+            "use_of_funds": ["55% engineering and product", "25% sales and marketing", "12% G&A and operations", "8% reserves"],
+        },
+    }
+
+
+def gen_risk_assessment(idea, classification):
+    """Comprehensive risk assessment beyond the existing Risk & Governance agent."""
+    kb = KNOWLEDGE_BASE[classification["method_key"]]
+    return {
+        "summary": f"Risk profile for this {classification['complexity'].replace('_', ' ')}-complexity {classification['industry']} initiative covers technical, market, regulatory, financial, and execution dimensions.",
+        "risk_categories": [
+            {
+                "category": "Technical",
+                "risks": [
+                    {"description": "Architecture cannot scale beyond initial user base", "likelihood": "Medium", "impact": "High", "mitigation": "Load testing from beta; modular architecture from v1"},
+                    {"description": "Critical dependency vendor outage or sunset", "likelihood": "Low", "impact": "High", "mitigation": "Abstract integrations behind interfaces; identify backup vendors"},
+                    {"description": "Security breach exposing customer data", "likelihood": "Medium", "impact": "Critical", "mitigation": "Security review, pen test, SOC 2 path early"},
+                ],
+            },
+            {
+                "category": "Market",
+                "risks": [
+                    {"description": "Slower than projected market adoption", "likelihood": "Medium", "impact": "High", "mitigation": "Validate pricing and messaging before scale; flexible pricing"},
+                    {"description": "Well-funded competitor enters with similar wedge", "likelihood": "Medium", "impact": "Medium", "mitigation": "Build vertical depth fast; lock in early customers with multi-year deals"},
+                    {"description": "Macroeconomic downturn delays purchase decisions", "likelihood": "Medium", "impact": "Medium", "mitigation": "Maintain 18+ months runway; target ROI-clear use cases"},
+                ],
+            },
+            {
+                "category": "Regulatory",
+                "risks": [
+                    {"description": "New data protection regulation requires architecture changes", "likelihood": "Medium", "impact": "Medium", "mitigation": "Privacy-by-design; minimize data collection; track regulatory developments"},
+                    {"description": "Industry-specific regulation increases compliance burden", "likelihood": "Medium", "impact": "Medium", "mitigation": "Compliance budget allocated; legal review on roadmap items"},
+                ],
+            },
+            {
+                "category": "Financial",
+                "risks": [
+                    {"description": "Burn rate exceeds plan due to slower revenue ramp", "likelihood": "Medium", "impact": "High", "mitigation": "Monthly board review; tripwires at 9, 6, 3 months runway"},
+                    {"description": "Inability to raise next round at favorable terms", "likelihood": "Medium", "impact": "High", "mitigation": "Multiple investor relationships; bridge financing options identified"},
+                ],
+            },
+            {
+                "category": "Execution",
+                "risks": [
+                    {"description": "Key technical hire takes 6+ months to fill", "likelihood": "High", "impact": "Medium", "mitigation": "Recruiter retainer; warm pipeline always active; contractor backup"},
+                    {"description": "Founder or co-founder departure", "likelihood": "Low", "impact": "Critical", "mitigation": "Founder vesting; documented decision rights; strong second-tier leadership"},
+                ],
+            },
+        ],
+        "raid_log": [{"id": r["id"], "type": r["type"], "description": r["description"], "probability": r["probability"], "impact": r["impact"], "score": r["probability"] * r["impact"], "mitigation": r["mitigation"], "owner": r["owner"]} for r in kb["risks"]],
+        "risk_governance": {
+            "review_cadence": "Bi-weekly risk review with PM and tech lead",
+            "escalation_threshold": "Score ≥ 16 (e.g., 4×4) escalates to steering committee within 48 hours",
+            "tracking_tool": "Integrated into the PMGuru workspace Risks view",
+        },
+    }
+
+
+def gen_gtm_strategy(idea, classification):
+    """Go-to-market strategy."""
+    gtm = GTM_STRATEGIES.get(classification["industry"], GTM_STRATEGIES["SaaS/Product"])
+    return {
+        "summary": f"GTM motion is {gtm['motion']}, optimized for {classification['industry']} buyer behavior and economics.",
+        "primary_motion": gtm["motion"],
+        "channels": gtm["channels"],
+        "unit_economics": {
+            "target_cac": gtm["cac"],
+            "target_ltv": gtm["ltv"],
+            "target_ltv_cac": "≥ 3:1",
+            "payback_target": "12-18 months",
+        },
+        "phased_rollout": [
+            {"phase": "Beachhead (Months 1-6)", "target": "Land 10-20 design partners in narrow vertical", "tactics": ["Founder-led sales", "White-glove onboarding", "Case study production"]},
+            {"phase": "Expansion (Months 7-18)", "target": "Scale to 100-300 customers, refine ICP", "tactics": ["Hire first AEs", "Marketing engine activation", "Channel partner exploration"]},
+            {"phase": "Scale (Months 19-36)", "target": "Multi-segment expansion, repeatable playbook", "tactics": ["Inside sales team", "Vertical specialization", "International expansion"]},
+        ],
+        "messaging_framework": {
+            "for": f"the {classification['industry']} segment",
+            "who": "needs an integrated, modern solution to longstanding workflow problems",
+            "the_product": "is an AI-native platform",
+            "that_provides": "measurable ROI through automation, integration, and intelligence",
+            "unlike": "legacy point solutions that require expensive customization",
+            "we_deliver": "time-to-value in days not quarters, with vertical depth incumbents can't match",
+        },
+        "success_metrics": [
+            {"metric": "Pipeline velocity", "target": "30% MoM in Year 1"},
+            {"metric": "Win rate", "target": "≥ 25% on qualified opportunities"},
+            {"metric": "Average deal size", "target": "Growing 15% YoY through expansion"},
+            {"metric": "NPS", "target": "≥ 50 from active customers"},
+        ],
+    }
+
+
+def gen_team_resource_plan(idea, classification):
+    """Team and resource plan."""
+    kb = KNOWLEDGE_BASE[classification["method_key"]]
+    return {
+        "summary": f"Team build-out follows a {kb['name']} structure scaled to the {classification['complexity'].replace('_', ' ')} complexity profile.",
+        "founding_team": kb["team_composition"],
+        "hiring_plan": [
+            {"phase": "Months 1-3", "hires": ["Tech Lead (full-stack)", "Senior Engineer", "PM/Founder"], "rationale": "Technical foundation + product clarity"},
+            {"phase": "Months 4-6", "hires": ["Designer", "QA Engineer", "Customer Success"], "rationale": "Product polish + early customer support"},
+            {"phase": "Months 7-12", "hires": ["Senior Engineer (2)", "First AE", "Marketing Lead"], "rationale": "Scale build velocity + start GTM motion"},
+            {"phase": "Months 13-24", "hires": ["VP Eng", "VP Sales", "Engineers (4)", "AEs (3)", "CS (2)"], "rationale": "Functional leadership + scale execution"},
+        ],
+        "compensation_philosophy": {
+            "salary": "Market 50th percentile for stage and geography",
+            "equity": "Above-market for early hires (1.5-2x typical refresh grants)",
+            "benefits": "Competitive health, learning budget, flexible work",
+            "bonus": "Annual bonus tied to company OKRs, not individual MBOs",
+        },
+        "org_design_principles": [
+            "Small autonomous teams (3-7 people) own outcomes end-to-end",
+            "Engineering pods aligned to customer journey, not technology layer",
+            "Product Owner is empowered to make scope decisions in real time",
+            "Every hire takes the team's average bar up, not down",
+        ],
+        "key_role_specs": [
+            {"role": "Tech Lead", "must_have": ["Production systems experience", "Mentorship instinct"], "nice_to_have": ["Industry domain knowledge"]},
+            {"role": "Product Manager", "must_have": ["Customer obsession", "Analytical rigor", "Crisp written communication"], "nice_to_have": ["Industry experience"]},
+            {"role": "First AE", "must_have": ["Founder-led sales experience", "Comfort with ambiguity"], "nice_to_have": ["Vertical experience"]},
+        ],
+    }
+
+
+def gen_regulatory_compliance(idea, classification):
+    """Regulatory and compliance requirements."""
+    reg = REGULATIONS.get(classification["industry"], REGULATIONS["SaaS/Product"])
+    return {
+        "summary": f"Regulatory landscape for {classification['industry']} requires proactive compliance planning. Failures here are existential, not merely costly.",
+        "key_regulations": reg["key_regs"],
+        "required_certifications": reg["certifications"],
+        "data_residency": reg["data_residency"],
+        "high_risk_areas": reg["high_risk"],
+        "compliance_roadmap": [
+            {"timeline": "Pre-launch", "items": ["Privacy policy + ToS legal review", "Initial data flow mapping", "Vendor DPAs in place"]},
+            {"timeline": "Months 1-6", "items": ["DPDP/GDPR compliance documentation", "Security policies (incident response, access control)", "Begin SOC 2 readiness if B2B"]},
+            {"timeline": "Months 7-12", "items": ["Penetration testing", "SOC 2 Type 1 audit", "Industry-specific certifications start"]},
+            {"timeline": "Months 13-24", "items": ["SOC 2 Type 2 audit", "ISO 27001 certification", "Annual compliance audit cycle"]},
+        ],
+        "compliance_budget": {
+            "year_1": "$25,000-75,000 (legal + initial audits)",
+            "year_2": "$75,000-200,000 (full SOC 2 + ISO + DPO)",
+            "year_3": "$150,000-400,000 (multiple certifications + dedicated compliance hire)",
+        },
+        "external_advisors": ["Privacy lawyer (DPDP/GDPR specialist)", "Industry compliance consultant", "Security audit firm (for certifications)"],
+    }
+
+
+def gen_implementation_roadmap(idea, classification):
+    """Implementation roadmap with quarterly milestones."""
+    kb = KNOWLEDGE_BASE[classification["method_key"]]
+    return {
+        "summary": f"Phased implementation roadmap aligned to {kb['name']} methodology with clear milestones, success criteria, and decision gates.",
+        "quarters": [
+            {"quarter": "Q1", "theme": "Foundation", "milestones": ["Team formation complete", "Tech stack decisions ratified", "MVP scope frozen", "First user interviews"], "success_criteria": "Working dev environment + 20 user interviews completed"},
+            {"quarter": "Q2", "theme": "MVP Build", "milestones": ["Core features functional", "First 10 beta users onboarded", "Initial analytics instrumented"], "success_criteria": "MVP shipped to beta, >50% activation rate"},
+            {"quarter": "Q3", "theme": "Validation", "milestones": ["Public launch", "First paying customers", "Initial PMF signal"], "success_criteria": "≥10 paying customers, NPS ≥ 30"},
+            {"quarter": "Q4", "theme": "Iteration", "milestones": ["Series A readiness", "Repeatable acquisition channel", "First retention cohort data"], "success_criteria": "MoM growth ≥ 20%, retention ≥ 70% at week 4"},
+            {"quarter": "Year 2 Q1-Q2", "theme": "Scale Foundation", "milestones": ["GTM team in place", "Multi-segment expansion", "Compliance certifications in flight"], "success_criteria": "ARR ≥ $1M, repeatable sales motion"},
+            {"quarter": "Year 2 Q3-Q4", "theme": "Scale Execution", "milestones": ["Vertical expansion", "Channel partnerships live", "Operational efficiency gains"], "success_criteria": "ARR growth ≥ 200% YoY"},
+        ],
+        "decision_gates": [
+            {"gate": "End of Q1", "decision": "Technology stack lock-in", "criteria": "Architecture review passes; performance benchmarks met"},
+            {"gate": "End of Q2", "decision": "Public launch GO/NO-GO", "criteria": "MVP feature complete; security audit passed; beta NPS ≥ 30"},
+            {"gate": "End of Q3", "decision": "Series A fundraise readiness", "criteria": "≥ $50K MRR; cohort retention data; clear ICP"},
+            {"gate": "End of Year 1", "decision": "Scale or pivot", "criteria": "PMF metrics achieved or pivot decision documented"},
+        ],
+        "dependency_map": [
+            "Technology decisions (Q1) → Engineering velocity (Q2+)",
+            "MVP scope (Q1) → Beta launch timing (Q2)",
+            "Beta feedback (Q2) → Product roadmap (Q3-Q4)",
+            "Initial revenue (Q3) → Fundraise readiness (Q4)",
+            "Compliance (Q4-Y2) → Enterprise deal eligibility (Y2+)",
+        ],
+    }
+
+
+# Registry of report sections - order matters (this is the streaming order)
+REPORT_SECTIONS = [
+    {"id": "executive_summary",       "title": "Executive Summary",            "icon": "📋", "generator": gen_executive_summary,       "style": "McKinsey - pyramid principle"},
+    {"id": "market_sizing",           "title": "Market Sizing (TAM/SAM/SOM)",  "icon": "📊", "generator": gen_market_sizing,           "style": "BCG - bottoms-up sizing"},
+    {"id": "competitive_landscape",   "title": "Competitive Landscape",        "icon": "🎯", "generator": gen_competitive_landscape,   "style": "Bain - moat analysis"},
+    {"id": "tech_stack",              "title": "Technology Stack Recommendation", "icon": "⚙️", "generator": gen_tech_stack,           "style": "Industry best practices"},
+    {"id": "methodology",             "title": "Methodology Recommendation",   "icon": "🎓", "generator": gen_methodology_recommendation, "style": "PMI/PRINCE2 framework"},
+    {"id": "financial_projections",   "title": "Financial Projections (3-Year)", "icon": "💰", "generator": gen_financial_projections, "style": "BCG - unit economics"},
+    {"id": "risk_assessment",         "title": "Risk Assessment",              "icon": "🛡️", "generator": gen_risk_assessment,         "style": "PRINCE2 + RAID"},
+    {"id": "gtm_strategy",            "title": "Go-to-Market Strategy",        "icon": "🚀", "generator": gen_gtm_strategy,            "style": "Bain - phased rollout"},
+    {"id": "team_resource_plan",      "title": "Team & Resource Plan",         "icon": "👥", "generator": gen_team_resource_plan,      "style": "McKinsey - org design"},
+    {"id": "regulatory_compliance",   "title": "Regulatory & Compliance",      "icon": "⚖️", "generator": gen_regulatory_compliance,   "style": "Industry regulatory framework"},
+    {"id": "implementation_roadmap",  "title": "Implementation Roadmap",       "icon": "🗺️", "generator": gen_implementation_roadmap,  "style": "Stage-gated milestones"},
+]
+
+
+def generate_full_report(idea, classification):
+    """Generate the complete consulting report. Used by non-streaming endpoint."""
+    sections = []
+    for section_spec in REPORT_SECTIONS:
+        try:
+            data = section_spec["generator"](idea, classification)
+            sections.append({
+                "id": section_spec["id"],
+                "title": section_spec["title"],
+                "icon": section_spec["icon"],
+                "style": section_spec["style"],
+                "status": "ok",
+                "data": data,
+            })
+        except Exception as e:
+            print(f"[report] section {section_spec['id']} failed: {e}", flush=True)
+            traceback.print_exc()
+            sections.append({
+                "id": section_spec["id"],
+                "title": section_spec["title"],
+                "icon": section_spec["icon"],
+                "status": "error",
+                "error": str(e),
+                "data": {},
+            })
+    return sections
+
+
+# ============================================================
 # PLM PHASE EXECUTORS - deterministic templates
 # ============================================================
 def exec_discovery(idea, classification):
@@ -811,9 +1404,10 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {
                 "status": "ok",
                 "version": VERSION,
-                "architecture": "template-driven (deterministic) + LLM-as-evaluator + 500-example training",
+                "architecture": "template-driven (deterministic) + LLM-as-evaluator + 500-example training + Big 3 consulting reports",
                 "pm_agents": list(PM_AGENT_SPECS.keys()),
                 "plm_phases": [p["name"] for p in PLM_PHASE_SPECS],
+                "report_sections": [s["title"] for s in REPORT_SECTIONS],
                 "methodologies_trained": list(KNOWLEDGE_BASE.keys()),
                 "industry_patterns": len(INDUSTRY_PATTERNS),
                 "training_examples": len(TRAINING_LIBRARY),
@@ -848,6 +1442,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_prototype(body)
             elif path in ("/workspace/seed", "/workspace/create"):
                 self.handle_workspace_seed(body)
+            elif path in ("/report/generate", "/report"):
+                self.handle_report_generate(body)
+            elif path in ("/report/stream",):
+                self.handle_report_stream(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -1120,6 +1718,111 @@ class Handler(BaseHTTPRequestHandler):
             "workspace": workspace,
             "classification": classification,
         })
+
+    def handle_report_generate(self, body):
+        """Non-streaming endpoint: generate full consulting report and return as one JSON."""
+        idea = (body.get("idea") or "").strip()
+        if not idea:
+            self._send(200, {"error": "Please provide an 'idea' field"})
+            return
+        print(f"[report/generate] idea={idea[:80]}", flush=True)
+        classification = classify_idea(idea)
+        sections = generate_full_report(idea, classification)
+        self._send(200, {
+            "idea": idea,
+            "classification": classification,
+            "sections": sections,
+            "metadata": {
+                "report_style": "Big 3 Blended (McKinsey + BCG + Bain)",
+                "generated_at": "now",
+                "section_count": len(sections),
+                "ok_count": sum(1 for s in sections if s["status"] == "ok"),
+            },
+        })
+
+    def handle_report_stream(self, body):
+        """SSE streaming endpoint: stream sections one at a time as they generate.
+        Each section is sent as a separate SSE event so the frontend can render progressively."""
+        import time
+        idea = (body.get("idea") or "").strip()
+        if not idea:
+            self._send(200, {"error": "Please provide an 'idea' field"})
+            return
+        print(f"[report/stream] idea={idea[:80]}", flush=True)
+
+        # Set up SSE response headers
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.send_header("X-Accel-Buffering", "no")  # disable proxy buffering
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.end_headers()
+
+        try:
+            classification = classify_idea(idea)
+
+            # Send opening event with metadata
+            opening = {
+                "type": "start",
+                "idea": idea,
+                "classification": classification,
+                "total_sections": len(REPORT_SECTIONS),
+                "section_titles": [s["title"] for s in REPORT_SECTIONS],
+            }
+            self._sse_write(opening)
+
+            # Stream each section with a small delay so user perceives the streaming
+            for i, section_spec in enumerate(REPORT_SECTIONS):
+                # Artificial delay so streaming is visible (1.5s per section = 16s total)
+                time.sleep(1.5)
+                try:
+                    data = section_spec["generator"](idea, classification)
+                    section_event = {
+                        "type": "section",
+                        "index": i,
+                        "id": section_spec["id"],
+                        "title": section_spec["title"],
+                        "icon": section_spec["icon"],
+                        "style": section_spec["style"],
+                        "status": "ok",
+                        "data": data,
+                    }
+                except Exception as e:
+                    print(f"[report/stream] section {section_spec['id']} failed: {e}", flush=True)
+                    traceback.print_exc()
+                    section_event = {
+                        "type": "section",
+                        "index": i,
+                        "id": section_spec["id"],
+                        "title": section_spec["title"],
+                        "icon": section_spec["icon"],
+                        "status": "error",
+                        "error": str(e),
+                        "data": {},
+                    }
+                self._sse_write(section_event)
+
+            # Send completion event
+            self._sse_write({"type": "done", "section_count": len(REPORT_SECTIONS)})
+        except Exception as e:
+            print(f"[report/stream] FATAL: {e}", flush=True)
+            traceback.print_exc()
+            try:
+                self._sse_write({"type": "error", "error": str(e)})
+            except Exception:
+                pass
+
+    def _sse_write(self, payload):
+        """Write one Server-Sent Event."""
+        try:
+            data_line = f"data: {json.dumps(payload)}\n\n"
+            self.wfile.write(data_line.encode("utf-8"))
+            self.wfile.flush()
+        except Exception as e:
+            print(f"[sse_write] failed: {e}", flush=True)
 
     def log_message(self, format, *args):
         sys.stderr.write(f"{self.address_string()} - {format % args}\n")
