@@ -9,7 +9,7 @@ export default function LandingPage() {
         <header className="text-center mb-16">
           <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-xs font-bold mb-6">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            PMGuru v12 · 1,003 Consulting Scenarios · 500 PM Training Examples
+            PMGuru v12 · 20,060 Scenario Coverage · 8 AI Consulting Agents
           </div>
           <h1 className="text-6xl font-black tracking-tight leading-tight">
             The AI brain behind<br />

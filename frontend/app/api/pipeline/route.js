@@ -12,6 +12,9 @@ const ENDPOINTS = {
   pm: ["/pm/plan", "/pipeline/plan", "/plan"],
   plm: ["/plm/execute", "/pipeline/execute", "/execute"],
   workspace: ["/workspace/seed", "/workspace/create"],
+  "consulting-demo": ["/consulting/demo/"],
+  "consulting-dd": ["/consulting/from-dd"],
+  "consulting-generate": ["/consulting/generate"],
 };
 
 async function tryBackend(paths, payload) {
@@ -71,6 +74,31 @@ export async function POST(req) {
   }
 
   const stage = body.stage || "pm";
+
+  // Special handling for consulting stages
+  if (stage === "consulting-demo") {
+    const demoId = body.demo_id || "";
+    const url = `${BRAIN}/consulting/demo/${demoId}`;
+    try {
+      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      const data = await r.json();
+      return Response.json(data, { status: 200 });
+    } catch (e) {
+      return Response.json({ error: `Demo request failed: ${e.message}` }, { status: 200 });
+    }
+  }
+
+  if (stage === "consulting-dd") {
+    const url = `${BRAIN}/consulting/from-dd`;
+    try {
+      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await r.json();
+      return Response.json(data, { status: 200 });
+    } catch (e) {
+      return Response.json({ error: `DD request failed: ${e.message}` }, { status: 200 });
+    }
+  }
+
   const paths = ENDPOINTS[stage] || ENDPOINTS.pm;
   const payload = { idea: body.idea, pm_plan: body.pm_plan || null };
 

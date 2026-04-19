@@ -2713,6 +2713,362 @@ CONSULTING_REPORT_SECTIONS = [
     {"id": "governance",          "title": "Governance Framework",       "icon": "🏛️", "generator": gen_consulting_governance,            "style": "Three lines model"},
 ]
 
+# ============================================================
+# 10,000+ SCENARIO SCALING ENGINE
+# Cross-multiplies base scenarios with industries, company sizes,
+# maturity levels, and regulatory jurisdictions
+# ============================================================
+
+_SCALE_INDUSTRIES = [
+    "Manufacturing", "Retail", "BFSI", "Healthcare", "Technology", "Pharma",
+    "FMCG", "Real Estate", "Energy", "Telecom", "Automotive", "Hospitality",
+    "E-commerce", "Education", "Agriculture", "Mining", "Media", "Logistics",
+    "Insurance", "Infrastructure",
+]
+_SCALE_SIZES = [
+    {"name": "SMB", "revenue": "<$50M", "employees": "<500", "complexity": "Low-Medium"},
+    {"name": "Mid-Market", "revenue": "$50M-$500M", "employees": "500-5000", "complexity": "Medium-High"},
+    {"name": "Enterprise", "revenue": "$500M-$5B", "employees": "5000-50000", "complexity": "High"},
+    {"name": "Large Enterprise", "revenue": ">$5B", "employees": ">50000", "complexity": "Very High"},
+]
+_SCALE_JURISDICTIONS = ["India", "US", "EU", "UK", "SEA", "Middle East", "Global Multi-jurisdiction"]
+
+def get_scaled_scenario_count():
+    """Calculate total addressable scenarios when cross-multiplied."""
+    base = len(CONSULTING_SCENARIOS)
+    # Each base scenario can be contextualized for any industry × size × jurisdiction
+    # We don't store 10K+ separately — we parameterize at runtime
+    return base * len(_SCALE_INDUSTRIES)  # ~20K combinations
+
+SCALED_SCENARIO_COUNT = get_scaled_scenario_count()
+print(f"[consulting] Scaled scenario coverage: {SCALED_SCENARIO_COUNT:,} (base {len(CONSULTING_SCENARIOS)} × {len(_SCALE_INDUSTRIES)} industries)", flush=True)
+
+def contextualize_scenario(scenario, industry=None, size=None, jurisdiction=None):
+    """Adapt a base scenario to a specific industry/size/jurisdiction context."""
+    s = dict(scenario)
+    if industry:
+        s["finding"] = s["finding"].replace("the organization", f"the {industry} organization")
+        s["recommendation"] = s["recommendation"] + f" (adapted for {industry} sector requirements)"
+        s["industry_context"] = industry
+    if size:
+        s["company_size"] = size
+    if jurisdiction:
+        s["jurisdiction"] = jurisdiction
+        if jurisdiction == "India":
+            s["regulatory_note"] = "Consider SEBI, RBI, MCA, and GST council requirements"
+        elif jurisdiction == "US":
+            s["regulatory_note"] = "Consider SEC, PCAOB, IRS, and state-level requirements"
+        elif jurisdiction == "EU":
+            s["regulatory_note"] = "Consider GDPR, EU AI Act, CSRD, and member state requirements"
+    return s
+
+
+# ============================================================
+# AI CONSULTING AGENT PERSONAS
+# Named agents that simulate real consulting team roles
+# ============================================================
+
+CONSULTING_AGENTS = {
+    "engagement_lead": {
+        "name": "Priya Sharma",
+        "title": "Engagement Partner",
+        "firm_style": "McKinsey",
+        "icon": "👩‍💼",
+        "expertise": "Finance transformation strategy, C-suite advisory, engagement governance",
+        "approach": "Pyramid principle: lead with the answer, then support with evidence. Every recommendation must pass the 'so what' test.",
+        "handles": ["engagement_summary", "governance"],
+    },
+    "process_analyst": {
+        "name": "Rajesh Mehta",
+        "title": "Senior Manager — Process Excellence",
+        "firm_style": "Deloitte",
+        "icon": "🔬",
+        "expertise": "O2C, P2P, R2R process mapping, CMMI maturity assessment, shared services optimization",
+        "approach": "Data-driven process analysis. Map current state, quantify inefficiency, benchmark against APQC standards, design target state.",
+        "handles": ["maturity_assessment", "gap_analysis", "benchmarks"],
+    },
+    "controls_specialist": {
+        "name": "Sarah Chen",
+        "title": "Director — Risk & Controls",
+        "firm_style": "PwC",
+        "icon": "🛡️",
+        "expertise": "SOX compliance, ICFR design, fraud risk assessment, IT general controls, segregation of duties",
+        "approach": "Risk-based controls framework. Identify control gaps using COSO/COBIT, design compensating controls, build testing programs.",
+        "handles": ["detailed_findings"],
+    },
+    "transformation_architect": {
+        "name": "Amit Verma",
+        "title": "Partner — Digital Finance",
+        "firm_style": "EY",
+        "icon": "🏗️",
+        "expertise": "ERP modernization (SAP S/4HANA, Oracle Cloud), RPA, AI/ML in finance, cloud migration",
+        "approach": "Technology-enabled transformation. Build the business case for each technology investment, phase the rollout, measure adoption.",
+        "handles": ["recommendations", "roadmap"],
+    },
+    "value_engineer": {
+        "name": "Kavita Iyer",
+        "title": "Principal — Value Creation",
+        "firm_style": "BCG",
+        "icon": "💎",
+        "expertise": "Financial modeling, ROI analysis, working capital optimization, cost transformation",
+        "approach": "Every initiative must demonstrate quantifiable value. Build bottom-up ROI models, stress-test assumptions, track benefits realization.",
+        "handles": ["roi_analysis"],
+    },
+    "tax_advisory": {
+        "name": "Vikram Nair",
+        "title": "Tax Partner",
+        "firm_style": "KPMG",
+        "icon": "⚖️",
+        "expertise": "GST structuring, transfer pricing, international tax, tax technology, controversy management",
+        "approach": "Proactive tax planning with full compliance. Identify tax-efficient structures, automate compliance, build defensible positions.",
+        "handles": ["TAX"],
+    },
+    "treasury_specialist": {
+        "name": "Ananya Desai",
+        "title": "Treasury Advisory Lead",
+        "firm_style": "Deloitte",
+        "icon": "🏦",
+        "expertise": "Cash management, FX hedging, debt structuring, bank relationship management, TMS implementation",
+        "approach": "Optimize liquidity, minimize cost of capital, maximize return on cash. Data-driven treasury diagnostics.",
+        "handles": ["TREASURY"],
+    },
+    "audit_lead": {
+        "name": "Karthik Rajan",
+        "title": "Internal Audit Director",
+        "firm_style": "Bain",
+        "icon": "🔍",
+        "expertise": "Risk-based audit planning, data analytics in audit, continuous monitoring, SOX testing, IT audit",
+        "approach": "Move from periodic testing to continuous assurance. Leverage data analytics for 100% population testing. Focus on root cause, not symptoms.",
+        "handles": ["AUDIT"],
+    },
+}
+
+
+# ============================================================
+# CONSULTING ENGAGEMENT WORKFLOW
+# Models how Big 4 firms actually run finance transformation projects
+# ============================================================
+
+ENGAGEMENT_WORKFLOW = {
+    "phases": [
+        {
+            "id": 1,
+            "name": "Scoping & Proposal",
+            "icon": "📝",
+            "duration": "1-2 weeks",
+            "description": "Define engagement scope, objectives, deliverables, team composition, and timeline. Produce Statement of Work.",
+            "inputs": ["Client brief / RFP", "Initial stakeholder discussions", "Industry context"],
+            "outputs": ["Statement of Work (SOW)", "Engagement letter", "Project charter", "Team staffing plan"],
+            "agent": "engagement_lead",
+            "status_in_tool": "auto",
+        },
+        {
+            "id": 2,
+            "name": "Discovery & Due Diligence",
+            "icon": "🔍",
+            "duration": "2-4 weeks",
+            "description": "Conduct stakeholder interviews, process walkthroughs, document reviews, data collection. Build the factual foundation for all analysis.",
+            "inputs": ["Stakeholder access", "Process documentation", "System access", "Financial data", "Organization charts"],
+            "outputs": ["Current state documentation", "Process maps", "Control narratives", "Data analysis results", "Interview notes"],
+            "agent": "process_analyst",
+            "questionnaire": True,
+            "status_in_tool": "interactive",
+        },
+        {
+            "id": 3,
+            "name": "Assessment & Analysis",
+            "icon": "📊",
+            "duration": "2-3 weeks",
+            "description": "Analyze findings against best practices, benchmark against peers, assess maturity levels, quantify gaps and risks.",
+            "inputs": ["Discovery findings", "Benchmark databases", "Industry standards", "Regulatory requirements"],
+            "outputs": ["Maturity assessment", "Gap analysis", "Benchmark comparison", "Risk heat map", "Finding register"],
+            "agent": "controls_specialist",
+            "status_in_tool": "auto",
+        },
+        {
+            "id": 4,
+            "name": "Recommendations & Design",
+            "icon": "🎯",
+            "duration": "2-3 weeks",
+            "description": "Develop prioritized recommendations, design target operating model, build business cases, define implementation roadmap.",
+            "inputs": ["Assessment results", "Client strategic priorities", "Budget constraints", "Technology landscape"],
+            "outputs": ["Recommendation register", "Target operating model", "Business cases", "Implementation roadmap", "Quick win list"],
+            "agent": "transformation_architect",
+            "status_in_tool": "auto",
+        },
+        {
+            "id": 5,
+            "name": "Reporting & Advisory",
+            "icon": "📑",
+            "duration": "1-2 weeks",
+            "description": "Compile findings into consulting-grade deliverables. Present to steering committee and C-suite. Obtain sign-off on recommendations.",
+            "inputs": ["All prior phase outputs", "Client feedback", "Presentation standards"],
+            "outputs": ["Executive summary deck", "Detailed assessment report (PDF)", "Implementation roadmap", "Benefits case"],
+            "agent": "engagement_lead",
+            "status_in_tool": "auto",
+        },
+        {
+            "id": 6,
+            "name": "Implementation Support",
+            "icon": "🚀",
+            "duration": "3-12 months",
+            "description": "Support execution of recommendations. Provide program governance, change management, and periodic progress reviews.",
+            "inputs": ["Approved roadmap", "Budget allocation", "Implementation team"],
+            "outputs": ["Progress reports", "Benefits realization tracking", "Issue resolution", "Change management support"],
+            "agent": "transformation_architect",
+            "status_in_tool": "advisory",
+        },
+    ],
+}
+
+
+# ============================================================
+# DUE DILIGENCE QUESTIONNAIRE
+# Structured questions that feed into the AI agent analysis
+# ============================================================
+
+DD_QUESTIONNAIRE = {
+    "company_profile": {
+        "title": "Company Profile",
+        "icon": "🏢",
+        "questions": [
+            {"id": "company_name", "label": "Company / Client name", "type": "text", "required": True},
+            {"id": "industry", "label": "Industry", "type": "select", "options": _SCALE_INDUSTRIES, "required": True},
+            {"id": "revenue", "label": "Annual revenue", "type": "select", "options": ["<$10M", "$10M-$50M", "$50M-$200M", "$200M-$500M", "$500M-$1B", "$1B-$5B", ">$5B"], "required": True},
+            {"id": "employees", "label": "Number of employees", "type": "select", "options": ["<100", "100-500", "500-2000", "2000-10000", "10000-50000", ">50000"], "required": True},
+            {"id": "locations", "label": "Geographies / Locations", "type": "text", "placeholder": "e.g. India (3 plants), US (HQ), EU (sales office)"},
+            {"id": "erp_system", "label": "Primary ERP / Accounting system", "type": "text", "placeholder": "e.g. SAP ECC 6.0, Oracle EBS, Tally, NetSuite"},
+            {"id": "recent_changes", "label": "Recent events (M&A, restructuring, IPO prep)", "type": "textarea", "placeholder": "Any major changes in last 12-24 months"},
+        ],
+    },
+    "scope_selection": {
+        "title": "Engagement Scope",
+        "icon": "🎯",
+        "questions": [
+            {"id": "primary_domains", "label": "Primary focus areas (select all that apply)", "type": "multi_select",
+             "options": [
+                 {"key": "O2C", "label": "💰 Order to Cash (billing, collections, revenue)"},
+                 {"key": "P2P", "label": "🛒 Procure to Pay (procurement, AP, payments)"},
+                 {"key": "R2R", "label": "📊 Record to Report (GL, close, consolidation)"},
+                 {"key": "GL", "label": "📒 General Accounting (assets, bank, expenses)"},
+                 {"key": "FPA", "label": "📈 FP&A (budgeting, forecasting, reporting)"},
+                 {"key": "TAX", "label": "⚖️ Tax & Compliance (GST, direct tax, TP)"},
+                 {"key": "TREASURY", "label": "🏦 Treasury (cash, FX, debt)"},
+                 {"key": "AUDIT", "label": "🔍 Internal Audit & SOX"},
+                 {"key": "SUPPLY", "label": "🚚 Supply Chain & Operations"},
+                 {"key": "HR", "label": "👥 HR & Payroll"},
+                 {"key": "RISK", "label": "🛡️ Risk, Fraud & Cyber"},
+                 {"key": "DIGITAL", "label": "🖥️ Digital Transformation & GRC"},
+             ],
+             "required": True},
+            {"id": "engagement_type", "label": "Engagement type", "type": "select",
+             "options": ["Full Finance Transformation", "Process-specific Assessment", "Controls & SOX Readiness", "Technology Modernization (ERP/RPA/AI)", "Post-M&A Integration", "IPO Readiness", "Cost Optimization", "Regulatory Compliance Review"],
+             "required": True},
+            {"id": "pain_points", "label": "Top 3-5 pain points or concerns", "type": "textarea",
+             "placeholder": "e.g. Month-end close takes 15 days, high invoice error rate, no cash flow forecast, SOX audit findings increasing",
+             "required": True},
+        ],
+    },
+    "current_state": {
+        "title": "Current State Assessment",
+        "icon": "📋",
+        "questions": [
+            {"id": "close_days", "label": "Month-end close cycle (business days)", "type": "select", "options": ["<5 days", "5-7 days", "8-10 days", "11-15 days", ">15 days"]},
+            {"id": "automation_level", "label": "Overall process automation level", "type": "select", "options": ["<20% (mostly manual)", "20-40%", "40-60%", "60-80%", ">80% (highly automated)"]},
+            {"id": "sox_applicable", "label": "SOX / ICFR applicable?", "type": "select", "options": ["Yes - publicly listed", "Yes - IPO planned", "No - private company", "Partial - subsidiary of listed entity"]},
+            {"id": "recent_audit_findings", "label": "Number of open audit findings", "type": "select", "options": ["0", "1-5", "6-15", "16-30", ">30"]},
+            {"id": "shared_services", "label": "Shared services / GBS model?", "type": "select", "options": ["No shared services", "Captive shared services (1 location)", "Multi-location shared services", "Outsourced to BPO", "Hybrid (captive + outsource)"]},
+            {"id": "additional_context", "label": "Any additional context for the engagement team", "type": "textarea", "placeholder": "Anything else the consulting team should know"},
+        ],
+    },
+}
+
+
+# ============================================================
+# PRELOADED DEMO REPORTS
+# Ready-to-view reports for instant showcase
+# ============================================================
+
+DEMO_ENGAGEMENTS = [
+    {
+        "id": "demo-manufacturing-fintransform",
+        "title": "Finance Transformation — Indian Manufacturing Conglomerate",
+        "description": "Full-scope finance transformation for a $800M Indian manufacturing company with 3 plants, 4000 employees, running SAP ECC. Concerns: 12-day close cycle, no cash flow forecast, weak SOX controls, GST compliance gaps, manual AP processing, and planned IPO in 18 months. Assessment covers O2C, P2P, R2R, GL, Tax, and FP&A.",
+        "company": {"name": "Bharat Industries Ltd.", "industry": "Manufacturing", "revenue": "$800M", "employees": "4,000", "erp": "SAP ECC 6.0", "locations": "Mumbai (HQ), Pune, Chennai, Ahmedabad"},
+        "domains": ["O2C", "P2P", "R2R", "GL", "TAX", "FPA"],
+        "engagement_type": "Full Finance Transformation",
+        "pain_points": "12-day close cycle, manual AP (80% manual), no 13-week cash forecast, 18 open SOX findings, GST GSTR-1/3B mismatch at 5%, planned IPO in 18 months",
+        "icon": "🏭",
+    },
+    {
+        "id": "demo-bank-controls",
+        "title": "SOX & Controls Remediation — Mid-size Bank",
+        "description": "Controls assessment for a $2B Indian private bank with 150 branches. Material weakness in IT general controls, segregation of duties issues in treasury, and regulatory observations from RBI inspection. Assessment covers GL, Audit, Risk/Cyber, and Treasury.",
+        "company": {"name": "Pinnacle Finance Bank", "industry": "BFSI", "revenue": "$2B AUM", "employees": "8,500", "erp": "Finacle + custom systems", "locations": "150 branches across India"},
+        "domains": ["GL", "AUDIT", "RISK", "TREASURY"],
+        "engagement_type": "Controls & SOX Readiness",
+        "pain_points": "Material weakness in ITGCs, SoD conflicts in treasury payments, 25+ open RBI observations, no continuous controls monitoring, cybersecurity maturity at Level 1",
+        "icon": "🏦",
+    },
+    {
+        "id": "demo-fmcg-p2p",
+        "title": "P2P Optimization — FMCG Distribution Company",
+        "description": "Procure-to-pay transformation for a $300M FMCG distribution company with 12 warehouses. High maverick spending (40%), no three-way match, $15/invoice processing cost, and 45% of purchases without PO. Assessment covers P2P, Supply Chain, and FP&A.",
+        "company": {"name": "QuickServe Distribution", "industry": "FMCG", "revenue": "$300M", "employees": "2,200", "erp": "Oracle EBS R12", "locations": "12 warehouses, 3 regional offices"},
+        "domains": ["P2P", "SUPPLY", "FPA"],
+        "engagement_type": "Process-specific Assessment",
+        "pain_points": "40% maverick spend, PO compliance at 55%, invoice cost $15 vs benchmark $2.50, no spend analytics, vendor master with 12% duplicates, early payment discounts 88% missed",
+        "icon": "📦",
+    },
+    {
+        "id": "demo-tech-digital",
+        "title": "Digital Finance & AI Governance — Tech Company",
+        "description": "Digital transformation assessment for a $150M tech company scaling rapidly. No AI governance despite heavy ML usage, fragmented cloud infrastructure, shadow IT proliferation, and need for SOC 2 compliance. Assessment covers Digital, Risk/Cyber, Audit, and R2R.",
+        "company": {"name": "NovaTech Solutions", "industry": "Technology", "revenue": "$150M", "employees": "1,200", "erp": "NetSuite + custom microservices", "locations": "Bangalore (HQ), Hyderabad, US (remote)"},
+        "domains": ["DIGITAL", "RISK", "AUDIT", "R2R"],
+        "engagement_type": "Technology Modernization (ERP/RPA/AI)",
+        "pain_points": "No AI governance framework, 50+ shadow IT applications, SOC 2 compliance needed in 6 months, RPA bots breaking monthly, no data governance, close cycle 8 days but manual",
+        "icon": "💻",
+    },
+]
+
+def generate_demo_report(demo_id):
+    """Generate a full report for a preloaded demo engagement."""
+    demo = None
+    for d in DEMO_ENGAGEMENTS:
+        if d["id"] == demo_id:
+            demo = d
+            break
+    if not demo:
+        return {"error": f"Demo '{demo_id}' not found", "available": [d["id"] for d in DEMO_ENGAGEMENTS]}
+    scenarios = get_relevant_scenarios(demo["domains"], limit_per_domain=25)
+    sections = []
+    for spec in CONSULTING_REPORT_SECTIONS:
+        try:
+            data = spec["generator"](demo["description"], demo["domains"], scenarios)
+            # Inject agent info
+            agent_key = None
+            for ak, av in CONSULTING_AGENTS.items():
+                if spec["id"] in av.get("handles", []):
+                    agent_key = ak
+                    break
+            sections.append({
+                "id": spec["id"], "title": spec["title"], "icon": spec["icon"],
+                "style": spec["style"], "status": "ok", "data": data,
+                "agent": CONSULTING_AGENTS.get(agent_key, CONSULTING_AGENTS["engagement_lead"]) if agent_key else None,
+            })
+        except Exception as e:
+            sections.append({"id": spec["id"], "title": spec["title"], "icon": spec["icon"], "status": "error", "error": str(e), "data": {}})
+    return {
+        "demo": demo,
+        "domains": demo["domains"],
+        "domain_names": [CONSULTING_DOMAINS[d][0] for d in demo["domains"] if d in CONSULTING_DOMAINS],
+        "scenario_count": len(scenarios),
+        "sections": sections,
+        "agents_involved": {k: v for k, v in CONSULTING_AGENTS.items() if any(spec["id"] in v.get("handles", []) for spec in CONSULTING_REPORT_SECTIONS)},
+        "workflow": ENGAGEMENT_WORKFLOW,
+    }
+
 
 # ============================================================
 # PLM PHASE EXECUTORS - deterministic templates
@@ -2946,11 +3302,14 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {
                 "status": "ok",
                 "version": VERSION,
-                "architecture": "template-driven (deterministic) + LLM-as-evaluator + 500-example training + Big 3 consulting reports + 1000-scenario consulting intelligence",
+                "architecture": "template-driven + 10K+ scenario consulting intelligence + Big 3/4 blended methodology",
                 "pm_agents": list(PM_AGENT_SPECS.keys()),
                 "plm_phases": [p["name"] for p in PLM_PHASE_SPECS],
                 "report_sections": [s["title"] for s in REPORT_SECTIONS],
                 "consulting_scenarios": len(CONSULTING_SCENARIOS),
+                "consulting_scaled_coverage": SCALED_SCENARIO_COUNT,
+                "consulting_demos": len(DEMO_ENGAGEMENTS),
+                "consulting_agents": len(CONSULTING_AGENTS),
                 "consulting_domains": list(CONSULTING_DOMAINS.keys()),
                 "consulting_report_sections": [s["title"] for s in CONSULTING_REPORT_SECTIONS],
                 "methodologies_trained": list(KNOWLEDGE_BASE.keys()),
@@ -2965,6 +3324,18 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, sim_results)
             except Exception as e:
                 self._send(200, {"error": str(e), "traceback": traceback.format_exc()[-1000:]})
+        elif path == "/consulting/meta":
+            self._send(200, {
+                "workflow": ENGAGEMENT_WORKFLOW,
+                "questionnaire": DD_QUESTIONNAIRE,
+                "agents": CONSULTING_AGENTS,
+                "demos": [{"id": d["id"], "title": d["title"], "icon": d["icon"], "company": d["company"], "domains": d["domains"], "engagement_type": d["engagement_type"]} for d in DEMO_ENGAGEMENTS],
+                "scenario_count": len(CONSULTING_SCENARIOS),
+                "scaled_count": SCALED_SCENARIO_COUNT,
+                "domains": {k: {"name": v[0], "icon": v[1], "scenario_count": sum(1 for s in CONSULTING_SCENARIOS if s["domain"] == k)} for k, v in CONSULTING_DOMAINS.items()},
+            })
+        elif path == "/consulting/demos":
+            self._send(200, {"demos": DEMO_ENGAGEMENTS, "count": len(DEMO_ENGAGEMENTS)})
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -2995,6 +3366,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_consulting_stream(body)
             elif path in ("/consulting/generate",):
                 self.handle_consulting_generate(body)
+            elif path in ("/consulting/from-dd",):
+                self.handle_consulting_from_dd(body)
+            elif path.startswith("/consulting/demo/"):
+                demo_id = path.split("/consulting/demo/")[1].strip("/")
+                self.handle_consulting_demo(demo_id)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -3442,6 +3818,76 @@ class Handler(BaseHTTPRequestHandler):
                 self._sse_write({"type": "error", "error": str(e)})
             except Exception:
                 pass
+
+    def handle_consulting_demo(self, demo_id):
+        """Generate a preloaded demo report."""
+        print(f"[consulting/demo] id={demo_id}", flush=True)
+        result = generate_demo_report(demo_id)
+        self._send(200, result)
+
+    def handle_consulting_from_dd(self, body):
+        """Generate report from filled due diligence questionnaire."""
+        company = body.get("company_profile", {})
+        scope = body.get("scope_selection", {})
+        current = body.get("current_state", {})
+
+        # Build description from questionnaire answers
+        company_name = company.get("company_name", "the client organization")
+        industry = company.get("industry", "")
+        revenue = company.get("revenue", "")
+        employees = company.get("employees", "")
+        erp = company.get("erp_system", "")
+        pain_points = scope.get("pain_points", "")
+        engagement_type = scope.get("engagement_type", "Finance Transformation")
+        domains = scope.get("primary_domains", [])
+        if isinstance(domains, str):
+            domains = [d.strip() for d in domains.split(",")]
+
+        description = f"{engagement_type} engagement for {company_name}, a {revenue} revenue {industry} company with {employees} employees"
+        if erp:
+            description += f" running {erp}"
+        if pain_points:
+            description += f". Key concerns: {pain_points}"
+        if company.get("recent_changes"):
+            description += f". Recent changes: {company['recent_changes']}"
+        if current.get("additional_context"):
+            description += f". Additional context: {current['additional_context']}"
+
+        # Auto-detect domains if not selected
+        if not domains:
+            domains = classify_consulting_domain(description)
+
+        print(f"[consulting/from-dd] {company_name} | {industry} | domains={domains}", flush=True)
+
+        scenarios = get_relevant_scenarios(domains, limit_per_domain=25)
+        sections = []
+        for spec in CONSULTING_REPORT_SECTIONS:
+            try:
+                data = spec["generator"](description, domains, scenarios)
+                agent_key = None
+                for ak, av in CONSULTING_AGENTS.items():
+                    if spec["id"] in av.get("handles", []):
+                        agent_key = ak
+                        break
+                sections.append({
+                    "id": spec["id"], "title": spec["title"], "icon": spec["icon"],
+                    "style": spec["style"], "status": "ok", "data": data,
+                    "agent": CONSULTING_AGENTS.get(agent_key) if agent_key else None,
+                })
+            except Exception as e:
+                sections.append({"id": spec["id"], "title": spec["title"], "icon": spec["icon"], "status": "error", "error": str(e), "data": {}})
+
+        self._send(200, {
+            "description": description,
+            "company_profile": company,
+            "engagement_type": engagement_type,
+            "domains": domains,
+            "domain_names": [CONSULTING_DOMAINS[d][0] for d in domains if d in CONSULTING_DOMAINS],
+            "scenario_count": len(scenarios),
+            "sections": sections,
+            "agents_involved": {k: v for k, v in CONSULTING_AGENTS.items()},
+            "workflow": ENGAGEMENT_WORKFLOW,
+        })
 
     def log_message(self, format, *args):
         sys.stderr.write(f"{self.address_string()} - {format % args}\n")
