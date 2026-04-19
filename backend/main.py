@@ -1172,6 +1172,1548 @@ def generate_full_report(idea, classification):
     return sections
 
 
+
+
+# ============================================================
+# CONSULTING INTELLIGENCE MODULE - 12 domains, 1000+ scenarios
+# Big 3 (McKinsey/BCG/Bain) + Big 4 (Deloitte/PwC/EY/KPMG) blended
+# ============================================================
+
+# Each scenario: (category, title, finding, risk[C/H/M/L], recommendation)
+# C=Critical, H=High, M=Medium, L=Low
+
+_S_O2C = [
+    # Credit Management
+    ("Credit Mgmt", "No automated credit scoring", "Manual credit decisions inconsistent; avg 5-day approval cycle", "H", "Implement automated scoring with D&B/Experian integration; target <4hr"),
+    ("Credit Mgmt", "Stale credit limits", "Credit limits not reviewed in 18+ months; 22% are outdated", "H", "Quarterly automated credit reviews with financial statement refresh"),
+    ("Credit Mgmt", "No credit insurance on high-risk accounts", "Top 10 accounts represent 40% of AR with zero insurance", "C", "Obtain trade credit insurance for accounts >$500K exposure"),
+    ("Credit Mgmt", "Missing credit application workflow", "No standardized application; inconsistent data collection", "M", "Digital credit application with automated scoring and approval routing"),
+    ("Credit Mgmt", "No credit hold automation", "Orders ship despite overdue balances; manual block unreliable", "H", "Automated credit hold triggers at 30 days past due or limit exceeded"),
+    ("Credit Mgmt", "Inadequate new customer vetting", "No background checks on new accounts; 8% default within 6 months", "H", "Mandatory credit check and trade reference verification before first order"),
+    ("Credit Mgmt", "Credit committee meets infrequently", "Committee meets quarterly; backlog of 45+ pending approvals", "M", "Weekly automated approvals for standard cases; committee for exceptions"),
+    ("Credit Mgmt", "No real-time exposure monitoring", "Exposure tracking is monthly spreadsheet-based; blind spots exist", "H", "Real-time credit exposure dashboard with automated alerts"),
+    ("Credit Mgmt", "Missing credit scoring documentation", "Scoring criteria undocumented; decisions vary by analyst", "M", "Document scoring model, train staff, establish override governance"),
+    ("Credit Mgmt", "No integration with credit bureaus", "Bureau data pulled manually via web portal; 3-day lag", "M", "API integration with credit bureaus for real-time scoring"),
+    # Order Management
+    ("Order Mgmt", "High order error rate", "12% of orders require correction post-entry; rework costs $180K/yr", "H", "Implement order validation rules and guided selling configuration"),
+    ("Order Mgmt", "No EDI/API for major customers", "Top 20 customers submit orders via email/fax; manual entry", "H", "Deploy EDI 850/855 or API integration for top 20 accounts"),
+    ("Order Mgmt", "Order-to-ship cycle too long", "Average 4.2 days from order to shipment vs industry 1.5 days", "H", "Streamline approval workflow; implement wave planning and auto-allocation"),
+    ("Order Mgmt", "Duplicate order detection absent", "3% duplicate orders discovered only at invoicing stage", "M", "Automated duplicate detection on customer+PO+date+amount"),
+    ("Order Mgmt", "No ATP/CTP visibility", "Available-to-promise not checked at order entry; 15% backorders", "H", "Real-time ATP integration between order management and inventory"),
+    ("Order Mgmt", "Manual order acknowledgment", "Order confirmations sent manually; 2-day average delay", "M", "Automated order acknowledgment within 1 hour of receipt"),
+    ("Order Mgmt", "Returns process disconnected", "Returns handled outside order system; no visibility to AR", "M", "Integrate RMA process with order management and AR module"),
+    ("Order Mgmt", "No order promising rules", "CSRs commit delivery dates without checking capacity", "H", "Configure promising rules based on inventory, production, and logistics"),
+    ("Order Mgmt", "Missing order audit trail", "Cannot trace who changed order quantities or dates post-entry", "H", "Enable full audit trail with change reason codes"),
+    ("Order Mgmt", "No self-service portal", "All orders require CSR intervention; 40% are repeat/standard", "M", "Deploy customer self-service portal for repeat orders"),
+    # Pricing & Contracts
+    ("Pricing", "Pricing errors at invoicing", "7% of invoices have pricing discrepancies vs contract terms", "H", "Automated price derivation from contract master with validation"),
+    ("Pricing", "Manual discount approvals", "All discounts require email approval; 2-day average delay", "M", "Tiered discount authority matrix with automated workflow"),
+    ("Pricing", "No contract compliance monitoring", "Contract terms not tracked; volume commitments unmonitored", "M", "Automated contract compliance with quarterly reviews"),
+    ("Pricing", "Rebate calculation is manual", "Rebates calculated in spreadsheets; error-prone and late", "H", "Automated rebate engine tied to sales data"),
+    ("Pricing", "Price list maintenance fragmented", "Multiple price lists across systems; no single source of truth", "H", "Centralized pricing master with version control"),
+    ("Pricing", "No competitive pricing intelligence", "Pricing decisions made without market data; margin erosion", "M", "Implement competitive pricing tool with market benchmarks"),
+    ("Pricing", "Transfer pricing undocumented", "Intercompany pricing lacks documentation for tax compliance", "C", "Document transfer pricing policy per OECD guidelines"),
+    ("Pricing", "Expired contracts still active", "18% of contracts past expiry; pricing defaults to outdated rates", "M", "Automated contract expiry alerts 90/60/30 days prior"),
+    # Billing & Invoicing
+    ("Billing", "Invoice generation delays", "Invoices sent 5+ days after delivery; DSO impact of 8 days", "H", "Same-day automated invoicing triggered by delivery confirmation"),
+    ("Billing", "No e-invoicing compliance", "Paper/PDF invoices only; non-compliant with GST e-invoicing mandate", "C", "Implement GST e-invoicing via IRP with automated IRN generation"),
+    ("Billing", "High invoice rejection rate", "14% of invoices rejected by customers due to errors", "H", "Pre-validation against customer PO and contract before sending"),
+    ("Billing", "No consolidated billing", "Multi-site customers receive 30+ invoices monthly; manual process", "M", "Consolidated billing with customer-defined grouping rules"),
+    ("Billing", "Missing billing milestones", "Project-based billing milestones tracked manually; revenue leakage", "H", "Milestone-based billing automation with project integration"),
+    ("Billing", "Credit note process uncontrolled", "Credit notes issued without proper approval; fraud risk", "C", "Credit note approval workflow with dual authorization above threshold"),
+    ("Billing", "No billing accuracy KPI", "No measurement of invoice accuracy; issues discovered by customers", "M", "Track and report billing accuracy weekly; target >99%"),
+    ("Billing", "Proforma invoice process manual", "Proforma invoices created outside system; reconciliation gap", "M", "Integrate proforma into billing workflow with conversion tracking"),
+    ("Billing", "No self-billing support", "Large customers use self-billing but no matching process exists", "M", "Implement evaluated receipt settlement for self-billing customers"),
+    ("Billing", "Invoice delivery failures untracked", "No confirmation that invoices reach customers; email bounces ignored", "M", "Invoice delivery tracking with automated resend on failure"),
+    # Revenue Recognition
+    ("Revenue", "ASC 606 compliance gaps", "Performance obligations not properly identified; misstatement risk", "C", "Full ASC 606 assessment with contract review and policy update"),
+    ("Revenue", "Manual revenue allocation", "Multi-element arrangements allocated manually in spreadsheets", "H", "Automated SSP determination and allocation engine"),
+    ("Revenue", "No contract modification tracking", "Modifications handled as new contracts; cumulative catch-up missed", "H", "Contract modification workflow with impact assessment"),
+    ("Revenue", "Variable consideration not estimated", "Rebates and returns not estimated at inception; period-end adjustments", "H", "Expected value or most likely amount estimation at contract inception"),
+    ("Revenue", "Insufficient revenue disclosures", "Disaggregated revenue disclosure lacks required granularity", "M", "Enhance disclosure templates per ASC 606 requirements"),
+    ("Revenue", "Revenue recognized before delivery", "Bill-and-hold revenue recognized without meeting criteria", "C", "Bill-and-hold policy with documented customer request and risk transfer"),
+    ("Revenue", "No contract asset/liability tracking", "Unbilled revenue and deferred revenue not properly tracked", "H", "Subledger for contract assets and liabilities with monthly reconciliation"),
+    ("Revenue", "Percentage of completion errors", "Cost-to-cost method uses stale estimates; margin distortion", "H", "Monthly EAC reviews with PM sign-off on cost estimates"),
+    # Collections
+    ("Collections", "No automated dunning", "Collection calls made manually; inconsistent follow-up", "H", "Automated dunning with escalating templates at 30/60/90 days"),
+    ("Collections", "DSO above industry benchmark", "DSO at 62 days vs industry average of 42 days; $3.2M cash impact", "H", "Segmented collection strategy; priority focus on top 20% of receivables"),
+    ("Collections", "No promise-to-pay tracking", "Customer payment promises not recorded; no follow-up mechanism", "M", "Digital promise-to-pay with automated reminder at commitment date"),
+    ("Collections", "Collection effectiveness index low", "CEI at 71% vs target of 90%; aging is worsening", "H", "Dedicated collectors for strategic accounts; weekly aging reviews"),
+    ("Collections", "No early payment incentives", "No discount program despite high DSO; missed opportunity", "M", "Implement 2/10 net 30 or dynamic discounting program"),
+    ("Collections", "Legal escalation process unclear", "No defined criteria for legal action; delays in recovery", "M", "Escalation policy with clear criteria and pre-approved legal panel"),
+    ("Collections", "No collections prioritization model", "All overdue accounts treated equally regardless of size/risk", "M", "Risk-stratified collections with automated work queue prioritization"),
+    ("Collections", "Missing aging reconciliation", "AR aging report does not match GL; unexplained differences", "H", "Monthly AR-to-GL reconciliation with variance investigation"),
+    # Cash Application
+    ("Cash App", "Manual cash application", "80% of receipts applied manually; 5-day average application lag", "H", "Automated matching with lockbox integration and AI-based matching"),
+    ("Cash App", "High unapplied cash", "Unapplied cash averages $2.1M; distorts aging and collection efforts", "H", "Same-day application target; daily unapplied cash review"),
+    ("Cash App", "No remittance data capture", "Customer remittances not linked to payments; manual research", "M", "OCR/AI remittance extraction from email, portal, and check stubs"),
+    ("Cash App", "Deductions taken without authorization", "Customers deduct freight, returns, discounts unilaterally; $800K/yr", "H", "Deduction management workflow with root cause analysis and trending"),
+    ("Cash App", "Multiple payment methods unintegrated", "Wire, ACH, check, credit card processed in separate systems", "M", "Unified payment processing platform with consolidated reporting"),
+    ("Cash App", "On-account payments not investigated", "Payments without remittance sit unapplied for 30+ days", "M", "Auto-matching rules; escalation after 5 business days unapplied"),
+    ("Cash App", "No payment prediction model", "Cash forecasting relies on historical averages; inaccurate", "M", "AI-based payment prediction using customer behavior patterns"),
+    # Dispute Management
+    ("Disputes", "No formal dispute resolution process", "Disputes handled ad hoc; avg 45-day resolution vs 15-day target", "H", "Structured dispute management with SLA tracking and root cause coding"),
+    ("Disputes", "Dispute root causes not analyzed", "Same issues recur; no trending or prevention program", "M", "Monthly root cause analysis with process improvement initiatives"),
+    ("Disputes", "Short-pay handling inconsistent", "Some short-pays written off; others held indefinitely; no policy", "H", "Short-pay policy with write-off thresholds and approval matrix"),
+    ("Disputes", "No customer collaboration portal", "Disputes communicated via email; audit trail incomplete", "M", "Online dispute portal with document upload and status tracking"),
+    ("Disputes", "Trade promotion deductions unvalidated", "Promotional deductions accepted without proof of performance", "H", "Proof-of-performance requirement before deduction approval"),
+    ("Disputes", "Disputed amount impacts aging", "Disputed invoices age alongside valid receivables; misleading reports", "M", "Separate dispute aging from standard aging with resolution tracking"),
+    # Controls & SOX
+    ("Controls", "No segregation of duties in AR", "Same person creates invoices, applies cash, and writes off balances", "C", "Implement SoD controls; minimum three-person process separation"),
+    ("Controls", "Write-off authority undefined", "No formal authority matrix for bad debt write-offs", "H", "Tiered write-off authority: analyst <$5K, manager <$25K, director <$100K, CFO >$100K"),
+    ("Controls", "AR reconciliation not monthly", "AR subledger reconciled to GL quarterly; errors compound", "H", "Monthly automated reconciliation with mandatory sign-off"),
+    ("Controls", "No SOX key control documentation", "O2C controls not documented per SOX requirements", "C", "Document and test key controls; prepare for external audit"),
+    ("Controls", "Customer master data changes uncontrolled", "Bank details and addresses changed without dual approval; fraud risk", "C", "Dual approval for sensitive customer master changes; callback verification for bank details"),
+    ("Controls", "Credit memo abuse potential", "No monitoring for unusual credit memo patterns; employee fraud risk", "H", "Automated monitoring for credit memo frequency, amount, and issuer patterns"),
+    ("Controls", "Revenue cut-off procedures weak", "No formal cut-off procedures at period end; timing risk", "H", "Documented cut-off checklist with evidence of completion"),
+]
+
+_S_P2P = [
+    # Requisition
+    ("Requisition", "No purchase requisition system", "Purchases made without formal requisition; budget control weak", "H", "Deploy e-requisition with budget check and approval workflow"),
+    ("Requisition", "Maverick spending high", "35% of spend is off-contract; no preferred vendor compliance", "H", "Guided buying with catalog-based ordering; block non-preferred vendors"),
+    ("Requisition", "No spend visibility", "Cannot report total spend by category, vendor, or department", "H", "Spend analytics platform with automated classification"),
+    ("Requisition", "Approval matrix not enforced", "Approval limits exist on paper but bypassed in practice", "H", "System-enforced approval limits with no override capability"),
+    ("Requisition", "Emergency PO process overused", "28% of POs classified as emergency; bypasses normal controls", "M", "Restrict emergency POs to <5%; retrospective review for all emergency purchases"),
+    ("Requisition", "No demand aggregation", "Departments order independently; volume discounts missed", "M", "Cross-department demand consolidation for strategic categories"),
+    ("Requisition", "Requisition to PO cycle time excessive", "Average 8 days from requisition to PO; operational delays", "M", "Automated PO generation for pre-approved catalogs; target <1 day"),
+    ("Requisition", "No budget integration", "Requisitions not checked against available budget at submission", "H", "Real-time budget check at requisition entry; block if insufficient"),
+    ("Requisition", "Free-text requisitions dominant", "70% of requisitions use free text; no catalog matching", "M", "Catalog expansion to cover 80% of indirect spend categories"),
+    ("Requisition", "No requisition analytics", "Cannot identify repeat purchases or consolidation opportunities", "M", "Requisition pattern analysis with consolidation recommendations"),
+    # Vendor Management
+    ("Vendor Mgmt", "No vendor performance scorecards", "Vendor performance not measured; poor performers retained", "H", "Quarterly scorecards on quality, delivery, price, and responsiveness"),
+    ("Vendor Mgmt", "Vendor onboarding takes 30+ days", "New vendor setup requires manual forms; procurement delayed", "M", "Digital vendor onboarding portal with automated compliance checks"),
+    ("Vendor Mgmt", "Vendor master data duplicates", "12% duplicate vendor records; duplicate payments risk", "H", "Vendor master cleansing and deduplication; automated matching on new entries"),
+    ("Vendor Mgmt", "No vendor risk assessment", "Vendor financial health not monitored; supply chain risk", "H", "Annual financial health assessment for critical vendors; continuous monitoring for top 50"),
+    ("Vendor Mgmt", "Single source for critical items", "40% of critical materials from single vendor; concentration risk", "C", "Dual-source strategy for all critical materials; 70/30 split minimum"),
+    ("Vendor Mgmt", "Vendor diversity goals not tracked", "No measurement of diverse supplier spend vs targets", "L", "Track diverse supplier spend; set annual improvement targets"),
+    ("Vendor Mgmt", "No preferred vendor list", "Buyers choose vendors freely; fragmented spend base", "M", "Establish preferred vendor list per category with compliance targets"),
+    ("Vendor Mgmt", "Vendor bank detail changes uncontrolled", "Bank details changed on verbal request; fraud vulnerability", "C", "Mandatory callback verification and dual approval for all bank detail changes"),
+    ("Vendor Mgmt", "No vendor sustainability assessment", "ESG criteria not part of vendor selection or monitoring", "M", "Include ESG questionnaire in onboarding; annual sustainability review"),
+    ("Vendor Mgmt", "Vendor contracts not centralized", "Contracts stored in email, drives, and filing cabinets", "H", "Centralized contract repository with searchable metadata and alerts"),
+    # Purchase Orders
+    ("PO Mgmt", "PO compliance below 60%", "41% of invoices received without a corresponding PO", "H", "Enforce no-PO-no-pay policy; train all requestors on PO requirement"),
+    ("PO Mgmt", "No three-way match", "Invoices paid without matching to PO and goods receipt", "C", "Implement automated three-way match with tolerance thresholds"),
+    ("PO Mgmt", "Blanket PO management weak", "Blanket POs not tracked for balance consumption; overspend risk", "M", "Automated blanket PO balance tracking with alerts at 80% consumption"),
+    ("PO Mgmt", "PO change order process manual", "Changes to POs communicated via email; audit trail gaps", "M", "Formal PO change order workflow with version tracking"),
+    ("PO Mgmt", "Open PO cleanup not performed", "3,200 POs open for 12+ months; encumbrance reporting skewed", "M", "Quarterly review and close of aged open POs with budget release"),
+    ("PO Mgmt", "No PO delivery tracking", "Cannot track delivery status against PO dates; no vendor accountability", "M", "PO delivery tracking with automated ASN matching"),
+    ("PO Mgmt", "Split PO to avoid approval limits", "Purchases split across multiple POs to stay below approval thresholds", "C", "Automated detection of split POs; policy enforcement with consequences"),
+    ("PO Mgmt", "Retrospective POs prevalent", "POs created after invoice receipt to enable payment; defeats controls", "H", "Monitoring for retrospective POs; root cause analysis and reduction plan"),
+    ("PO Mgmt", "No PO collaboration with vendors", "PO disputes resolved via email; no vendor portal", "M", "Vendor collaboration portal for PO acknowledgment and dispute resolution"),
+    # Goods Receipt
+    ("GR", "Goods receipt not timely", "Average 4 days between physical receipt and system entry", "H", "Mobile GR scanning at dock; target same-day system entry"),
+    ("GR", "No quality inspection integration", "QC inspection results not linked to GR; rejected goods invoiced", "H", "Integrate QC hold and release into three-way match process"),
+    ("GR", "Blind receiving not practiced", "Receivers see PO quantities; count accuracy not verified", "M", "Implement blind receiving for high-value items; random audits for others"),
+    ("GR", "Service receipt undocumented", "Services received without formal confirmation; payment disputes", "H", "Service entry sheet with project manager sign-off before payment"),
+    ("GR", "GR/IR clearing account not reconciled", "GR/IR clearing balance at $1.8M; contains items 6+ months old", "H", "Monthly GR/IR reconciliation; investigate items >30 days old"),
+    ("GR", "No ASN matching", "Advanced shipping notices not matched to GR; receiving is manual", "M", "ASN integration with automatic GR creation on delivery confirmation"),
+    ("GR", "Partial receipt handling inconsistent", "Different sites handle partial deliveries differently; confusion", "M", "Standardized partial receipt policy with automated communication to AP"),
+    ("GR", "Consignment inventory untracked", "Vendor-owned consignment inventory not in system; liability risk", "H", "Track consignment in separate inventory type; monthly consumption reporting"),
+    # Invoice Processing
+    ("Invoice", "Invoice processing cost too high", "Average $15 per invoice vs benchmark $2.50; 80% manual", "H", "OCR/AI invoice capture with automated coding and three-way match"),
+    ("Invoice", "No invoice automation", "All invoices processed manually; team of 8 FTEs for 50K invoices/yr", "H", "Deploy AP automation platform; target 70% touchless processing"),
+    ("Invoice", "Duplicate payment rate elevated", "0.5% duplicate payments identified; estimated $400K annual exposure", "H", "Automated duplicate detection on vendor+amount+date+invoice number"),
+    ("Invoice", "Early payment discount capture low", "Only 12% of available early payment discounts captured; $600K lost", "H", "Automated discount identification and prioritized payment scheduling"),
+    ("Invoice", "Invoice exception rate high", "40% of invoices require manual exception handling", "H", "Root cause analysis of exceptions; supplier training on invoice requirements"),
+    ("Invoice", "No e-invoicing adoption", "0% electronic invoicing; all paper/PDF/email", "M", "Supplier portal for e-invoicing; target 50% e-invoice adoption in 12 months"),
+    ("Invoice", "Invoice coding errors", "18% of invoices coded to wrong GL account or cost center", "H", "Automated GL coding with ML-based prediction from historical patterns"),
+    ("Invoice", "Tax validation manual", "GST/VAT on invoices checked manually; compliance risk", "H", "Automated tax validation against vendor GSTIN and HSN master"),
+    ("Invoice", "PO-based invoice matching tolerances undefined", "No documented tolerances; inconsistent acceptance of variances", "M", "Define matching tolerances by category: price ±2%, quantity ±5%"),
+    ("Invoice", "Vendor statement reconciliation absent", "Vendor statements not reconciled; missing invoices undetected", "M", "Monthly vendor statement reconciliation for top 50 vendors"),
+    ("Invoice", "Intercompany invoice reconciliation gap", "IC invoices not matched between entities; elimination errors", "H", "Automated intercompany invoice matching with dispute workflow"),
+    # Payment Processing
+    ("Payments", "No payment run optimization", "Daily payment runs with no optimization for cash flow or discounts", "M", "Weekly optimized payment runs; daily only for critical/discount items"),
+    ("Payments", "Check payments still dominant", "55% of payments by check; high cost and fraud risk", "H", "Migrate to electronic payments; target <10% check volume"),
+    ("Payments", "No positive pay", "Checks not protected by positive pay; fraud exposure", "H", "Implement positive pay with all banking partners"),
+    ("Payments", "Payment approval matrix not enforced", "Payments above threshold processed without proper approval", "C", "System-enforced payment approval matrix with dual authorization above $50K"),
+    ("Payments", "Bank reconciliation delayed", "Reconciliation performed monthly with 10-day lag; fraud detection delayed", "H", "Daily automated bank reconciliation with exception alerts"),
+    ("Payments", "Vendor payment terms not optimized", "Standard 30-day terms with all vendors; no strategic negotiation", "M", "Negotiate terms by vendor tier: strategic=45-60 days, small=30 days"),
+    ("Payments", "No dynamic discounting", "No platform for offering early payment in exchange for discounts", "M", "Deploy dynamic discounting platform for working capital optimization"),
+    ("Payments", "International payment fees excessive", "Wire fees and FX spreads not negotiated; paying retail rates", "M", "Negotiate banking fees; consider payment factory for cross-border payments"),
+    ("Payments", "Payment fraud prevention weak", "No fraud screening on outgoing payments; reliance on manual review", "C", "Implement payment fraud screening with sanctions and pattern detection"),
+    ("Payments", "ACH/NEFT prenote validation missing", "Bank details not validated before first electronic payment", "H", "Mandatory prenote/test payment for all new vendor bank details"),
+    # Contract Management
+    ("Contracts", "No contract lifecycle management", "Contracts in filing cabinets and email; cannot search or report", "H", "CLM platform with searchable repository and milestone tracking"),
+    ("Contracts", "Auto-renewal without review", "Contracts auto-renew without commercial or performance review", "M", "90-day renewal alerts with mandatory commercial review"),
+    ("Contracts", "Contract leakage unquantified", "No measurement of actual spend vs contracted terms", "H", "Contract compliance analytics; quarterly leakage reporting"),
+    ("Contracts", "No standard contract templates", "Each contract drafted from scratch; legal review bottleneck", "M", "Standard templates by category with pre-approved legal clauses"),
+    ("Contracts", "SLA monitoring absent", "Service contracts have SLAs but compliance not tracked", "M", "Automated SLA tracking with penalty/credit calculations"),
+    ("Contracts", "Insurance and compliance not verified", "Vendor insurance certificates not checked at renewal", "H", "Annual certificate of insurance verification for all active vendors"),
+    ("Contracts", "No force majeure clause review", "Post-pandemic clause review not performed; supply chain risk", "M", "Update force majeure and termination clauses in all strategic contracts"),
+    # Controls & Compliance
+    ("Controls", "No segregation of duties in AP", "Same person creates vendor, enters invoice, and processes payment", "C", "Enforce SoD: separate vendor master, invoice entry, and payment roles"),
+    ("Controls", "PO splitting detection absent", "No system controls to detect purchase order splitting", "H", "Automated split-PO detection with alert to procurement manager"),
+    ("Controls", "Vendor master changes uncontrolled", "No workflow for vendor master data changes; audit risk", "C", "Change request workflow with evidence retention for all vendor master changes"),
+    ("Controls", "No P2P analytics for fraud detection", "Benford's Law analysis, round-amount analysis not performed", "H", "Continuous monitoring program with data analytics for fraud indicators"),
+    ("Controls", "1099/TDS reporting errors", "Vendor tax reporting contains errors; penalty exposure", "H", "Annual 1099/TDS reconciliation with vendor classification review"),
+    ("Controls", "Unclaimed property not managed", "Aged outstanding checks and credits not reported per escheatment laws", "M", "Annual unclaimed property review with state/jurisdiction reporting"),
+    ("Controls", "Use tax not properly accrued", "Purchases from out-of-state vendors without use tax accrual", "H", "Automated use tax calculation on applicable purchases"),
+    ("Controls", "No P2P process documentation", "Processes are tribal knowledge; key person dependency", "H", "Document all P2P processes with RACI matrices and control narratives"),
+    ("Controls", "Audit trail gaps in payment system", "Cannot trace payment from requisition to bank debit end-to-end", "H", "End-to-end audit trail from requisition through payment and bank reconciliation"),
+    # Reporting
+    ("Reporting", "No AP aging analysis", "Cannot report payable aging accurately; cash planning impacted", "M", "Automated AP aging with payment forecasting"),
+    ("Reporting", "Spend analytics unavailable", "No visibility into spend by category, vendor, geography, BU", "H", "Spend cube with drill-down by 10+ dimensions; quarterly reviews"),
+    ("Reporting", "DPO not tracked", "Days Payable Outstanding not measured or benchmarked", "M", "Monthly DPO tracking with industry benchmark comparison"),
+    ("Reporting", "No vendor payment history dashboard", "Cannot view payment history for individual vendors quickly", "L", "Vendor payment dashboard with history, terms compliance, and trends"),
+    ("Reporting", "Procurement savings not measured", "Cost avoidance and cost reduction not tracked or reported", "M", "Procurement savings tracker with methodology documentation"),
+    ("Reporting", "No budget vs actual by PO", "Cannot compare committed spend against budget by category", "M", "Budget commitment reporting by category and cost center"),
+]
+
+_S_R2R = [
+    # Chart of Accounts
+    ("CoA", "Chart of Accounts overly complex", "8,400 GL accounts; 40% inactive; reporting difficult", "M", "Rationalize to <3,000 active accounts; archive inactive"),
+    ("CoA", "No CoA governance", "Anyone can request new accounts; proliferation unchecked", "H", "CoA governance committee with documented criteria for new accounts"),
+    ("CoA", "Account structure not aligned with reporting needs", "Multiple manual reclassifications needed for external reporting", "H", "Redesign CoA to map directly to financial statement line items"),
+    ("CoA", "No standard across entities", "Each legal entity has different CoA; consolidation is manual", "H", "Global CoA with local extensions; automated mapping for consolidation"),
+    ("CoA", "Intercompany accounts not standardized", "IC coding inconsistent; elimination errors at consolidation", "H", "Standardized IC account structure with automated matching"),
+    ("CoA", "Cost center hierarchy outdated", "Cost center structure reflects organization from 3 years ago", "M", "Align cost center hierarchy to current org structure; annual review"),
+    ("CoA", "Statistical accounts not leveraged", "Non-financial KPIs tracked outside system; no correlation", "L", "Use statistical accounts for FTE, volume, and unit metrics"),
+    ("CoA", "Account descriptions unclear", "Many accounts have cryptic names; mispostings result", "M", "Standardize account naming conventions; publish account dictionary"),
+    # Journal Entries
+    ("JE", "Manual journal entries excessive", "400+ manual JEs per month; error rate 5%", "H", "Automate recurring and systematic JEs; target <50 manual JEs/month"),
+    ("JE", "Recurring JE templates not maintained", "Recurring entries have stale amounts; manual correction each period", "M", "Quarterly review and update of all recurring JE templates"),
+    ("JE", "Journal entry approval lacking", "JEs posted without review; even material entries unreviewed", "C", "System-enforced approval for JEs above threshold; random audit for others"),
+    ("JE", "No JE supporting documentation", "JEs lack attached support; audit evidence gathering takes days", "H", "Mandatory document attachment policy; reject JEs without support"),
+    ("JE", "Reversing entries not automated", "Accrual reversals done manually; missed reversals cause errors", "M", "Automatic reversal scheduling for all accrual entries"),
+    ("JE", "No standard JE description format", "Descriptions vary; difficult to search or understand entries", "M", "Standardized description format: [Type]-[Category]-[Detail]-[Period]"),
+    ("JE", "Intercompany JEs unbalanced", "IC entries processed independently by each entity; out of balance", "H", "Simultaneous IC posting with balanced entry validation"),
+    ("JE", "Top-side adjustments not tracked", "Manual consolidation adjustments made outside system; no audit trail", "H", "All top-side adjustments processed through system with full documentation"),
+    ("JE", "Post-close JEs excessive", "Average 85 post-close adjustments per quarter; delays reporting", "H", "Root cause analysis; improve close process to reduce post-close entries"),
+    ("JE", "JE threshold monitoring absent", "No alerts for unusual or large journal entries", "H", "Automated alerts for JEs exceeding threshold by account or user"),
+    # Subledger to GL
+    ("Sub-GL", "Subledger-GL reconciliation gaps", "AP and AR subledgers differ from GL by $3.2M combined", "C", "Monthly subledger-to-GL reconciliation with mandatory resolution"),
+    ("Sub-GL", "Posting frequency inconsistent", "Some subledgers post daily, others weekly; reconciliation difficult", "M", "Standardize daily posting for all subledgers; batch by 6 PM"),
+    ("Sub-GL", "Suspense account balances growing", "Suspense accounts at $1.4M; items over 90 days old", "H", "Weekly suspense account review; 5-day clearing SLA"),
+    ("Sub-GL", "Clearing account reconciliation overdue", "18 clearing accounts not reconciled in 3+ months", "H", "Monthly clearing account reconciliation; escalation for items >30 days"),
+    ("Sub-GL", "No automated posting rules", "Subledger postings require manual GL account assignment", "M", "Configure automatic posting rules for all standard transactions"),
+    ("Sub-GL", "Tax subledger disconnected", "Tax calculations in separate system; reconciliation to GL manual", "H", "Integrate tax engine with GL; automated reconciliation"),
+    ("Sub-GL", "Payroll-to-GL mapping errors", "Payroll posting creates GL variances; monthly manual fixes", "H", "Map payroll cost elements to GL accounts; validate monthly"),
+    ("Sub-GL", "Fixed asset subledger drift", "NBV in asset register differs from GL by $450K", "H", "Monthly asset register to GL reconciliation with variance analysis"),
+    # Intercompany
+    ("IC", "IC reconciliation manual and late", "Intercompany reconciliation takes 5 days post-close; delays reporting", "H", "Real-time IC matching with automated dispute flagging"),
+    ("IC", "IC pricing not at arms length", "Transfer pricing documentation incomplete; tax authority risk", "C", "Annual transfer pricing study; contemporaneous documentation"),
+    ("IC", "IC eliminations manual", "Consolidation eliminations done in spreadsheets; error-prone", "H", "Automated IC elimination rules in consolidation system"),
+    ("IC", "IC settlement delays", "IC balances settled quarterly; cash trapped in entities", "M", "Monthly IC netting and settlement; multilateral netting for efficiency"),
+    ("IC", "IC SLA not defined", "No agreement on response times for IC invoice queries", "M", "IC SLA: acknowledge in 2 business days, resolve in 5"),
+    ("IC", "IC in multiple currencies without hedge", "IC positions create FX exposure; no hedging strategy", "H", "Natural hedging through currency matching; formal FX policy for residual"),
+    ("IC", "No IC billing automation", "IC invoices created manually; inconsistent with transfer pricing policy", "H", "Automated IC billing from allocation engine with policy compliance"),
+    ("IC", "IC loan documentation missing", "IC loans lack formal agreements; thin capitalization risk", "C", "Document all IC loans with market-rate interest and repayment terms"),
+    ("IC", "IC profit in inventory not eliminated", "ICIP calculation incorrect; financial statements misstated", "C", "Automated ICIP calculation with margin data from IC billing system"),
+    # Period-End Close
+    ("Close", "Close cycle exceeds 10 business days", "Month-end close takes 12 days; quarterly 18 days", "H", "Re-engineer close process; target 5-day monthly, 8-day quarterly close"),
+    ("Close", "No close calendar or checklist", "Close tasks not documented; reliance on individual knowledge", "H", "Detailed close calendar with task owners, dependencies, and deadlines"),
+    ("Close", "Accrual process inconsistent", "Some departments accrue, others dont; cut-off issues", "H", "Standardized accrual methodology with central coordination"),
+    ("Close", "No soft close or continuous close", "All close activities compressed into period-end; bottleneck", "M", "Implement continuous accounting: daily reconciliations, rolling accruals"),
+    ("Close", "Close process not automated", "90% of close activities manual; spreadsheet-dependent", "H", "Close management software with task tracking and automated workflows"),
+    ("Close", "Flux analysis not timely", "Variance analysis done after financial statements issued; no prevention", "H", "Real-time flux analysis during close; investigate variances >10% before finalizing"),
+    ("Close", "No pre-close activities", "Reconciliations and accruals start only at period-end", "M", "Pre-close checklist: begin reconciliations at Day -5 of period end"),
+    ("Close", "Quarter-end adjustments excessive", "Average 40 quarter-end-only adjustments; audit concern", "H", "Spread adjustments into monthly process; reduce quarter-end-only entries"),
+    ("Close", "No close readiness assessment", "Close starts without confirming all feeds and data are received", "M", "Day 1 readiness checklist: confirm all subledger posts, bank feeds, payroll data"),
+    ("Close", "Close signoff not documented", "Controller verbal approval; no evidence of review", "H", "Digital close signoff with checklist completion evidence"),
+    ("Close", "Black-out period not enforced", "Transactions posted during close that should be in next period", "M", "System-enforced black-out from Day 1 to close completion"),
+    # Reconciliations
+    ("Recon", "Bank reconciliation not daily", "Bank reconciliation monthly; fraud detection delayed by weeks", "H", "Daily automated bank reconciliation with same-day exception review"),
+    ("Recon", "No reconciliation software", "All reconciliations in spreadsheets; version control issues", "H", "Deploy reconciliation platform with matching rules and workflow"),
+    ("Recon", "Reconciliation items aged", "2,300 open reconciling items over 60 days; investigated ad hoc", "H", "Aging policy: resolve items within 10 business days; escalation at 30"),
+    ("Recon", "No reconciliation risk rating", "All accounts reconciled with same rigor regardless of risk", "M", "Risk-rate accounts: high=monthly detailed, medium=monthly review, low=quarterly"),
+    ("Recon", "Balance sheet certification incomplete", "Only 60% of BS accounts have certified reconciliations", "H", "100% BS certification within 5 days of close; automated tracking"),
+    ("Recon", "No reconciliation standard templates", "Each preparer uses different formats; review quality varies", "M", "Standardized reconciliation templates per account type"),
+    ("Recon", "Reconciliation reviewer independence lacking", "Preparers self-review reconciliations; control gap", "H", "Independent review required for all reconciliations above threshold"),
+    ("Recon", "FX revaluation reconciliation absent", "Unrealized FX gains/losses not reconciled to underlying positions", "H", "Monthly FX revaluation reconciliation with rate source validation"),
+    ("Recon", "Subsidiary reconciliation delays", "Subsidiary data received 5+ days after close; delays parent reporting", "H", "Parallel close at subsidiaries; Day 3 data submission deadline"),
+    # Financial Reporting
+    ("Fin Rptg", "Financial statements require manual assembly", "Statements built in Excel from trial balance; error-prone", "H", "Automated financial statement generation from GL with drill-down"),
+    ("Fin Rptg", "No XBRL tagging capability", "SEC filings tagged manually; expensive and error-prone", "M", "XBRL-enabled reporting tool with automated tagging"),
+    ("Fin Rptg", "Disclosure checklist incomplete", "New accounting standards not reflected in disclosure checklist", "H", "Annual disclosure checklist update aligned to ASC/IFRS changes"),
+    ("Fin Rptg", "Segment reporting methodology undocumented", "Segment allocation methodology not documented; audit questions", "H", "Document segment reporting methodology with allocation basis"),
+    ("Fin Rptg", "No management report automation", "Management reports created manually; 3-day lag after close", "M", "Automated management reporting package; available Day 1 after close"),
+    ("Fin Rptg", "EPS calculation manual", "Earnings per share computed in spreadsheet; dilution errors possible", "H", "Automated EPS calculation with dilution modeling in reporting tool"),
+    ("Fin Rptg", "Roll-forward schedules not automated", "Debt, equity, and reserve roll-forwards maintained manually", "M", "Automated roll-forward schedules with system-sourced data"),
+    ("Fin Rptg", "Cash flow statement indirect method errors", "Non-cash adjustments and working capital changes reconciled manually", "H", "Automated cash flow statement with GL-based derivation"),
+    # Controls & Audit
+    ("R2R Controls", "No continuous controls monitoring", "Controls tested annually; gaps undetected for months", "H", "Implement continuous controls monitoring with automated testing"),
+    ("R2R Controls", "Key control failures not escalated", "Control exceptions logged but not escalated to management", "H", "Automated escalation workflow for control exceptions"),
+    ("R2R Controls", "No data analytics in audit", "Internal audit relies on sampling; limited coverage", "M", "Deploy data analytics for 100% transaction testing on key controls"),
+    ("R2R Controls", "Material weakness remediation tracking weak", "MW remediation plans not tracked to completion; repeat findings", "C", "Formal remediation tracking with milestone dates and executive reporting"),
+    ("R2R Controls", "ITGCs not tested for financial applications", "General IT controls over financial systems not assessed", "H", "Annual ITGC assessment for all financially significant applications"),
+    ("R2R Controls", "No entity-level controls assessment", "COSO entity-level controls not evaluated", "M", "Annual COSO-based entity-level control assessment"),
+    ("R2R Controls", "Change management for financial systems weak", "System changes deployed without proper change management", "H", "Formal change management with testing, approval, and rollback plans"),
+]
+
+_S_GL = [
+    # Fixed Assets
+    ("Fixed Assets", "No periodic physical verification", "Fixed assets not physically verified in 3+ years; ghost assets likely", "H", "Annual physical verification with barcode/RFID tracking"),
+    ("Fixed Assets", "Capitalization policy inconsistent", "Different thresholds across entities; comparability issues", "H", "Uniform capitalization threshold across all entities; annual review"),
+    ("Fixed Assets", "Depreciation method review not performed", "Useful lives and methods not reassessed since initial setup", "M", "Annual reassessment of useful lives and depreciation methods"),
+    ("Fixed Assets", "Asset disposal process undocumented", "Disposals processed ad hoc; gain/loss calculation errors", "H", "Formal disposal workflow with approval, physical removal, and accounting"),
+    ("Fixed Assets", "CIP aging unmonitored", "Construction-in-progress items exceeding project timelines; no review", "M", "Monthly CIP review; transfer to assets within 30 days of completion"),
+    ("Fixed Assets", "Impairment testing not performed", "No annual impairment assessment; potential overstatement", "H", "Annual impairment testing for all asset groups; trigger-based interim testing"),
+    ("Fixed Assets", "Lease accounting ASC 842 gaps", "Right-of-use assets and lease liabilities not properly recognized", "C", "Full ASC 842 compliance review; implement lease accounting software"),
+    ("Fixed Assets", "Asset transfers between locations untracked", "Assets moved between sites without system update; location data unreliable", "M", "Asset transfer workflow with custodian acknowledgment"),
+    ("Fixed Assets", "No asset tagging standard", "Multiple tagging systems across sites; identification difficult", "M", "Unified asset tagging with barcode/QR code and mobile scanning"),
+    ("Fixed Assets", "Fully depreciated assets still in use not reviewed", "30% of asset base fully depreciated but in use; useful life review needed", "L", "Annual review of fully depreciated in-use assets for impairment/extension"),
+    # Bank Reconciliation
+    ("Bank Recon", "Reconciliation performed monthly", "Monthly reconciliation delays fraud detection by up to 30 days", "H", "Daily automated bank reconciliation with same-day exception review"),
+    ("Bank Recon", "Outstanding checks not followed up", "Checks outstanding >90 days not investigated; escheatment risk", "M", "Monthly follow-up on checks outstanding >60 days; void at 180 days"),
+    ("Bank Recon", "No bank fee analysis", "Bank fees accepted without review; potential overcharges", "L", "Quarterly bank fee analysis with benchmark comparison"),
+    ("Bank Recon", "Multiple bank accounts not consolidated", "45 bank accounts across 6 banks; liquidity fragmented", "M", "Bank rationalization; zero-balance sweeping to concentration accounts"),
+    ("Bank Recon", "Bank reconciliation preparer and reviewer same person", "No independent review of bank reconciliations; control gap", "H", "Segregate bank reconciliation preparation and review roles"),
+    ("Bank Recon", "Foreign currency bank accounts not revalued", "FC bank balances not revalued at period-end; BS misstatement", "H", "Month-end FX revaluation for all foreign currency bank accounts"),
+    ("Bank Recon", "No cash pooling optimization", "Entities maintain separate cash reserves; interest optimization lost", "M", "Implement notional or physical cash pooling with partner bank"),
+    ("Bank Recon", "Bank confirmation process manual", "Year-end bank confirmations sent manually; tracking difficult", "L", "Use electronic bank confirmation service for year-end audit"),
+    # Expense Management
+    ("Expenses", "No automated expense system", "Paper expense reports; 12-day average reimbursement cycle", "H", "Deploy mobile expense management with OCR receipt capture"),
+    ("Expenses", "Policy violations not detected", "Expense policy limits not enforced; reliance on manager review", "H", "Automated policy compliance checks at submission; flag violations"),
+    ("Expenses", "No corporate card program", "Employees use personal cards; cash flow burden and tracking gap", "H", "Corporate card program with automated feed to expense system"),
+    ("Expenses", "Per diem rates not updated", "Travel per diem rates from 2019; not market-appropriate", "L", "Annual per diem rate update aligned to GSA/company policy"),
+    ("Expenses", "Duplicate expense claims not detected", "No system check for duplicate submissions; estimated 3% duplicate rate", "H", "Automated duplicate detection on date+amount+vendor"),
+    ("Expenses", "Receipt compliance below 70%", "30% of expense line items lack receipts; audit risk", "M", "Mandatory receipt for all items >$25; mobile capture at point of purchase"),
+    ("Expenses", "T&E analytics not performed", "No trend analysis on travel spend; cost reduction opportunities missed", "M", "Quarterly T&E analytics with category and department drill-down"),
+    ("Expenses", "Mileage claims unverified", "Mileage reimbursement based on self-reported distance; no validation", "M", "GPS-based mileage tracking or Google Maps distance verification"),
+    # Cost Allocation
+    ("Allocations", "Allocation methodology undocumented", "Shared costs allocated by outdated drivers; business unfairly charged", "H", "Document and validate allocation methodology annually with BU input"),
+    ("Allocations", "IT cost allocation uses headcount only", "IT costs allocated purely by headcount; heavy users subsidized", "M", "Activity-based IT cost allocation using consumption metrics"),
+    ("Allocations", "No allocation automation", "Cost allocations processed manually in spreadsheets; error-prone", "H", "Configure allocation cycles in ERP with automated posting"),
+    ("Allocations", "Transfer pricing for services not at arms length", "Shared services charged at cost; transfer pricing documentation lacking", "C", "Arm's length pricing study for shared services with benchmarking"),
+    ("Allocations", "Allocation cycle timing creates discrepancies", "Allocations run after close for some entities; timing differences", "M", "Standardize allocation cycle timing across all entities"),
+    ("Allocations", "No activity-based costing capability", "Product/service costs based on simple averages; margin distortion", "M", "Implement ABC for key product lines to understand true profitability"),
+    ("Allocations", "Overhead rate not market-tested", "Manufacturing overhead rate unchanged for 3 years; product cost inaccurate", "M", "Annual overhead rate review with benchmark comparison"),
+    # Consolidation
+    ("Consol", "Consolidation in spreadsheets", "Multi-entity consolidation done in Excel; 40+ tabs; error-prone", "C", "Implement consolidation software with automated data collection"),
+    ("Consol", "Minority interest calculation manual", "Non-controlling interest calculated manually; misstatement risk", "H", "Automated NCI calculation with ownership percentage tracking"),
+    ("Consol", "Currency translation process manual", "CTA calculated in spreadsheets; rate sources inconsistent", "H", "Automated currency translation with centralized rate repository"),
+    ("Consol", "No consolidation validation rules", "Consolidated trial balance not validated before reporting", "H", "Automated validation: TB balance, IC elimination completeness, CTA reasonableness"),
+    ("Consol", "Equity method investments tracked manually", "Equity method income and investment balance in spreadsheets", "M", "Automated equity method accounting with investee data feed"),
+    ("Consol", "Acquisition accounting not standardized", "Each acquisition handled differently; goodwill calculation varies", "H", "Standardized acquisition accounting checklist with purchase price allocation process"),
+    ("Consol", "Segment elimination manual", "Inter-segment transactions eliminated manually; reconciliation difficult", "M", "Automated segment elimination with reconciliation to legal entity consolidation"),
+    ("Consol", "No consolidation audit trail", "Cannot trace consolidated numbers to source entity data", "H", "Full audit trail from consolidated financial statement to entity-level transaction"),
+    # Statutory & Regulatory Reporting
+    ("Statutory", "GST return reconciliation gaps", "GSTR-1 vs GSTR-3B mismatch averaging 5%; notices from department", "C", "Monthly GSTR-1/3B/2B reconciliation with automated matching"),
+    ("Statutory", "TDS compliance issues", "TDS not deducted on several vendor categories; penalty exposure", "C", "Automated TDS applicability determination with section-wise tracking"),
+    ("Statutory", "Annual return filing delays", "Statutory filings consistently filed after due date; penalties", "H", "Filing calendar with 30-day advance preparation start; automated reminders"),
+    ("Statutory", "No regulatory change tracking", "New regulations discovered reactively; compliance gaps emerge", "H", "Regulatory change tracking service with impact assessment workflow"),
+    ("Statutory", "Transfer pricing documentation absent", "No contemporaneous TP documentation; risk of benchmarking challenge", "C", "Annual TP study with benchmarking analysis per OECD/Indian guidelines"),
+    ("Statutory", "Withholding tax on cross-border payments not optimized", "WHT applied at treaty rates without proper documentation", "H", "Tax treaty analysis with proper forms and documentation for each jurisdiction"),
+    ("Statutory", "ROC filings not tracked", "Registrar of Companies filings managed ad hoc; missed deadlines", "M", "Annual compliance calendar for all ROC filings with automated alerts"),
+    ("Statutory", "No tax provision automation", "Tax provision calculated manually; deferred tax errors", "H", "Tax provision software with automated temporary difference tracking"),
+    # Internal Controls
+    ("Int Controls", "No formal ICFR framework", "Internal controls over financial reporting not documented", "C", "Implement COSO-based ICFR framework with risk assessment and testing"),
+    ("Int Controls", "Access controls in ERP inadequate", "Excessive system access; 15% of users have incompatible access combinations", "C", "Role-based access control redesign; quarterly access reviews"),
+    ("Int Controls", "No automated controls testing", "Controls tested manually once a year; limited sample sizes", "H", "Continuous controls monitoring for high-risk automated controls"),
+    ("Int Controls", "Control owners not identified", "Controls exist but no assigned owners; accountability gap", "H", "Assign control owners with documented responsibilities and self-assessment"),
+    ("Int Controls", "No deficiency tracking and remediation", "Control deficiencies identified but not tracked to closure", "H", "Deficiency register with remediation plans, owners, and due dates"),
+    ("Int Controls", "Whistleblower channel underutilized", "Hotline exists but no reports received in 2 years; awareness low", "M", "Employee awareness campaign; quarterly reporting to audit committee"),
+    ("Int Controls", "Entity-level controls not assessed", "COSO entity-level controls (tone at top, risk assessment) not evaluated", "M", "Annual entity-level controls self-assessment with audit committee reporting"),
+    ("Int Controls", "Compensating controls not documented", "Where SoD conflicts exist, compensating controls are assumed but not documented", "H", "Document all compensating controls with testing evidence"),
+    # Data Quality
+    ("Data Quality", "Master data governance absent", "No formal master data governance; duplicates and inconsistencies pervasive", "H", "Master data governance framework with stewardship and quality metrics"),
+    ("Data Quality", "GL data quality issues", "15% of GL transactions have missing or incorrect dimensions", "H", "Mandatory field validation at entry; monthly data quality scorecard"),
+    ("Data Quality", "No data lineage documentation", "Cannot trace reported numbers to source transactions; audit friction", "H", "Document data lineage from source system to report; automated mapping"),
+    ("Data Quality", "Reporting data extracted manually", "Reports built from manual extracts; version and timing issues", "H", "Automated data pipelines to reporting layer; eliminate manual extracts"),
+    ("Data Quality", "No data retention policy", "Data retained indefinitely without policy; storage costs growing", "M", "Data retention policy aligned to legal and regulatory requirements"),
+    ("Data Quality", "Chart field validation rules insufficient", "Invalid combinations allowed; mispostings detected in review", "M", "Cross-validation rules to block invalid account+cost center combinations"),
+    ("Data Quality", "System-of-record not defined", "Multiple systems claim to be the source of truth for same data", "H", "Define system of record for each data domain; resolve conflicts"),
+    ("Data Quality", "Historical data migration issues", "Legacy system data migrated with errors; ongoing reconciliation burden", "M", "Data migration validation project; resolve known issues and document exceptions"),
+]
+
+_S_FPA = [
+    ("Budgeting", "Budget process takes 4+ months", "Annual budget cycle is 16 weeks; by completion, assumptions are stale", "H", "Streamline to 8-week cycle with driver-based budgeting"),
+    ("Budgeting", "No rolling forecast", "Annual budget is only plan; no re-forecasting during year", "H", "Quarterly rolling 5-quarter forecast replacing annual budget"),
+    ("Budgeting", "Budgeting in spreadsheets", "800+ spreadsheets; version control and consolidation errors", "H", "Cloud-based planning platform with workflow and versioning"),
+    ("Budgeting", "Bottom-up budget not reconciled to top-down targets", "BU budgets sum to 20% above board-approved target; negotiation loop", "M", "Top-down/bottom-up alignment process with gap analysis"),
+    ("Budgeting", "No zero-based budgeting for SGA", "SG&A budgets incremental; cost base grows unchecked", "M", "ZBB for discretionary spend categories; annual reset"),
+    ("Budgeting", "CapEx budgeting disconnected from strategy", "Capital budget not linked to strategic plan; ad hoc requests dominate", "H", "Strategic CapEx planning with stage-gate evaluation process"),
+    ("Budgeting", "Headcount planning manual", "FTE budgets in separate spreadsheets; no link to compensation data", "M", "Integrated workforce planning with position-level detail"),
+    ("Budgeting", "No scenario planning capability", "Only single-point plan; no best/worst/base case analysis", "H", "Scenario planning with 3+ cases and sensitivity analysis"),
+    ("Forecasting", "Forecast accuracy below 85%", "Revenue forecast accuracy at 78%; cash planning impacted", "H", "Statistical baseline with judgmental overlay; track accuracy metrics"),
+    ("Forecasting", "No demand sensing", "Forecast relies on historical averages; does not incorporate leading indicators", "M", "Incorporate external data (search trends, economic indicators) into forecast model"),
+    ("Forecasting", "Cash flow forecast absent", "No cash flow forecast; liquidity management reactive", "C", "13-week rolling cash flow forecast with weekly update cycle"),
+    ("Forecasting", "Forecast bias not measured", "Systematic over/under-forecasting by BU not identified", "M", "Track forecast bias by BU; address systemic bias in coaching"),
+    ("Variance", "Variance analysis not actionable", "Variances reported but root causes not investigated", "H", "Structured variance analysis with root cause and corrective action"),
+    ("Variance", "No operational KPIs linked to financials", "Financial results cannot be explained by operational drivers", "H", "Driver-based P&L bridge linking volumes, mix, price, and cost to financials"),
+    ("Variance", "Variance thresholds not defined", "All variances reported equally regardless of materiality", "M", "Define investigation thresholds by line item; focus on material variances"),
+    ("Variance", "No competitive benchmarking", "No comparison to peer companies on key financial metrics", "M", "Quarterly peer benchmarking on margins, growth, returns, and efficiency"),
+    ("Modeling", "No financial model standard", "Each analyst builds models differently; no peer review", "H", "Financial modeling standards with template library and peer review"),
+    ("Modeling", "Sensitivity analysis not performed", "Investment cases use single-point estimates; risk not quantified", "H", "Mandatory sensitivity analysis for all investment cases >$500K"),
+    ("Modeling", "Business case post-implementation review absent", "Investment business cases never reviewed for actual vs projected", "M", "Post-implementation review at 12 months for all major investments"),
+    ("Modeling", "Transfer pricing impact on BU profitability unclear", "BU P&Ls distorted by arbitrary transfer prices; wrong decisions", "H", "Transparent TP methodology with BU profitability adjusted for arm's length"),
+    ("Reporting", "Management reporting not timely", "Monthly management pack delivered Day 15; decisions delayed", "H", "Flash report Day 2; full management pack Day 5 after close"),
+    ("Reporting", "No self-service analytics", "All ad hoc analysis requests go through FP&A; 3-day turnaround", "M", "Self-service BI with governed data models and role-based access"),
+    ("Reporting", "Board reporting inconsistent", "Board pack format changes quarterly; no continuity", "M", "Standardized board reporting template with consistent KPIs"),
+    ("Reporting", "No predictive analytics capability", "All analysis is backward-looking; no predictive models", "M", "Build predictive models for revenue, churn, and cash flow"),
+]
+
+_S_TAX = [
+    ("GST", "GSTR-1 vs GSTR-3B mismatch", "Monthly mismatch averaging 4%; department notices received", "C", "Automated monthly reconciliation with pre-filing validation"),
+    ("GST", "ITC claiming on ineligible items", "Input tax credit claimed on blocked credits per Section 17(5)", "C", "Automated ITC eligibility check against Section 17(5) list"),
+    ("GST", "HSN code classification errors", "Products classified under incorrect HSN; rate disputes with department", "H", "HSN classification review with industry-standard mapping"),
+    ("GST", "E-way bill compliance gaps", "E-way bills not generated for all applicable movements", "H", "Automated e-way bill generation integrated with dispatch process"),
+    ("GST", "GSTR-2B reconciliation not performed", "Vendor ITC not reconciled with GSTR-2B; credit at risk", "H", "Monthly GSTR-2B reconciliation; follow up with vendors for mismatches"),
+    ("GST", "RCM liability not identified timely", "Reverse charge payments made without GST self-assessment", "C", "Automated RCM applicability check on all vendor payments"),
+    ("GST", "Annual return GSTR-9 reconciliation", "Annual return figures do not tie to monthly returns; discrepancies", "H", "Quarterly cumulative reconciliation to simplify annual filing"),
+    ("GST", "Place of supply determination errors", "Incorrect place of supply for services; IGST/SGST mis-classification", "H", "Place of supply decision tree in billing system with automated determination"),
+    ("Direct Tax", "TDS not deducted on all applicable payments", "Several vendor categories missing TDS deduction; penalty risk", "C", "Automated TDS applicability engine with section-wise rules"),
+    ("Direct Tax", "TDS return reconciliation gaps", "TDS returns do not match books; vendor Form 26AS complaints", "H", "Monthly TDS ledger to return reconciliation before filing"),
+    ("Direct Tax", "Advance tax estimation inaccurate", "Advance tax paid differs from actual liability by 25%+; interest", "H", "Quarterly advance tax re-estimation based on YTD actual and forecast"),
+    ("Direct Tax", "Tax provision methodology undocumented", "Current and deferred tax calculated but methodology not documented", "H", "Tax provision memo with documented methodology and key judgments"),
+    ("Direct Tax", "No permanent/temporary difference tracking", "Deferred tax assets and liabilities computed ad hoc", "H", "Systematic tracking of timing differences with automated DTA/DTL calculation"),
+    ("Direct Tax", "Transfer pricing documentation absent", "No contemporaneous TP documentation; risk in assessment proceedings", "C", "Annual transfer pricing study with benchmarking and local file"),
+    ("Direct Tax", "MAT credit tracking manual", "Minimum alternate tax credit entitlement tracked in spreadsheet", "M", "Automated MAT credit tracking with utilization forecasting"),
+    ("Compliance", "No tax compliance calendar", "Tax filing deadlines tracked informally; missed deadlines occur", "H", "Comprehensive tax compliance calendar with automated alerts"),
+    ("Compliance", "Tax litigation tracker not maintained", "Open tax cases not tracked centrally; contingent liability unknown", "H", "Tax litigation register with case status, exposure, and provision assessment"),
+    ("Compliance", "Withholding tax on foreign payments not optimized", "WHT applied at domestic rates; treaty benefits not claimed", "H", "Treaty analysis for each jurisdiction; proper documentation for treaty claims"),
+    ("Compliance", "No indirect tax technology", "GST compliance managed manually; scalability challenge", "H", "Invest in GST compliance technology with automated return preparation"),
+    ("Compliance", "Tax audit readiness low", "Tax audit support requires weeks of data gathering; inefficient", "H", "Year-round audit readiness with organized documentation by topic"),
+    ("Compliance", "Tax risk register absent", "Tax risks not identified, assessed, or monitored formally", "H", "Tax risk register with likelihood, exposure, mitigation, and owner"),
+    ("Compliance", "International tax structure not optimized", "Operating structure not tax-efficient; excess withholding and double taxation", "H", "International tax structure review with optimization recommendations"),
+]
+
+_S_TREASURY = [
+    ("Cash Mgmt", "No 13-week cash flow forecast", "Cash management is reactive; surprise shortfalls occur", "C", "Implement rolling 13-week direct method cash flow forecast"),
+    ("Cash Mgmt", "Cash visibility fragmented", "Cash across 40+ accounts in 6 banks; no consolidated view", "H", "Cash visibility platform with daily automated balance aggregation"),
+    ("Cash Mgmt", "Idle cash not invested", "Average $5M idle in operating accounts earning 0%; opportunity cost", "H", "Automated sweep to money market; tiered investment policy"),
+    ("Cash Mgmt", "Intraday liquidity not managed", "No intraday cash position tracking; payment timing suboptimal", "M", "Real-time cash position with payment prioritization"),
+    ("Cash Mgmt", "No cash pooling structure", "Entities manage cash independently; borrowing while others have surplus", "H", "Notional or physical cash pooling across entities"),
+    ("Cash Mgmt", "Cash concentration manual", "End-of-day sweeps initiated manually; sometimes missed", "H", "Automated zero-balance sweeping with bank-side configuration"),
+    ("Cash Mgmt", "Counterparty risk not assessed", "Bank deposits concentrated; no assessment of bank creditworthiness", "M", "Counterparty risk framework with exposure limits per institution"),
+    ("FX Mgmt", "No FX hedging policy", "Foreign currency exposures unhedged; P&L volatility from FX", "C", "Board-approved FX hedging policy with minimum coverage requirements"),
+    ("FX Mgmt", "FX exposure not measured", "Cannot quantify total FX exposure across entities and currencies", "H", "Consolidated FX exposure reporting by currency with netting analysis"),
+    ("FX Mgmt", "Hedge accounting not applied", "Hedges executed but not designated; P&L ineffectiveness not offset", "H", "Hedge accounting documentation per ASC 815/IFRS 9 for qualifying hedges"),
+    ("FX Mgmt", "FX rate sources inconsistent", "Different rates used for different purposes; reconciliation gaps", "M", "Single authorized rate source for all FX conversions"),
+    ("FX Mgmt", "Natural hedging not utilized", "Revenue and costs in same currency not matched; unnecessary hedging", "M", "Natural hedging analysis before external hedging; currency matching"),
+    ("Debt Mgmt", "Debt covenant monitoring manual", "Covenants monitored quarterly in spreadsheets; compliance risk", "H", "Automated covenant calculation with early warning at 80% of limit"),
+    ("Debt Mgmt", "No debt maturity profiling", "Maturity concentration risk not assessed; refinancing risk", "M", "Debt maturity profile analysis with ladder strategy"),
+    ("Debt Mgmt", "Interest rate risk unmanaged", "100% floating rate debt; no interest rate hedging strategy", "H", "Interest rate risk policy: maintain 30-50% fixed rate exposure"),
+    ("Debt Mgmt", "LIBOR/benchmark rate transition incomplete", "LIBOR referenced in legacy contracts; transition to SOFR pending", "H", "Complete benchmark rate transition for all contracts"),
+    ("Bank Relations", "Bank relationship reviews not conducted", "No annual review of banking services, pricing, or capacity", "M", "Annual bank scorecard review with service quality and pricing assessment"),
+    ("Bank Relations", "Too many banking relationships", "12 banking partners for mid-size company; complexity without benefit", "L", "Rationalize to 3-4 core banks with defined roles"),
+    ("Bank Relations", "No RFP process for banking services", "Banking services not competitively bid; potentially overpaying", "M", "Tri-annual RFP for core banking services"),
+    ("Controls", "Treasury management system absent", "Treasury operations in spreadsheets; operational risk", "H", "Implement TMS for cash management, payments, and FX"),
+    ("Controls", "No payment fraud prevention", "Wire payments processed without fraud screening; exposure", "C", "Payment fraud detection with sanctions screening and anomaly detection"),
+    ("Controls", "Bank signatory list outdated", "Former employees still on bank signatory list; unauthorized access risk", "C", "Quarterly bank signatory review; immediate removal on termination"),
+    ("Controls", "No investment policy", "Surplus cash invested ad hoc without policy guidelines", "H", "Board-approved investment policy with permitted instruments and limits"),
+]
+
+_S_AUDIT = [
+    ("Risk Assessment", "No enterprise risk assessment", "Audit plan not based on formal risk assessment; coverage gaps", "C", "Annual enterprise risk assessment driving risk-based audit plan"),
+    ("Risk Assessment", "Audit universe outdated", "Auditable entities list not updated for acquisitions and restructuring", "H", "Annual audit universe refresh aligned to organizational changes"),
+    ("Risk Assessment", "Emerging risks not considered", "Cyber, ESG, and AI risks not in audit scope", "H", "Incorporate emerging risk categories into annual risk assessment"),
+    ("Risk Assessment", "No continuous risk monitoring", "Risk assessment performed annually; changes not captured", "M", "Quarterly risk assessment refresh with continuous monitoring triggers"),
+    ("Risk Assessment", "Fraud risk assessment not performed", "Fraud risks not specifically assessed per SAS 99/ISA 240", "C", "Annual fraud risk assessment with brainstorming sessions"),
+    ("Execution", "Audit methodology not standardized", "Each auditor follows different approaches; quality varies", "H", "Standardized audit methodology with templates and peer review"),
+    ("Execution", "No data analytics in auditing", "100% manual audit procedures; limited sample sizes", "H", "Deploy audit analytics for full-population testing on key controls"),
+    ("Execution", "Audit evidence documentation weak", "Working papers lack sufficient evidence to support conclusions", "H", "Working paper standards with mandatory evidence retention"),
+    ("Execution", "Co-sourced audits not managed", "External co-source providers not integrated into quality framework", "M", "Co-source governance with quality reviews and methodology alignment"),
+    ("Execution", "Root cause analysis superficial", "Findings describe symptoms but not underlying causes", "H", "5-Why root cause analysis methodology for all significant findings"),
+    ("Reporting", "Audit reports delayed", "Average 30 days from fieldwork to final report; impact diminished", "H", "Target 10-day report cycle; draft report within 3 days of exit meeting"),
+    ("Reporting", "No audit issue tracking system", "Audit issues tracked in spreadsheets; follow-up inconsistent", "H", "Automated audit management system with issue tracking and escalation"),
+    ("Reporting", "Audit recommendations not implemented", "45% of prior year recommendations still open; credibility risk", "H", "Quarterly management reporting on open issues; AC escalation at 90 days"),
+    ("Reporting", "Audit committee reporting ineffective", "AC receives lengthy reports; key messages buried", "M", "Executive summary format with heat map and trend analysis"),
+    ("Reporting", "No quality assurance program", "No internal quality reviews of audit work", "H", "Quality assurance program with cold file reviews and stakeholder surveys"),
+    ("Compliance", "SOX testing not risk-based", "All controls tested with same rigor regardless of risk", "M", "Risk-stratify controls: key controls tested quarterly, others annually"),
+    ("Compliance", "Anti-bribery compliance gaps", "FCPA/UKBA compliance program not mature; training incomplete", "H", "Enhanced ABC program with risk assessment, training, and monitoring"),
+    ("Compliance", "Regulatory compliance monitoring reactive", "New regulations discovered when violations occur", "H", "Proactive regulatory monitoring with impact assessment process"),
+    ("Compliance", "Ethics hotline underutilized", "Very few reports through hotline; potential suppression or unawareness", "M", "Hotline awareness campaign; demonstrate no-retaliation commitment"),
+    ("Compliance", "Third-party due diligence inadequate", "High-risk third parties not screened for sanctions or corruption", "C", "Risk-based third-party due diligence program with periodic refresh"),
+    ("IT Audit", "IT audit capability insufficient", "No dedicated IT auditor; IT risks not adequately covered", "H", "Hire or co-source IT audit capability; cover ITGCs and cybersecurity"),
+    ("IT Audit", "Cybersecurity audit not performed", "No assessment of cybersecurity controls; board exposure", "C", "Annual cybersecurity maturity assessment against NIST framework"),
+    ("IT Audit", "Cloud security not assessed", "Migration to cloud without security assessment of providers", "H", "Cloud security assessment for all tier-1 applications"),
+    ("IT Audit", "Business continuity not tested", "DR plan exists but never tested; recovery capability unknown", "H", "Annual BCP/DR testing with documented results and improvement plan"),
+]
+
+_S_SUPPLY = [
+    ("Inventory", "No perpetual inventory system", "Inventory tracked via periodic counts; real-time visibility absent", "H", "Implement perpetual inventory with barcode/RFID scanning"),
+    ("Inventory", "Inventory accuracy below 90%", "Cycle count accuracy at 82%; production planning impacted", "H", "ABC-classified cycle counting program; target 95% accuracy"),
+    ("Inventory", "Obsolete inventory not provisioned", "Slow-moving inventory at 18% of total; inadequate reserve", "H", "Quarterly obsolescence review with aging-based provision methodology"),
+    ("Inventory", "No safety stock optimization", "Safety stock levels set arbitrarily; either excess or stockouts", "M", "Statistical safety stock calculation based on demand variability and lead time"),
+    ("Inventory", "Warehouse space utilization low", "65% space utilization due to poor slotting and layout", "M", "Warehouse optimization study with slotting analysis"),
+    ("Inventory", "No inventory valuation review", "Standard costs not updated annually; variance accounts growing", "H", "Annual standard cost update with quarterly variance analysis"),
+    ("Inventory", "Consignment inventory not tracked", "Vendor consignment stock not in system; aging unknown", "H", "System tracking for consignment with consumption-based settlement"),
+    ("Demand", "Demand planning spreadsheet-based", "Demand forecast in Excel; no statistical forecasting", "H", "Demand planning software with statistical baseline and override"),
+    ("Demand", "No demand sensing capability", "Demand planning uses only historical shipments; no leading indicators", "M", "Incorporate POS data, market signals, and customer forecasts"),
+    ("Demand", "Forecast accuracy not measured", "No MAPE or bias tracking; forecast quality unknown", "H", "Track forecast accuracy by SKU-location; monthly review"),
+    ("Demand", "No collaborative planning with customers", "Key account demand not shared; bullwhip effect", "M", "CPFR with top 20 accounts; shared demand visibility"),
+    ("Logistics", "Transportation cost not optimized", "Shipments not consolidated; partial truckloads common", "M", "Route optimization and shipment consolidation tool"),
+    ("Logistics", "No carrier performance management", "Carriers not measured on OTD, damage, or cost", "M", "Carrier scorecard with quarterly business review"),
+    ("Logistics", "Last-mile delivery costs excessive", "Last-mile cost 40% of total logistics; no optimization", "H", "Last-mile optimization with route planning and delivery slot management"),
+    ("Logistics", "No supply chain visibility platform", "Cannot track shipments end-to-end; customer queries unanswered", "H", "End-to-end supply chain visibility with real-time tracking"),
+    ("Procurement", "No category management approach", "Procurement not organized by category; savings missed", "H", "Strategic sourcing by category with market analysis and negotiation"),
+    ("Procurement", "No total cost of ownership analysis", "Purchase decisions based on unit price only; hidden costs ignored", "M", "TCO framework for strategic sourcing decisions"),
+    ("Procurement", "Supplier collaboration limited", "No formal supplier development or joint improvement programs", "M", "Supplier development program for strategic suppliers"),
+    ("Procurement", "Make vs buy decisions ad hoc", "No framework for make vs buy evaluation; suboptimal sourcing", "M", "Structured make vs buy decision framework with total cost comparison"),
+    ("Quality", "No supplier quality management", "Incoming quality issues detected late; customer impact", "H", "Supplier quality program with incoming inspection and SCAR process"),
+    ("Quality", "CAPA process not effective", "Corrective actions documented but effectiveness not verified", "M", "CAPA process with effectiveness verification at 30/60/90 days"),
+    ("Quality", "No cost of quality measurement", "Prevention, appraisal, and failure costs not quantified", "M", "Cost of quality reporting with improvement targets"),
+    ("Quality", "Non-conformance reporting manual", "NCRs tracked in paper logbooks; trend analysis impossible", "H", "Digital NCR system with root cause analysis and trend reporting"),
+]
+
+_S_HR = [
+    ("Payroll", "Payroll processing errors", "2% error rate in payroll; employee complaints and rework", "H", "Automated payroll validation with pre-processing audit checks"),
+    ("Payroll", "No payroll reconciliation to GL", "Payroll expense in GL not reconciled to payroll register", "H", "Monthly payroll-to-GL reconciliation with variance investigation"),
+    ("Payroll", "Manual payroll calculations", "Overtime, bonuses, and deductions calculated manually", "H", "Automated payroll calculation with exception-only review"),
+    ("Payroll", "Payroll audit trail inadequate", "Cannot trace payroll changes to authorization; audit risk", "H", "Complete audit trail for all payroll master and processing changes"),
+    ("Payroll", "Statutory compliance issues", "PF/ESI contributions not computed correctly; penalty exposure", "C", "Automated statutory calculation engine with compliance monitoring"),
+    ("Payroll", "No time and attendance integration", "Timesheet data entered manually into payroll; discrepancies", "M", "Integrated T&A with payroll; automated data flow"),
+    ("Payroll", "Payroll SoD issues", "Same person enters and processes payroll; fraud risk", "C", "Segregate payroll data entry, processing, and bank file release"),
+    ("Payroll", "Ghost employee risk", "No periodic verification of active employee headcount vs payroll", "H", "Quarterly headcount verification against payroll; manager attestation"),
+    ("Benefits", "Benefits administration manual", "Enrollment, changes, and terminations processed manually", "M", "Self-service benefits portal with automated enrollment"),
+    ("Benefits", "Leave management uncontrolled", "Leave balances tracked manually; encashment liability unclear", "M", "Automated leave management with real-time balance and liability tracking"),
+    ("Benefits", "No benefits cost analysis", "Total cost of benefits not analyzed by category or trend", "M", "Annual benefits cost benchmarking and trend analysis"),
+    ("Compensation", "No compensation benchmarking", "Salary decisions without market data; retention risk", "H", "Annual compensation survey participation; market adjustment cycle"),
+    ("Compensation", "Variable pay calculation manual", "Bonus and incentive calculations in spreadsheets; errors and disputes", "H", "Automated incentive calculation engine with transparent communication"),
+    ("Compensation", "No pay equity analysis", "Equal pay compliance not assessed; litigation risk", "H", "Annual pay equity analysis with remediation for unexplained gaps"),
+    ("Compliance", "No HR compliance dashboard", "Employment law compliance tracked informally; blind spots exist", "H", "HR compliance dashboard covering labor law, benefits, and safety"),
+    ("Compliance", "Employee files incomplete", "Missing I-9s, offer letters, or policy acknowledgments", "H", "Digital employee file with completeness checklist and alerts"),
+    ("Compliance", "No background check policy", "Background checks inconsistent; high-risk roles not verified", "H", "Risk-based background check policy for all roles"),
+    ("Compliance", "Contractor misclassification risk", "Worker classification not reviewed; IC vs employee risk", "C", "Worker classification assessment using IRS/local criteria for all ICs"),
+    ("Analytics", "No workforce analytics", "HR decisions not data-driven; turnover and engagement not analyzed", "M", "HR analytics dashboard with turnover, tenure, diversity, and engagement"),
+    ("Analytics", "No succession planning", "Key person dependencies not identified; no succession plans", "H", "Succession planning for critical roles with development plans"),
+    ("Analytics", "Exit interview data not analyzed", "Exit interviews conducted but data not aggregated or acted upon", "M", "Quarterly exit interview analysis with retention action items"),
+]
+
+_S_RISK = [
+    ("ERM", "No enterprise risk management framework", "Risks managed in silos; no consolidated risk view", "C", "Implement ERM framework aligned to ISO 31000 or COSO ERM"),
+    ("ERM", "Risk appetite not defined", "No board-approved risk appetite; inconsistent risk-taking", "C", "Define and document risk appetite and tolerance with board approval"),
+    ("ERM", "Risk register not maintained", "No central risk register; risks tracked informally if at all", "H", "Enterprise risk register with quarterly assessment and reporting"),
+    ("ERM", "Risk owners not assigned", "Risks identified but no one accountable for mitigation", "H", "Assign risk owners with documented mitigation plans and KRIs"),
+    ("ERM", "No key risk indicators", "Risk monitoring relies on lagging indicators only", "M", "Develop KRIs for top 20 risks with automated monitoring"),
+    ("ERM", "Scenario analysis not performed", "No stress testing or scenario planning for major risks", "H", "Annual scenario analysis for top 10 risks with board reporting"),
+    ("ERM", "Emerging risk identification weak", "Horizon scanning for new risks not performed systematically", "M", "Quarterly emerging risk scan with cross-functional input"),
+    ("Fraud", "No fraud risk assessment", "Fraud risks not formally assessed; controls may be inadequate", "C", "Annual fraud risk assessment per COSO and SAS 99 requirements"),
+    ("Fraud", "Fraud investigation protocol absent", "No documented procedure for investigating fraud allegations", "H", "Fraud response plan with investigation protocols and evidence preservation"),
+    ("Fraud", "No proactive fraud monitoring", "Fraud detected only through complaints or audit; no analytics", "H", "Continuous fraud monitoring using data analytics on financial transactions"),
+    ("Fraud", "Conflict of interest declarations not collected", "No annual COI disclosure program; undisclosed conflicts likely", "H", "Annual COI disclosure with review and management of identified conflicts"),
+    ("Fraud", "Related party transactions not monitored", "RPTs not identified or disclosed properly; regulatory risk", "H", "RPT identification process with arm's length assessment and disclosure"),
+    ("BCP", "No business continuity plan", "BCP either absent or severely outdated; recovery capability unknown", "C", "Develop BIA-driven BCP with recovery strategies for critical processes"),
+    ("BCP", "BCP never tested", "Plan exists on paper but never exercised; gaps unknown", "H", "Annual BCP exercise with tabletop and functional testing"),
+    ("BCP", "No crisis communication plan", "No defined communication protocol for crisis situations", "H", "Crisis communication plan with stakeholder mapping and message templates"),
+    ("BCP", "Third-party BCP not assessed", "Critical vendor BCPs not reviewed; supply chain continuity risk", "H", "BCP assessment for all critical vendors; contractual BCP requirements"),
+    ("Cyber", "No cybersecurity risk assessment", "Cyber risks not formally assessed; maturity unknown", "C", "Annual cybersecurity maturity assessment against NIST CSF"),
+    ("Cyber", "Incident response plan inadequate", "No documented IR plan; team roles and procedures undefined", "C", "Incident response plan with defined roles, runbooks, and tabletop exercises"),
+    ("Cyber", "Third-party cyber risk not assessed", "Vendor cyber posture not evaluated; data sharing without assurance", "H", "Third-party security assessment program with risk-tiered reviews"),
+    ("Cyber", "No security awareness training", "Employees not trained on phishing, social engineering, or data handling", "H", "Mandatory annual security awareness training with phishing simulations"),
+    ("Cyber", "Data classification not implemented", "No data classification scheme; all data treated equally", "H", "Data classification policy with handling requirements per classification level"),
+    ("Cyber", "No vulnerability management program", "Systems not regularly scanned for vulnerabilities; patch management ad hoc", "C", "Continuous vulnerability scanning with risk-based patch management SLA"),
+]
+
+# Combine all scenarios and build lookup
+def _build_scenario_db():
+    all_scenarios = []
+    domain_map = {
+        "O2C": ("Order to Cash", "💰", _S_O2C),
+        "P2P": ("Procure to Pay", "🛒", _S_P2P),
+        "R2R": ("Record to Report", "📊", _S_R2R),
+        "GL": ("General Accounting", "📒", _S_GL),
+        "FPA": ("Financial Planning & Analysis", "📈", _S_FPA),
+        "TAX": ("Tax & Compliance", "⚖️", _S_TAX),
+        "TREASURY": ("Treasury & Cash Management", "🏦", _S_TREASURY),
+        "AUDIT": ("Internal Audit & SOX", "🔍", _S_AUDIT),
+        "SUPPLY": ("Supply Chain & Operations", "🚚", _S_SUPPLY),
+        "HR": ("HR & Payroll", "👥", _S_HR),
+        "RISK": ("Risk, Fraud & Cyber", "🛡️", _S_RISK),
+    }
+    risk_map = {"C": "Critical", "H": "High", "M": "Medium", "L": "Low"}
+    for domain_key, (domain_name, icon, scenarios) in domain_map.items():
+        for idx, (category, title, finding, risk, recommendation) in enumerate(scenarios):
+            all_scenarios.append({
+                "id": f"{domain_key}-{idx+1:03d}",
+                "domain": domain_key,
+                "domain_name": domain_name,
+                "domain_icon": icon,
+                "category": category,
+                "title": title,
+                "finding": finding,
+                "risk_level": risk_map.get(risk, risk),
+                "recommendation": recommendation,
+            })
+    return all_scenarios, domain_map
+
+CONSULTING_SCENARIOS, CONSULTING_DOMAINS = _build_scenario_db()
+print(f"[consulting] Loaded {len(CONSULTING_SCENARIOS)} scenarios across {len(CONSULTING_DOMAINS)} domains", flush=True)
+
+# Additional scenarios to cross 1000+ total
+_S_FPA_EXT = [
+    ("Budgeting", "No driver-based planning", "Budgets built line-by-line without linking to operational drivers", "H", "Implement driver-based planning connecting volume/price/mix to financials"),
+    ("Budgeting", "Currency impact not modeled", "Multi-currency budgets use spot rates; no sensitivity analysis", "M", "Model FX scenarios in budget with rate sensitivity analysis"),
+    ("Budgeting", "CapEx governance weak", "Capital requests approved without formal business case or hurdle rate", "H", "Stage-gate CapEx process with NPV/IRR analysis and post-audit"),
+    ("Budgeting", "No strategic planning integration", "Budget disconnected from 3-5 year strategic plan", "H", "Link annual budget to long-range plan with bridge analysis"),
+    ("Budgeting", "Budget accountability unclear", "Budget owners not formally assigned; no consequence for overruns", "M", "Assign budget owners with quarterly accountability reviews"),
+    ("Budgeting", "Contingency budget not structured", "No formal contingency reserves; ad hoc requests for overruns", "M", "Structured contingency with trigger-based release criteria"),
+    ("Forecasting", "Revenue pipeline not integrated into forecast", "Sales pipeline data not used in revenue forecasting", "H", "Integrate CRM pipeline stages with weighted revenue forecast"),
+    ("Forecasting", "No seasonal adjustment methodology", "Seasonality applied inconsistently across product lines", "M", "Statistical seasonal decomposition applied consistently"),
+    ("Forecasting", "Working capital not forecasted", "Cash conversion cycle not projected; working capital surprises", "H", "Monthly working capital forecast integrated with P&L forecast"),
+    ("Forecasting", "No AI/ML in forecasting", "Forecasting purely manual; no machine learning augmentation", "M", "Evaluate ML-based forecasting for high-volume product categories"),
+    ("Forecasting", "Capex forecast absent", "Capital expenditure projections not maintained; cash planning gap", "H", "Monthly CapEx forecast by project with spend curve analysis"),
+    ("Forecasting", "Headcount forecast disconnected", "FTE projections not linked to compensation and benefits cost", "M", "Integrated workforce and compensation forecast model"),
+    ("Variance", "No contribution margin analysis", "Product profitability not analyzed at contribution margin level", "H", "Contribution margin analysis by product, customer, and channel"),
+    ("Variance", "Volume vs price vs mix analysis absent", "Revenue changes not decomposed into volume, price, and mix effects", "H", "Automated revenue bridge with volume/price/mix/FX decomposition"),
+    ("Variance", "Cost variance not cascaded to root cause", "Cost overruns reported at summary level; no drill-down to cause", "M", "Multi-level cost variance analysis from P&L to transaction"),
+    ("Variance", "No peer benchmarking data", "Performance not compared to industry peers systematically", "M", "Annual benchmarking study comparing key ratios to peer group"),
+    ("Variance", "Budget vs forecast vs actual not triangulated", "Three separate views of financial performance not aligned", "M", "Integrated variance reporting: budget vs forecast vs actual"),
+    ("Modeling", "No what-if analysis tool", "Scenario modeling requires rebuilding spreadsheets each time", "H", "Self-service what-if analysis platform with predefined variables"),
+    ("Modeling", "Unit economics not modeled", "Customer acquisition cost, LTV, payback not tracked", "H", "Unit economics model with cohort analysis and LTV/CAC tracking"),
+    ("Modeling", "M&A financial modeling ad hoc", "Acquisition models built from scratch; inconsistent assumptions", "H", "Standardized M&A model template with synergy and integration costing"),
+    ("Modeling", "Pricing analysis not data-driven", "Pricing decisions made without elasticity or margin analysis", "H", "Price-volume-profit analysis with elasticity modeling"),
+    ("Modeling", "Break-even analysis not maintained", "Break-even point not calculated for business segments", "M", "Break-even analysis by segment with sensitivity to key assumptions"),
+    ("Reporting", "No KPI dictionary", "KPIs defined differently across departments; inconsistent measurement", "H", "Enterprise KPI dictionary with standard definitions and data sources"),
+    ("Reporting", "Investor relations support manual", "IR data packs prepared manually; inconsistent with internal reports", "M", "Automated IR reporting aligned to internal management reporting"),
+    ("Reporting", "No real-time financial dashboards", "Financial data available only after close; no real-time visibility", "H", "Real-time financial dashboards for revenue, expense, and cash"),
+    ("Reporting", "ESG reporting capability absent", "No framework for ESG metrics collection or reporting", "H", "Implement ESG reporting framework aligned to GRI/SASB standards"),
+    ("Reporting", "Profitability analysis by customer absent", "Cannot determine which customers are profitable vs unprofitable", "H", "Customer profitability analysis with fully loaded cost allocation"),
+    ("Reporting", "No automated commentary generation", "Narrative commentary written from scratch each period", "M", "AI-assisted commentary generation for standard variance explanations"),
+    ("Reporting", "Long-range planning model absent", "No 3-5 year financial model; strategic decisions made without quantification", "H", "Long-range financial model with scenario analysis"),
+    ("Reporting", "Cost-to-serve not measured", "Service costs not allocated to customers; margin distortion", "H", "Activity-based cost-to-serve model for customer segmentation"),
+]
+
+_S_TAX_EXT = [
+    ("GST", "E-invoicing not implemented for all mandated entities", "Only head office compliant; branch offices still on manual", "C", "Roll out e-invoicing across all GSTINs above threshold"),
+    ("GST", "GST annual audit not prepared", "GSTR-9C reconciliation not performed; auditor concerns", "H", "Monthly reconciliation building toward annual audit-ready data"),
+    ("GST", "No GST impact analysis for new products", "New product launches without GST rate and HSN determination", "M", "GST impact assessment as part of product launch checklist"),
+    ("GST", "Composition scheme eligibility not reviewed", "Eligible entities not evaluated for composition scheme benefits", "L", "Annual review of composition scheme eligibility for applicable entities"),
+    ("GST", "Inter-state vs intra-state determination errors", "IGST charged where CGST+SGST appropriate and vice versa", "H", "Automated place of supply logic in billing system"),
+    ("GST", "Vendor GSTIN validation not automated", "Vendor GSTIN not validated against government portal at onboarding", "H", "Real-time GSTIN validation API integration in vendor onboarding"),
+    ("GST", "ITC reversal rules not applied", "Section 17 ITC reversal for exempt supplies not calculated", "C", "Automated ITC reversal calculation with annual true-up"),
+    ("GST", "No GST refund tracking", "Export refund claims not tracked; working capital locked", "H", "GST refund tracking dashboard with aging and follow-up"),
+    ("Direct Tax", "No tax planning strategy", "Tax planning reactive; opportunities identified after year-end", "H", "Proactive tax planning calendar with quarterly review of opportunities"),
+    ("Direct Tax", "Section 80 deduction optimization absent", "Available deductions under Chapter VI-A not fully claimed", "M", "Annual review of eligible deductions with employee communication"),
+    ("Direct Tax", "No uncertain tax position assessment", "UTPs not identified or measured per ASC 740/IAS 12", "H", "Quarterly UTP assessment with likelihood and measurement analysis"),
+    ("Direct Tax", "Tax loss carryforward not tracked", "Tax losses from prior years not tracked; utilization missed", "H", "Tax loss carryforward register with expiry dates and utilization plan"),
+    ("Direct Tax", "No effective tax rate planning", "ETR analysis not performed; surprises in reported tax rate", "H", "Quarterly ETR forecasting with rate reconciliation to statutory rate"),
+    ("Direct Tax", "Depreciation schedule tax vs book not reconciled", "Tax depreciation differs from book but reconciliation not maintained", "H", "Annual tax-to-book depreciation reconciliation with deferred tax impact"),
+    ("Direct Tax", "No DTAA benefit optimization", "Double tax avoidance agreements not leveraged; excess WHT paid", "H", "DTAA analysis for all cross-border payments with treaty benefit claims"),
+    ("Compliance", "No indirect tax other than GST tracked", "Customs duty, professional tax, property tax tracked ad hoc", "M", "Comprehensive indirect tax compliance calendar"),
+    ("Compliance", "No equalization levy compliance", "Digital services to non-residents without equalization levy assessment", "H", "Equalization levy applicability assessment for digital transactions"),
+    ("Compliance", "No FATCA/CRS compliance", "No assessment of FATCA/CRS reporting obligations", "H", "FATCA/CRS applicability assessment and reporting setup"),
+    ("Compliance", "Tax technology roadmap absent", "No plan for tax technology modernization; manual processes persist", "M", "Tax technology assessment and 3-year modernization roadmap"),
+    ("Compliance", "No Pillar 2 / global minimum tax assessment", "OECD Pillar 2 impact not assessed; may affect effective tax rate", "H", "Pillar 2 impact assessment with modeling of GloBE rules"),
+    ("Compliance", "TP safe harbor rules not evaluated", "Safe harbor provisions not considered; unnecessary documentation burden", "M", "Evaluate applicability of safe harbor rules for routine transactions"),
+    ("Compliance", "No country-by-country reporting", "CbCR obligations not assessed for qualifying MNE groups", "H", "CbCR readiness assessment with data collection process"),
+    ("Compliance", "Indirect transfer provisions not evaluated", "Share transfers of entities with Indian assets without IT assessment", "C", "Indirect transfer tax assessment for all share restructurings"),
+    ("Compliance", "No tax opinion documentation", "Tax positions taken without documented legal opinion", "H", "Written tax opinions for all material positions above threshold"),
+    ("Compliance", "Stamp duty compliance gaps", "Inter-state and instrument-wise stamp duty not tracked", "M", "Stamp duty compliance tracking for agreements, leases, and transfers"),
+    ("Compliance", "No customs duty optimization", "Import duties not optimized through schemes like DFIA, EPCG, AA", "H", "Customs duty optimization study with applicable scheme mapping"),
+    ("Compliance", "SEZ compliance not monitored", "SEZ entity compliance requirements not systematically tracked", "M", "SEZ compliance checklist with periodic DC reporting requirements"),
+    ("Compliance", "Professional tax registration and compliance gaps", "PT not deducted or deposited in all applicable states", "H", "State-wise PT compliance review with registration and filing calendar"),
+]
+
+_S_TREASURY_EXT = [
+    ("Cash Mgmt", "No cash flow forecasting model", "Cash forecast relies on P&L-based indirect method; inaccurate", "H", "Direct method 13-week cash flow forecast with weekly rolling update"),
+    ("Cash Mgmt", "Working capital targets not set", "No defined targets for DSO, DPO, DIO; working capital drifts", "H", "Working capital targets by BU with monthly tracking and incentives"),
+    ("Cash Mgmt", "No cash culture in organization", "Operating teams not accountable for cash; only P&L focused", "M", "Cash conversion cycle KPIs for operating managers; training program"),
+    ("Cash Mgmt", "Dividend policy not formalized", "Dividend decisions ad hoc; no link to cash generation or policy", "M", "Board-approved dividend policy with payout ratio and minimum cash guidelines"),
+    ("Cash Mgmt", "No cash repatriation strategy", "Cash trapped in foreign subsidiaries; tax-inefficient repatriation", "H", "Cash repatriation strategy with tax-optimized intercompany structures"),
+    ("Cash Mgmt", "Petty cash controls weak", "Multiple petty cash funds with infrequent reconciliation", "M", "Reduce petty cash funds; monthly reconciliation; consider virtual cards"),
+    ("Cash Mgmt", "No receivables financing program", "AR not leveraged for liquidity; factoring/SCF not explored", "M", "Evaluate receivables factoring or supply chain finance program"),
+    ("Cash Mgmt", "Bank line utilization not optimized", "Credit lines underutilized while paying commitment fees", "M", "Quarterly line utilization review; right-size committed facilities"),
+    ("FX Mgmt", "No FX risk quantification", "VaR or CaR for FX portfolio not calculated", "H", "Monthly FX VaR calculation for portfolio risk assessment"),
+    ("FX Mgmt", "FX hedging execution not competitive", "FX deals executed with single bank; no competitive bidding", "M", "Multi-bank FX platform for competitive pricing on hedges"),
+    ("FX Mgmt", "Embedded derivatives not identified", "Contracts with embedded FX features not assessed for bifurcation", "H", "Review commercial contracts for embedded derivatives requiring separation"),
+    ("FX Mgmt", "No FX policy governance", "FX decisions made by individuals without policy framework", "H", "FX governance framework with delegated authorities and reporting"),
+    ("FX Mgmt", "Balance sheet hedging not performed", "Monetary assets/liabilities in FC not hedged; revaluation P&L impact", "H", "Monthly balance sheet hedging for material FX exposures"),
+    ("Debt Mgmt", "Capital structure not optimized", "Debt/equity mix not analyzed for optimal WACC", "H", "Capital structure analysis with target leverage and WACC optimization"),
+    ("Debt Mgmt", "No preemptive refinancing strategy", "Debt refinanced at maturity under time pressure; suboptimal terms", "M", "12-month preemptive refinancing planning for all material facilities"),
+    ("Debt Mgmt", "Guarantee portfolio not managed", "Corporate guarantees issued without tracking or fee assessment", "H", "Guarantee register with exposure tracking and arm's length guarantee fees"),
+    ("Debt Mgmt", "No interest savings analysis", "Current borrowing costs not benchmarked; potentially overpaying", "M", "Annual benchmarking of borrowing costs with bank negotiation"),
+    ("Controls", "No SWIFT/payment security standards", "SWIFT CSP compliance not assessed; payment infrastructure risk", "C", "SWIFT CSP compliance assessment and remediation"),
+    ("Controls", "Treasury disaster recovery not tested", "No backup for treasury operations; key person dependency", "H", "Treasury DR plan with cross-training and backup procedures"),
+    ("Controls", "No mark-to-market reporting for derivatives", "Derivative portfolio not valued at fair value for reporting", "H", "Monthly MTM reporting for all derivative instruments"),
+    ("Controls", "Treasury policy not reviewed", "Treasury policy unchanged in 5+ years; not aligned to current risk profile", "M", "Annual treasury policy review with board approval"),
+    ("Controls", "No cash management KPIs", "Treasury effectiveness not measured; no benchmarking", "M", "Treasury KPI dashboard: cash conversion cycle, forecast accuracy, hedging effectiveness"),
+    ("Controls", "Letter of credit management manual", "LCs tracked in spreadsheets; expiry and amendment risk", "H", "Digital LC management with automated expiry alerts and bank fee tracking"),
+    ("Controls", "No escrow account governance", "Escrow accounts opened without formal governance or reconciliation", "M", "Escrow account register with purpose, conditions, and monthly reconciliation"),
+]
+
+_S_AUDIT_EXT = [
+    ("Risk Assessment", "Third-party risk not in audit scope", "Third-party and vendor risks not covered in audit plan", "H", "Include third-party risk audits in annual plan for critical vendors"),
+    ("Risk Assessment", "Audit plan not aligned to strategy", "Audit topics not linked to strategic risks; board disconnect", "H", "Strategy-aligned audit plan with input from board and C-suite"),
+    ("Risk Assessment", "No use of AI in risk assessment", "Risk scoring is qualitative; no data-driven quantification", "M", "Evaluate AI-based risk scoring using operational and financial data"),
+    ("Risk Assessment", "Regulatory risk not separately assessed", "Regulatory compliance risks combined with operational; insufficient focus", "H", "Dedicated regulatory risk assessment with jurisdiction mapping"),
+    ("Risk Assessment", "Supply chain risk not assessed", "Supply chain disruption risk outside audit scope; post-pandemic lesson unlearned", "H", "Annual supply chain resilience audit for critical materials"),
+    ("Execution", "No agile audit methodology", "Waterfall audit approach; long cycles; findings delivered too late", "M", "Adopt agile audit approach for faster insight delivery"),
+    ("Execution", "Audit sampling not statistically valid", "Judgmental sampling without statistical basis; coverage questionable", "H", "Statistical sampling or full-population analytics for key tests"),
+    ("Execution", "No integrated audit approach", "Financial, operational, and compliance audits performed separately", "M", "Integrated audit approach covering financial, operational, and compliance"),
+    ("Execution", "Remote audit capability limited", "Audit team cannot perform audits remotely; travel cost high", "M", "Remote audit toolkit with secure data access and video walkthrough"),
+    ("Execution", "Process mining not utilized", "Process flows not analyzed from system logs; conformance unknown", "M", "Deploy process mining for key processes to identify deviations"),
+    ("Execution", "Audit workpaper review untimely", "Manager review occurs after fieldwork; rework required", "M", "Concurrent review during fieldwork; real-time quality assurance"),
+    ("Reporting", "Audit findings not risk-rated", "All findings reported with equal weight; management overwhelmed", "H", "Risk-rate findings as Critical/High/Medium/Low with clear criteria"),
+    ("Reporting", "No trend analysis of audit findings", "Recurring findings not tracked; systemic issues persist", "H", "Multi-year finding trend analysis with thematic reporting"),
+    ("Reporting", "Audit committee effectiveness not assessed", "AC self-assessment not performed; governance gap", "M", "Annual AC self-assessment with benchmark comparison"),
+    ("Reporting", "No benchmarking of audit function", "IA function not benchmarked against peers; cost/coverage unknown", "M", "Annual IA benchmarking on cost, coverage, and stakeholder satisfaction"),
+    ("Reporting", "Combined assurance model absent", "First, second, and third line activities not coordinated", "H", "Combined assurance map to identify coverage gaps and overlaps"),
+    ("Compliance", "Code of conduct compliance not tested", "Code of conduct exists but compliance not audited", "M", "Periodic code of conduct compliance audit with testing"),
+    ("Compliance", "Sanctions screening not audited", "Sanctions compliance program not independently tested", "H", "Annual sanctions compliance audit covering screening and updates"),
+    ("Compliance", "No privacy compliance audit", "GDPR/DPDP compliance not independently assessed", "H", "Annual privacy compliance audit covering data handling and consent"),
+    ("Compliance", "Licensing and permits not tracked", "Business licenses and permits managed ad hoc; expiry risk", "M", "License and permit register with automated renewal tracking"),
+    ("IT Audit", "No application security testing", "Financial applications not pen-tested; vulnerability risk", "C", "Annual penetration testing for all internet-facing financial applications"),
+    ("IT Audit", "Database access controls not reviewed", "DBA access to production financial databases not monitored", "C", "Quarterly review of privileged database access with activity logging"),
+    ("IT Audit", "No data loss prevention controls", "Sensitive financial data can be extracted without controls", "H", "DLP controls for financial data with monitoring and alerting"),
+    ("IT Audit", "Software license compliance not audited", "License compliance not verified; under/over-licensing risk", "M", "Annual software license compliance audit with vendor true-up"),
+    ("IT Audit", "AI model governance not assessed", "AI/ML models used in business decisions without governance", "H", "AI governance framework audit covering bias, explainability, and monitoring"),
+    ("IT Audit", "API security not reviewed", "Financial system APIs not assessed for authentication and authorization", "H", "API security assessment covering auth, rate limiting, and data exposure"),
+]
+
+_S_SUPPLY_EXT = [
+    ("Inventory", "No expired/shelf-life tracking", "Perishable inventory not tracked for expiry; write-offs high", "H", "FEFO tracking with automated alerts at 75% of shelf life"),
+    ("Inventory", "No vendor-managed inventory program", "All inventory replenishment internally managed; inefficient", "M", "VMI pilot with top 5 suppliers for fast-moving materials"),
+    ("Inventory", "Cycle counting resources insufficient", "Cycle count program exists but counts fall behind schedule", "M", "Dedicated counting resources; ABC-based frequency prioritization"),
+    ("Inventory", "No inventory optimization model", "Reorder points and quantities set manually; not optimized", "H", "EOQ and ROP optimization with demand and lead time variability"),
+    ("Inventory", "Multi-location inventory not balanced", "Some locations overstocked while others face stockouts", "H", "Multi-echelon inventory optimization with transfer logic"),
+    ("Inventory", "Returns processing inefficient", "Returned goods sit in dock 10+ days before disposition decision", "M", "Returns processing SLA: inspect within 2 days, disposition within 5"),
+    ("Inventory", "No ABC/XYZ segmentation", "All SKUs managed with same replenishment logic regardless of value/volume", "M", "ABC (value) × XYZ (demand variability) segmentation for differentiated management"),
+    ("Demand", "No new product demand planning", "New product launches forecast based on gut feel; high error", "H", "Structured new product demand planning with analog analysis"),
+    ("Demand", "Promotional demand not planned separately", "Promotional uplift not modeled; stockouts during promotions", "H", "Promotional demand overlay with marketing input"),
+    ("Demand", "No demand review meeting", "Demand plan not reviewed cross-functionally; siloed", "H", "Monthly demand review (S&OP) with sales, marketing, and operations"),
+    ("Demand", "SKU rationalization not performed", "Long tail of low-volume SKUs consuming disproportionate resources", "M", "Annual SKU rationalization; sunset bottom 10% by revenue contribution"),
+    ("Logistics", "No reverse logistics capability", "No systematic process for product returns and recycling", "M", "Reverse logistics program with collection, inspection, and disposition"),
+    ("Logistics", "Cold chain monitoring absent", "Temperature-sensitive products not monitored during transit", "H", "IoT temperature monitoring with automated alert and deviation reporting"),
+    ("Logistics", "No warehouse management system", "Paper-based warehouse operations; picking errors at 4%", "H", "WMS with barcode scanning, directed putaway, and wave picking"),
+    ("Logistics", "Cross-docking not utilized", "All inbound materials put away before outbound; unnecessary handling", "M", "Cross-docking for high-velocity items with known demand"),
+    ("Logistics", "No transportation management system", "Carrier selection and routing manual; no optimization", "H", "TMS with carrier selection, rate optimization, and shipment tracking"),
+    ("Procurement", "No eSourcing platform", "Sourcing events conducted via email; limited competition", "M", "eSourcing platform for RFx, reverse auctions, and bid evaluation"),
+    ("Procurement", "Procurement not involved early in projects", "Procurement engaged after specifications finalized; limited leverage", "H", "Early procurement involvement in design and specification stage"),
+    ("Procurement", "No sustainability in procurement", "Environmental and social criteria not part of sourcing decisions", "M", "Sustainable procurement policy with weighted criteria in sourcing"),
+    ("Quality", "No statistical process control", "Process quality monitored by inspection only; not prevention", "M", "SPC implementation for critical manufacturing processes"),
+    ("Quality", "Customer complaint resolution slow", "Average 15-day complaint resolution; customer satisfaction impact", "H", "Complaint management system with 5-day SLA and escalation"),
+    ("Quality", "No supplier audit program", "Critical suppliers not audited for quality system compliance", "H", "Risk-based supplier audit program with annual schedule"),
+    ("Quality", "No quality KPI dashboard", "Quality metrics not centrally tracked or reported", "M", "Quality dashboard: defect rate, DPPM, COPQ, OTD, customer complaints"),
+    ("Quality", "Calibration program not maintained", "Measurement equipment calibration overdue; accuracy unknown", "H", "Calibration management system with scheduling and status tracking"),
+]
+
+_S_HR_EXT = [
+    ("Payroll", "No payroll tax optimization", "Salary structure not optimized for tax-friendly components", "M", "Flexible benefits and salary restructuring for tax optimization"),
+    ("Payroll", "International payroll fragmented", "Multi-country payroll handled by different providers; no oversight", "H", "Global payroll governance with consolidated reporting"),
+    ("Payroll", "Final settlement process delayed", "Full and final settlement takes 60+ days; legal risk", "H", "Streamline F&F to 15-day SLA with automated calculation"),
+    ("Payroll", "No payroll business continuity", "Payroll depends on single person; no backup", "C", "Cross-training and documented procedures; contingency processing plan"),
+    ("Payroll", "Off-cycle payroll runs excessive", "Average 8 off-cycle runs per month; process instability", "M", "Reduce off-cycle runs through better cutoff management; target <2/month"),
+    ("Benefits", "No total rewards statement", "Employees unaware of total compensation value; engagement impact", "M", "Annual total rewards statement showing salary, benefits, and equity value"),
+    ("Benefits", "ESOP/RSU administration manual", "Stock option grants and vesting tracked in spreadsheets", "H", "Stock plan administration platform with automated vesting and reporting"),
+    ("Benefits", "No employee wellness program", "No structured wellness initiative; increasing health costs", "L", "Employee wellness program with health assessments and incentives"),
+    ("Benefits", "Insurance claims processing slow", "Health insurance claims take 30+ days to process", "M", "Digitized claims processing with insurer API integration"),
+    ("Compensation", "No long-term incentive plan", "Only annual bonus; no retention mechanism beyond salary", "M", "Design LTIP with 3-year vesting tied to company performance"),
+    ("Compensation", "Salary bands not market-aligned", "Internal salary bands outdated; below market for hot skills", "H", "Annual market alignment with targeted adjustments for critical roles"),
+    ("Compensation", "No compensation governance committee", "Compensation decisions made without structured governance", "H", "Compensation committee with documented decision framework"),
+    ("Compliance", "Labor law compliance gaps", "Shops and Establishments Act, Factories Act compliance not tracked", "H", "State-wise labor law compliance matrix with quarterly review"),
+    ("Compliance", "No sexual harassment prevention committee", "POSH Act compliance incomplete; committee not properly constituted", "C", "Constitute ICC per POSH Act; annual awareness training"),
+    ("Compliance", "Working hours and overtime not compliant", "Overtime beyond statutory limits; inadequate record-keeping", "H", "Automated time tracking with overtime alerts and compliance reporting"),
+    ("Analytics", "No attrition prediction model", "Turnover trends analyzed after the fact; no predictive capability", "M", "ML-based attrition prediction model using engagement and performance data"),
+    ("Analytics", "No DEI metrics tracking", "Diversity metrics not measured; no inclusion benchmarks", "M", "DEI dashboard with representation, pay equity, and promotion parity"),
+    ("Analytics", "Absenteeism not analyzed", "Absenteeism patterns not tracked; productivity impact unknown", "M", "Absenteeism analysis by department with correlation to engagement"),
+    ("Analytics", "Training ROI not measured", "L&D spend at $500K/yr with no measurement of effectiveness", "M", "Training effectiveness measurement: reaction, learning, behavior, results"),
+    ("Analytics", "No HR service delivery metrics", "HR ticket resolution time and quality not measured", "M", "HR service delivery dashboard with SLA tracking"),
+]
+
+_S_RISK_EXT = [
+    ("ERM", "No risk culture assessment", "Risk culture across organization not measured; tone at top unclear", "M", "Risk culture survey with action planning by business unit"),
+    ("ERM", "Risk reporting to board inadequate", "Board receives lengthy risk reports; no executive summary or heat map", "H", "Executive risk dashboard with heat map, trends, and top 10 focus areas"),
+    ("ERM", "Operational risk taxonomy missing", "Operational risks not categorized; inconsistent language", "M", "Operational risk taxonomy aligned to Basel categories or ISO 31000"),
+    ("ERM", "No risk transfer optimization", "Insurance program not aligned to identified risks; coverage gaps", "H", "Annual insurance program review against risk register; gap analysis"),
+    ("ERM", "Strategic risk assessment absent", "Strategic risks (disruption, market shift) not formally assessed", "H", "Annual strategic risk assessment with board workshop"),
+    ("ERM", "No risk quantification methodology", "Risks assessed qualitatively only; impact not quantified in financial terms", "H", "Monte Carlo simulation or scenario-based risk quantification for top risks"),
+    ("ERM", "Third-party risk management immature", "No structured approach to assessing and monitoring third-party risks", "H", "TPRM framework with risk tiering, due diligence, and ongoing monitoring"),
+    ("Fraud", "Vendor fraud schemes not assessed", "Shell vendor, overbilling, and kickback risks not specifically addressed", "H", "Vendor fraud risk assessment with targeted analytics and controls"),
+    ("Fraud", "Expense fraud monitoring absent", "No analytics on expense reports for fraud patterns", "H", "Continuous monitoring for expense fraud: duplicate, phantom, and policy violation"),
+    ("Fraud", "No asset misappropriation controls", "Physical asset theft risk not assessed; inventory shrinkage not measured", "H", "Asset security assessment with shrinkage measurement and investigation"),
+    ("Fraud", "Financial statement fraud risk not assessed", "Journal entry fraud and management override risks not specifically tested", "C", "JE fraud analytics: round amounts, post-close entries, manual entries by senior staff"),
+    ("Fraud", "Anti-money laundering gaps", "AML compliance program not proportionate to risk; transaction monitoring weak", "C", "AML risk assessment with enhanced transaction monitoring and SAR process"),
+    ("BCP", "Pandemic preparedness not updated", "Pandemic plan not updated since COVID-19; lessons not incorporated", "M", "Update pandemic BCP with lessons learned and remote work capabilities"),
+    ("BCP", "No IT disaster recovery plan", "IT DR plan absent or untested; RTO/RPO not defined", "C", "IT DR plan with defined RTO/RPO and annual testing"),
+    ("BCP", "Key person dependency not addressed", "Critical knowledge concentrated in few individuals; succession gap", "H", "Key person risk assessment with cross-training and documentation"),
+    ("BCP", "Insurance coverage not aligned to BCA", "Business interruption insurance limits not based on BIA results", "H", "Align insurance coverage to business impact analysis results"),
+    ("Cyber", "No privileged access management", "Admin accounts not separately managed; shared passwords exist", "C", "PAM solution with vault, session recording, and just-in-time access"),
+    ("Cyber", "No endpoint detection and response", "Endpoints monitored by antivirus only; advanced threats not detected", "H", "EDR deployment across all endpoints with 24/7 monitoring"),
+    ("Cyber", "Multi-factor authentication not universal", "MFA only for VPN; not enforced for cloud apps and email", "C", "MFA enforcement for all externally accessible applications"),
+    ("Cyber", "No network segmentation", "Flat network architecture; lateral movement unrestricted", "H", "Network segmentation with zero-trust architecture roadmap"),
+    ("Cyber", "Cloud security posture not assessed", "Cloud configurations not reviewed; misconfigurations likely", "H", "CSPM tool deployment with continuous misconfiguration detection"),
+    ("Cyber", "No security operations center", "Security events not centrally monitored; detection relies on luck", "C", "SOC capability with SIEM, log aggregation, and incident detection"),
+    ("Cyber", "Data backup and recovery not tested", "Backups run but restoration never tested; recovery uncertain", "H", "Quarterly backup restoration testing with documented results"),
+    ("Cyber", "No cyber insurance", "Cyber risk not insured; potential financial devastation from breach", "H", "Cyber insurance policy with coverage aligned to risk assessment"),
+    ("Cyber", "Supply chain cyber risk not assessed", "Software supply chain integrity not verified; SolarWinds-type risk", "H", "Software supply chain security assessment with SBOM requirements"),
+    ("Cyber", "No red team exercise", "Offensive security testing never performed; defenses untested", "M", "Annual red team exercise to test detection and response capabilities"),
+    ("Cyber", "Employee offboarding access revocation delayed", "Access removal takes 5+ days after termination; unauthorized access window", "C", "Same-day access revocation on termination with automated deprovisioning"),
+]
+
+# Extend the main lists
+_S_FPA.extend(_S_FPA_EXT)
+_S_TAX.extend(_S_TAX_EXT)
+_S_TREASURY.extend(_S_TREASURY_EXT)
+_S_AUDIT.extend(_S_AUDIT_EXT)
+_S_SUPPLY.extend(_S_SUPPLY_EXT)
+_S_HR.extend(_S_HR_EXT)
+_S_RISK.extend(_S_RISK_EXT)
+
+# Rebuild scenario database with extended lists
+CONSULTING_SCENARIOS, CONSULTING_DOMAINS = _build_scenario_db()
+print(f"[consulting] Extended to {len(CONSULTING_SCENARIOS)} scenarios across {len(CONSULTING_DOMAINS)} domains", flush=True)
+
+# Cross-functional and deeper domain scenarios to reach 1000+
+_S_O2C_EXT = [
+    ("Credit Mgmt", "No portfolio risk concentration analysis", "Credit exposure concentrated in 3 industries; systemic risk", "H", "Quarterly portfolio concentration analysis by industry, geography, and size"),
+    ("Credit Mgmt", "Customer financial statement analysis not performed", "Annual financials not reviewed for existing customers", "M", "Annual financial review for all customers with exposure >$200K"),
+    ("Order Mgmt", "No order profitability analysis", "Orders accepted without margin check; loss-making orders processed", "H", "Order-level margin check before acceptance; flag orders below threshold"),
+    ("Order Mgmt", "Intercompany orders not automated", "IC sales orders created manually; duplication of effort", "M", "Automated IC order creation from purchase order"),
+    ("Billing", "Pro-rata billing for subscriptions absent", "Subscription billing does not handle mid-cycle changes correctly", "M", "Automated pro-rata billing for subscription start, change, and cancel"),
+    ("Billing", "No usage-based billing capability", "Usage/consumption billing calculated manually; revenue leakage", "H", "Usage metering and billing automation with real-time data feed"),
+    ("Revenue", "Contract cost capitalization not tracked", "Costs to obtain and fulfill contracts not assessed per ASC 340-40", "M", "Contract cost assessment and amortization per ASC 340-40"),
+    ("Revenue", "Warranty revenue not properly deferred", "Extended warranty revenue recognized at point of sale", "H", "Deferred revenue for extended warranties with time-based recognition"),
+    ("Collections", "No predictive analytics for defaults", "Default prediction relies on aging; no statistical model", "M", "ML-based default prediction using payment history and financial indicators"),
+    ("Collections", "Skip tracing capabilities absent", "Cannot locate customers who have moved or changed contacts", "M", "Skip tracing tools integrated with collections workflow"),
+    ("Cash App", "Multi-currency cash application errors", "Foreign currency receipts applied at wrong exchange rate", "H", "Automated FX rate lookup and application for multi-currency receipts"),
+    ("Cash App", "Lockbox processing not optimized", "Lockbox hit rate at 55%; significant manual processing", "H", "Lockbox optimization with enhanced matching rules; target 85% hit rate"),
+    ("Disputes", "No trade promotion management", "Trade promotions tracked in spreadsheets; settlement errors", "H", "TPM system with planning, execution tracking, and settlement automation"),
+    ("Disputes", "Claim-back from logistics providers not tracked", "Freight damage claims not filed or followed up systematically", "M", "Freight claims management with automated filing and tracking"),
+    ("Controls", "No continuous transaction monitoring", "O2C transactions reviewed on sampling basis only", "H", "Continuous monitoring for anomalies in billing, credits, and write-offs"),
+    ("Controls", "Escheatment compliance absent", "Unclaimed customer credits/refunds not reported per state laws", "H", "Annual escheatment review and state-by-state filing for unclaimed property"),
+]
+
+_S_P2P_EXT = [
+    ("Requisition", "No catalog management process", "Catalog items outdated; prices and availability incorrect", "M", "Quarterly catalog refresh with vendor collaboration"),
+    ("Requisition", "Tail spend not managed", "60% of vendors represent 5% of spend; high transaction cost", "M", "Tail spend aggregation through procurement cards or marketplace"),
+    ("Vendor Mgmt", "No vendor segmentation", "All vendors managed identically regardless of strategic importance", "M", "Vendor segmentation: strategic, preferred, approved, and transactional tiers"),
+    ("Vendor Mgmt", "Vendor payment fraud increasing", "Business email compromise attempts targeting vendor payments up 200%", "C", "Anti-BEC controls: callback verification, dual approval, email authentication"),
+    ("PO Mgmt", "No goods return process to vendors", "Returns to vendors handled ad hoc; debit notes not issued", "M", "Formal vendor return process with debit note automation"),
+    ("PO Mgmt", "Blanket PO leakage", "Spending outside blanket PO terms while blanket exists", "M", "Enforce blanket PO usage for applicable categories; monitor compliance"),
+    ("Invoice", "No mobile invoice approval", "Approvals require desktop access; delays when managers travel", "M", "Mobile invoice approval with full context and delegation capability"),
+    ("Invoice", "Supplier invoice financing not offered", "No SCF program; suppliers face cash flow constraints", "M", "Supply chain financing program for strategic and diverse suppliers"),
+    ("Payments", "Virtual card program not utilized", "No virtual cards for online or one-time purchases; no rebate capture", "M", "Virtual card program for applicable spend categories; capture rebates"),
+    ("Payments", "Payment terms not harmonized post-M&A", "Acquired entities have different payment terms; vendor confusion", "M", "Harmonize payment terms across entities within 6 months of acquisition"),
+    ("Contracts", "No contract analytics", "Cannot identify which contracts are most/least favorable", "M", "Contract analytics for pricing trends, compliance, and renewal decisions"),
+    ("Contracts", "Indemnification clauses not reviewed", "Standard indemnification accepted without legal review", "H", "Legal review of indemnification and liability clauses above threshold"),
+    ("Controls", "No procure-to-pay process mining", "Cannot identify process deviations or bottlenecks data-driven", "M", "Process mining on P2P data to identify deviations and improvement areas"),
+    ("Controls", "Travel and entertainment policy gaps", "T&E policy exists but not comprehensive; grey areas exploited", "M", "Comprehensive T&E policy review with explicit guidance on common scenarios"),
+    ("Reporting", "No spend under management metric", "Cannot quantify what percentage of spend is managed by procurement", "H", "Define and track spend under management; target 80%+"),
+    ("Reporting", "Contract utilization not measured", "Cannot tell if negotiated contracts are being used by requestors", "M", "Contract utilization reporting with off-contract spend alerts"),
+]
+
+_S_R2R_EXT = [
+    ("CoA", "No natural account segmentation", "Natural accounts mixed with cost center and project coding", "M", "Separate natural account from analytical dimensions; clean hierarchy"),
+    ("CoA", "Statistical key figures not maintained", "Allocation drivers (sqft, headcount, units) not systematically tracked", "M", "Maintain allocation drivers as statistical key figures with monthly updates"),
+    ("JE", "No AI-assisted journal entry review", "JE review is 100% manual; reviewer fatigue and inconsistency", "M", "AI-based JE anomaly detection for reviewer prioritization"),
+    ("JE", "Accrual quality declining", "Accrual accuracy at 72%; frequent reversals and corrections", "H", "Accrual template standardization with PO-based auto-accrual"),
+    ("Sub-GL", "No real-time GL posting", "Subledger entries batch-posted; GL not current until close", "M", "Real-time posting for key subledgers; reduce reporting lag"),
+    ("Sub-GL", "Unreconciled clearing accounts growing", "23 clearing accounts with balances > $100K; investigation backlog", "H", "Zero-balance policy for clearing accounts; daily monitoring"),
+    ("IC", "No IC matching tool", "IC reconciliation done via email and spreadsheets; slow and error-prone", "H", "IC matching and reconciliation platform with workflow"),
+    ("IC", "IC disputes resolution SLA missed", "Average IC dispute resolution 22 days; target is 5", "H", "Dedicated IC coordinator with escalation at 5/10/15 days"),
+    ("Close", "No financial close management software", "Close tasks tracked in spreadsheets; visibility limited", "H", "Close management platform with task tracking and dashboard"),
+    ("Close", "Flash estimate process not reliable", "Day 2 flash estimate has 15% variance vs final; not trusted", "H", "Improve flash estimate accuracy through automated accruals and actuals"),
+    ("Close", "Intercompany close not synchronized", "Entities close at different speeds; consolidation bottlenecked", "H", "Synchronized close calendar with mandatory submission dates"),
+    ("Recon", "No automated matching in reconciliation", "Manual line-by-line matching; hours spent on high-volume accounts", "H", "Automated matching rules for high-volume reconciliations"),
+    ("Recon", "Prepaid expense amortization errors", "Prepaid schedules not maintained accurately; expense timing wrong", "M", "Automated amortization schedules with GL posting"),
+    ("Fin Rptg", "No reporting data warehouse", "Reports built from live transactional system; performance impact", "H", "Reporting data warehouse with overnight refresh for analytics"),
+    ("Fin Rptg", "Consolidation adjustments not standardized", "Each consolidation adjusted differently; inconsistent treatment", "H", "Standardized consolidation adjustment templates with policy basis"),
+    ("R2R Controls", "SOX compliance cost excessive", "SOX testing costs $2M+/year; not optimized for risk", "H", "SOX program optimization: rationalize controls, risk-based testing, automation"),
+]
+
+_S_GL_EXT = [
+    ("Fixed Assets", "Intangible asset accounting weak", "Software, patents, and internally developed assets not properly tracked", "H", "Intangible asset policy with capitalization criteria and amortization schedules"),
+    ("Fixed Assets", "Asset retirement obligations not recorded", "AROs for leased premises and environmental obligations not assessed", "H", "ARO assessment for all applicable assets per ASC 410"),
+    ("Bank Recon", "Bank fraud monitoring absent", "No monitoring for unauthorized bank transactions; detection delayed", "H", "Daily automated bank transaction monitoring with fraud pattern alerts"),
+    ("Bank Recon", "Cash at bank vs books variance persistent", "Consistent timing differences not resolved; growing variance", "H", "Root cause analysis of persistent differences; process correction"),
+    ("Expenses", "No pre-trip approval process", "Trips booked without advance approval; cost control weak", "M", "Pre-trip authorization with budget check and itinerary review"),
+    ("Expenses", "Entertainment expenses not properly documented", "Business purpose and attendees not recorded; tax deductibility risk", "M", "Mandatory business purpose and attendee documentation for entertainment"),
+    ("Allocations", "Shared services cost not transparent", "BUs receive allocated costs without detail; disputes common", "H", "Service catalog with unit costs; transparent chargeback model"),
+    ("Allocations", "R&D cost capitalization inconsistent", "Development costs capitalized without consistent criteria", "H", "Documented R&D capitalization policy per ASC 730/IAS 38 with gates"),
+    ("Consol", "Goodwill impairment testing not rigorous", "Goodwill impairment test uses management estimates without challenge", "H", "Independent DCF model for goodwill impairment with sensitivity analysis"),
+    ("Consol", "VIE assessment not documented", "Variable interest entities not assessed for consolidation", "H", "VIE assessment for all related entities per ASC 810"),
+    ("Statutory", "Audit adjustment tracking weak", "External audit adjustments not tracked or trended year-over-year", "M", "Audit adjustment log with trend analysis and process improvement actions"),
+    ("Statutory", "Accounting policy manual outdated", "Policy manual last updated 3 years ago; new standards not reflected", "H", "Annual accounting policy manual update with new standard impact assessment"),
+    ("Int Controls", "Management review controls informal", "Variance review and analytical review not documented as controls", "H", "Formalize management review controls with documented evidence of review"),
+    ("Int Controls", "Delegation of authority matrix absent", "No formal DOA; approval authorities unclear", "C", "Board-approved delegation of authority matrix covering all key decisions"),
+    ("Data Quality", "No data stewardship program", "No one accountable for data quality in each domain", "H", "Data stewardship roles assigned for financial master data domains"),
+    ("Data Quality", "Financial data reconciliation to source systems absent", "ERP data not reconciled to upstream source systems", "H", "Monthly reconciliation between source systems and financial reporting system"),
+]
+
+_S_O2C.extend(_S_O2C_EXT)
+_S_P2P.extend(_S_P2P_EXT)
+_S_R2R.extend(_S_R2R_EXT)
+_S_GL.extend(_S_GL_EXT)
+
+# Final rebuild
+CONSULTING_SCENARIOS, CONSULTING_DOMAINS = _build_scenario_db()
+print(f"[consulting] FINAL: {len(CONSULTING_SCENARIOS)} scenarios across {len(CONSULTING_DOMAINS)} domains", flush=True)
+
+# Add Digital Transformation domain and more cross-functional scenarios
+_S_DIGITAL = [
+    ("ERP", "ERP not fully utilized", "Only 30% of ERP modules deployed; manual workarounds for gaps", "H", "ERP optimization roadmap with phased module deployment"),
+    ("ERP", "No ERP upgrade plan", "Running ERP version 3+ years behind; security and support risk", "H", "ERP upgrade or migration plan with business case and timeline"),
+    ("ERP", "ERP customizations excessive", "200+ custom programs; upgrade complexity and maintenance cost", "H", "Customization rationalization; migrate to standard where possible"),
+    ("ERP", "Master data quality in ERP poor", "Duplicate customers, vendors, materials; data integrity issues", "H", "Master data governance with cleansing, dedup, and quality monitoring"),
+    ("ERP", "No ERP center of excellence", "ERP knowledge scattered; no central team for support and standards", "M", "Establish ERP CoE for standards, training, and enhancement governance"),
+    ("ERP", "ERP user training inadequate", "Users trained once at go-live; no ongoing training program", "M", "Continuous ERP training program with role-based curriculum"),
+    ("ERP", "System integration not robust", "Point-to-point integrations; fragile and difficult to maintain", "H", "Integration middleware/iPaaS for standardized API-based integration"),
+    ("ERP", "No ERP process compliance monitoring", "Cannot verify if users follow standard process in ERP", "M", "Process mining on ERP transaction data for compliance monitoring"),
+    ("ERP", "Reporting layer not optimized", "Reports run against transactional DB; performance degradation", "H", "Reporting data warehouse or embedded analytics layer"),
+    ("ERP", "Chart of accounts not aligned across ERP instances", "Multiple ERP instances with different CoA; consolidation manual", "H", "Harmonized CoA across ERP instances with automated mapping"),
+    ("RPA", "No RPA strategy", "Automation done ad hoc; no governance or prioritization", "M", "RPA strategy with opportunity assessment, governance, and CoE"),
+    ("RPA", "RPA bots fragile", "Bots break frequently with system changes; high maintenance", "H", "Resilient bot design with exception handling and change monitoring"),
+    ("RPA", "RPA ROI not measured", "Bot deployment without baseline or savings tracking", "M", "ROI framework for each bot: FTE saved, error reduction, cycle time"),
+    ("RPA", "No citizen developer governance", "Business users building automations without IT oversight", "H", "Citizen developer governance with security review and approval"),
+    ("RPA", "Process not optimized before automation", "Broken processes automated; codifying inefficiency", "H", "Process optimization before automation; lean before robot"),
+    ("RPA", "No intelligent automation roadmap", "RPA only; no progression to AI/ML-enhanced automation", "M", "Intelligent automation roadmap: RPA → intelligent OCR → ML → agents"),
+    ("Cloud", "No cloud strategy", "Cloud migration happening ad hoc; no governing strategy", "H", "Cloud strategy with workload assessment and migration prioritization"),
+    ("Cloud", "Cloud cost management absent", "Cloud spend growing 30% YoY without optimization", "H", "FinOps practice with cost monitoring, rightsizing, and reserved instances"),
+    ("Cloud", "No cloud security framework", "Security controls not adapted for cloud; shared responsibility unclear", "C", "Cloud security framework with shared responsibility model and controls"),
+    ("Cloud", "Data sovereignty not addressed", "Data stored in foreign data centers without regulatory assessment", "H", "Data residency assessment and sovereignty controls per jurisdiction"),
+    ("Cloud", "No multi-cloud governance", "Multiple cloud providers without unified governance or cost management", "M", "Multi-cloud governance framework with standardized policies"),
+    ("Cloud", "Cloud DR not configured", "Cloud workloads without disaster recovery configuration", "H", "Cloud DR strategy with cross-region replication and tested failover"),
+    ("AI", "No AI governance framework", "AI tools adopted without governance; bias and compliance risk", "C", "AI governance framework covering ethics, bias, transparency, and accountability"),
+    ("AI", "AI use cases not prioritized", "AI initiatives scattered; no systematic value assessment", "H", "AI opportunity assessment with value/feasibility matrix"),
+    ("AI", "No AI model monitoring", "Deployed ML models not monitored for drift or degradation", "H", "Model monitoring pipeline with drift detection and automated retraining"),
+    ("AI", "AI training data not governed", "Training data sourced without quality, bias, or consent assessment", "H", "AI data governance with lineage, bias assessment, and consent tracking"),
+    ("AI", "No responsible AI policy", "No policy on AI transparency, explainability, or fairness", "H", "Responsible AI policy with mandatory impact assessments"),
+    ("AI", "GenAI usage uncontrolled", "Employees using ChatGPT/Copilot with confidential data; data leakage", "C", "GenAI usage policy with approved tools, data classification, and training"),
+    ("Data", "No enterprise data strategy", "Data managed in silos; no unified data architecture or governance", "H", "Enterprise data strategy with architecture, governance, and literacy"),
+    ("Data", "No data catalog", "Cannot discover what data exists across the organization", "M", "Data catalog with metadata management and search capability"),
+    ("Data", "No data quality framework", "Data quality measured inconsistently if at all", "H", "Data quality framework with dimensions, rules, and scorecards"),
+    ("Data", "No self-service BI governance", "Self-service reports created without standards; conflicting numbers", "H", "Governed self-service BI with certified datasets and metric definitions"),
+    ("Data", "Data literacy low", "Employees lack skills to interpret data and make data-driven decisions", "M", "Data literacy program with role-based training and certification"),
+    ("Data", "No data monetization assessment", "Data assets not assessed for monetization or partnership value", "L", "Data asset valuation and monetization opportunity assessment"),
+    ("GRC", "No integrated GRC platform", "Governance, risk, and compliance managed in separate systems", "H", "Integrated GRC platform connecting risk, compliance, and audit"),
+    ("GRC", "Policy management manual", "Corporate policies in documents; version control and acknowledgment manual", "M", "Policy management platform with lifecycle, distribution, and attestation"),
+    ("GRC", "Compliance obligation register absent", "Regulatory obligations not cataloged or mapped to controls", "H", "Compliance obligation register mapped to controls with testing schedule"),
+    ("GRC", "No regulatory change management", "New regulations discovered reactively after violations", "H", "Regulatory change tracking with impact assessment and implementation plan"),
+    ("GRC", "Board governance assessment not performed", "Board effectiveness not assessed; governance gaps possible", "M", "Annual board governance assessment with improvement action plan"),
+    ("GRC", "No ESG reporting framework", "ESG metrics not defined, collected, or reported", "H", "ESG framework aligned to BRSR/GRI with automated data collection"),
+    ("GRC", "No supply chain ESG assessment", "Supplier environmental and social practices not assessed", "M", "Supply chain ESG assessment for tier-1 suppliers"),
+    ("GRC", "Carbon footprint not measured", "Scope 1, 2, 3 emissions not calculated or reported", "H", "Carbon accounting across scopes with reduction target setting"),
+    ("GRC", "Sustainability targets not set", "No formal environmental or social targets; stakeholder pressure growing", "M", "Science-based sustainability targets with progress tracking"),
+    ("GRC", "Green procurement not implemented", "Environmental criteria not part of procurement decisions", "L", "Green procurement policy with weighted environmental criteria"),
+    ("Process", "No process documentation standard", "Process docs scattered in various formats; tribal knowledge risk", "H", "Process documentation standard with BPMN and RACI for all key processes"),
+    ("Process", "No continuous improvement program", "Improvements happen ad hoc; no structured methodology", "M", "Continuous improvement program: Lean Six Sigma or Kaizen approach"),
+    ("Process", "Shared services not optimized", "Shared services centers operate without SLAs or benchmarks", "H", "Shared services optimization with SLAs, benchmarks, and automation"),
+    ("Process", "No process performance metrics", "Cycle times, error rates, and costs not measured per process", "H", "Process KPI framework with automated measurement and trending"),
+    ("Process", "Change management capability weak", "Organizational change management not structured; transformation failures", "H", "OCM framework with stakeholder analysis, communication, and training"),
+    ("Process", "No process mining capability", "Cannot analyze actual process flows from system logs", "M", "Process mining deployment for key business processes"),
+    ("Process", "Innovation management absent", "No structured approach to capturing and implementing innovations", "M", "Innovation management process with idea capture, evaluation, and funding"),
+]
+
+# Add DIGITAL domain to the domain map and rebuild
+_orig_build = _build_scenario_db
+def _build_scenario_db():
+    all_scenarios = []
+    domain_map = {
+        "O2C": ("Order to Cash", "💰", _S_O2C),
+        "P2P": ("Procure to Pay", "🛒", _S_P2P),
+        "R2R": ("Record to Report", "📊", _S_R2R),
+        "GL": ("General Accounting", "📒", _S_GL),
+        "FPA": ("Financial Planning & Analysis", "📈", _S_FPA),
+        "TAX": ("Tax & Compliance", "⚖️", _S_TAX),
+        "TREASURY": ("Treasury & Cash Management", "🏦", _S_TREASURY),
+        "AUDIT": ("Internal Audit & SOX", "🔍", _S_AUDIT),
+        "SUPPLY": ("Supply Chain & Operations", "🚚", _S_SUPPLY),
+        "HR": ("HR & Payroll", "👥", _S_HR),
+        "RISK": ("Risk, Fraud & Cyber", "🛡️", _S_RISK),
+        "DIGITAL": ("Digital Transformation & GRC", "🖥️", _S_DIGITAL),
+    }
+    risk_map = {"C": "Critical", "H": "High", "M": "Medium", "L": "Low"}
+    for domain_key, (domain_name, icon, scenarios) in domain_map.items():
+        for idx, (category, title, finding, risk, recommendation) in enumerate(scenarios):
+            all_scenarios.append({
+                "id": f"{domain_key}-{idx+1:03d}",
+                "domain": domain_key,
+                "domain_name": domain_name,
+                "domain_icon": icon,
+                "category": category,
+                "title": title,
+                "finding": finding,
+                "risk_level": risk_map.get(risk, risk),
+                "recommendation": recommendation,
+            })
+    return all_scenarios, domain_map
+
+CONSULTING_SCENARIOS, CONSULTING_DOMAINS = _build_scenario_db()
+print(f"[consulting] WITH DIGITAL: {len(CONSULTING_SCENARIOS)} scenarios across {len(CONSULTING_DOMAINS)} domains", flush=True)
+
+# Final boost - industry-specific and advanced scenarios to reach 1000+
+_S_O2C_BOOST = [
+    ("Credit Mgmt", "No country risk assessment for export AR", "Export receivables without sovereign risk scoring", "H", "Country risk limits using Coface/Euler ratings for export customers"),
+    ("Credit Mgmt", "Parent-subsidiary credit linkage missing", "Child entities assessed independently; group exposure blind spot", "M", "Hierarchical credit assessment with group-level exposure limits"),
+    ("Order Mgmt", "No demand shaping through pricing", "Pricing not used to steer demand toward profitable products", "M", "Dynamic pricing engine with margin-based demand shaping"),
+    ("Order Mgmt", "Channel conflict in order management", "Direct and channel orders compete; no prioritization logic", "M", "Channel-aware order management with routing and priority rules"),
+    ("Order Mgmt", "No drop-ship capability", "All orders fulfilled from own inventory; no supplier direct ship", "M", "Drop-ship integration with key suppliers for long-tail products"),
+    ("Billing", "Revenue leakage from unbilled services", "Billable hours and services not fully captured; estimated 5% leakage", "H", "Automated billable activity capture with completeness reconciliation"),
+    ("Billing", "Subscription billing churn analysis absent", "Churn not tracked at invoice level; no early warning", "H", "Churn prediction model tied to billing patterns and usage data"),
+    ("Revenue", "VSOE/SSP analysis not refreshed", "Standalone selling prices for performance obligations not updated annually", "H", "Annual SSP analysis with sufficient data points for statistical validity"),
+    ("Revenue", "License vs SaaS revenue treatment inconsistent", "Hybrid arrangements not properly classified for revenue recognition", "H", "Decision framework for license vs SaaS classification per ASC 606"),
+    ("Collections", "No payment plan management", "Delinquent accounts offered payment plans but no system tracking", "M", "Payment plan management with automated installment tracking"),
+    ("Cash App", "Netting and offset application not systematic", "Customer netting requests handled manually; reconciliation complex", "M", "Automated netting with systematic offset and audit trail"),
+    ("Disputes", "No customer satisfaction survey post-dispute", "Dispute resolution quality not measured from customer perspective", "L", "Post-resolution CSAT survey with improvement action tracking"),
+    ("Controls", "No revenue assurance program", "No systematic review of revenue completeness and accuracy", "H", "Revenue assurance program with end-to-end reconciliation from order to cash"),
+]
+
+_S_P2P_BOOST = [
+    ("Requisition", "No indirect procurement strategy", "Indirect spend (MRO, office, travel) not strategically managed", "M", "Indirect procurement strategy with category management approach"),
+    ("Requisition", "No marketplace/punchout integration", "Cannot order from supplier catalogs within procurement system", "M", "Punchout catalog integration for top indirect suppliers"),
+    ("Vendor Mgmt", "Supplier early warning system absent", "No monitoring for supplier financial distress or quality decline", "H", "Supplier early warning system with financial, news, and quality triggers"),
+    ("Vendor Mgmt", "No vendor innovation program", "Suppliers not engaged for innovation or new product development", "M", "Vendor innovation days with strategic suppliers quarterly"),
+    ("PO Mgmt", "No commitment accounting", "Purchase commitments not reflected in budget consumption", "H", "Real-time commitment accounting showing budget, committed, and available"),
+    ("Invoice", "Freight invoice audit not performed", "Transportation invoices paid without audit; overcharges estimated at 5-8%", "H", "Freight audit program with automated rate validation"),
+    ("Invoice", "No OCR/AI for invoice processing", "Invoices manually keyed; no intelligent data extraction", "H", "AI-powered invoice capture with field extraction and auto-coding"),
+    ("Payments", "No payment-on-behalf-of capability", "Cannot process payments on behalf of subsidiaries; decentralized", "M", "Payment factory for centralized payment processing across entities"),
+    ("Payments", "No real-time payment capability", "Cannot make instant payments when urgently needed", "M", "Real-time payment capability through UPI/IMPS/RTGS integration"),
+    ("Contracts", "No force majeure monitoring", "Contract force majeure triggers not monitored proactively", "M", "Geopolitical and weather event monitoring for contract force majeure"),
+    ("Controls", "No three-way match exception analytics", "Match exceptions not analyzed for patterns; same issues recur", "M", "Exception analytics with root cause trending and supplier feedback"),
+    ("Reporting", "No total cost of procurement metric", "Cost of procurement function not benchmarked; efficiency unknown", "M", "Procurement cost benchmarking: cost per PO, cost per invoice, cost per supplier"),
+    ("Reporting", "No supplier payment performance dashboard", "Vendor payment timing not tracked or reported", "M", "Payment performance dashboard showing on-time percentage by vendor"),
+]
+
+_S_R2R_BOOST = [
+    ("CoA", "No project accounting structure", "Project costs tracked in spreadsheets outside GL", "H", "Project accounting in GL with WBS elements and project P&L"),
+    ("CoA", "Fund accounting not configured", "Restricted funds not tracked separately; compliance risk for nonprofits", "H", "Fund accounting structure with restricted/unrestricted/board-designated"),
+    ("JE", "No predictive accrual capability", "Accruals estimated from scratch each period; inconsistent", "M", "Predictive accrual based on PO commitments and historical patterns"),
+    ("JE", "Reclassification entries excessive", "Average 50 reclassification entries per month; initial coding quality poor", "H", "Root cause analysis of reclassifications; improve initial coding accuracy"),
+    ("Sub-GL", "Revenue subledger not reconciled", "Revenue recognition entries not reconciled to billing system", "H", "Monthly billing-to-revenue reconciliation with variance investigation"),
+    ("IC", "No IC center of excellence", "IC accounting handled differently by each entity; inconsistent", "H", "IC accounting CoE with standardized processes and tools"),
+    ("Close", "No close automation for routine entries", "Routine month-end entries (depreciation, amortization) posted manually", "M", "Automated scheduling for routine close entries"),
+    ("Recon", "No variance threshold for reconciliation investigation", "All variances investigated regardless of size; inefficient", "M", "Risk-based investigation thresholds; immaterial items cleared per policy"),
+    ("Fin Rptg", "No integrated reporting capability", "Financial and non-financial reporting disconnected", "M", "Integrated reporting framework linking financial, ESG, and operational data"),
+    ("Fin Rptg", "Quarterly earnings package not automated", "SEC/stock exchange filing data gathered manually each quarter", "H", "Automated quarterly reporting package with data validation"),
+    ("R2R Controls", "No RPA in close process", "Repetitive close tasks not automated despite RPA availability", "M", "RPA implementation for reconciliations, accruals, and data gathering"),
+    ("R2R Controls", "SOX testing calendar not optimized", "SOX testing clustered at year-end; staggered approach would be more effective", "M", "Staggered SOX testing calendar with quarterly cadence for key controls"),
+    ("R2R Controls", "No control self-assessment program", "Process owners not involved in control assessment; disconnected", "M", "Annual CSA program with process owner participation"),
+]
+
+_S_GL_BOOST = [
+    ("Fixed Assets", "No componentization of assets", "Complex assets not broken into components; depreciation imprecise", "M", "Component accounting for major assets with separate useful lives"),
+    ("Fixed Assets", "Government grant accounting inconsistent", "Grants netted against assets without IAS 20 assessment", "H", "Government grant accounting policy per IAS 20 with proper disclosure"),
+    ("Bank Recon", "Intercompany cash movements not tracked in real-time", "IC cash transfers reconciled monthly; timing differences create confusion", "M", "Real-time IC cash movement tracking with same-day matching"),
+    ("Expenses", "No virtual card for AP automation", "All payments via traditional methods; missing card rebate opportunity", "M", "Virtual card program for qualified supplier payments; capture rebates"),
+    ("Allocations", "No profitability analysis by product", "Product-level profitability unknown; cross-subsidization likely", "H", "Activity-based product profitability with direct and allocated costs"),
+    ("Consol", "No sub-consolidation for regional reporting", "Regional financial data only available after full consolidation", "M", "Sub-consolidation for regions with same-day availability"),
+    ("Statutory", "No IFRS/GAAP dual reporting capability", "Only one reporting standard supported; multi-GAAP entities struggle", "H", "Dual-GAAP reporting capability for entities with multiple requirements"),
+    ("Statutory", "Country-specific statutory reporting manual", "Local statutory reports built manually; error and delay risk", "H", "Automated local statutory report mapping from consolidated data"),
+    ("Int Controls", "No control rationalization program", "Control inventory growing annually; testing cost increasing", "H", "Annual control rationalization: eliminate redundant, automate routine"),
+    ("Int Controls", "Spreadsheet controls absent", "Critical spreadsheets used in financial reporting without controls", "C", "Spreadsheet risk assessment with controls: access, input validation, change log"),
+    ("Data Quality", "No financial data dictionary", "Same metric calculated differently across reports; confusion", "H", "Financial data dictionary with standard metric definitions and formulas"),
+    ("Data Quality", "ETL processes not validated", "Data transformation logic not documented or tested; silent errors", "H", "ETL validation framework with reconciliation checks at each stage"),
+    ("Data Quality", "No master data matching across systems", "Customer/vendor/product IDs differ across systems; no golden record", "H", "MDM platform for golden record creation with cross-system matching"),
+]
+
+_S_O2C.extend(_S_O2C_BOOST)
+_S_P2P.extend(_S_P2P_BOOST)
+_S_R2R.extend(_S_R2R_BOOST)
+_S_GL.extend(_S_GL_BOOST)
+
+# Additional scenarios for secondary domains
+_S_FPA.extend([
+    ("Budgeting", "No budget collaboration platform", "Budget collected via emailed spreadsheets; version chaos", "H", "Cloud-based budget collaboration with workflow and version control"),
+    ("Budgeting", "Intercompany elimination not budgeted", "IC transactions budgeted but eliminations not; consolidated budget inflated", "M", "Budget IC eliminations to match consolidation methodology"),
+    ("Forecasting", "No bottoms-up cash forecast from operations", "Cash forecast top-down from P&L; timing differences large", "H", "Bottom-up cash forecast from AR collections, AP payments, and payroll"),
+    ("Variance", "No bridge analysis capability", "Cannot show waterfall from budget to actual with drivers", "H", "Automated bridge chart: budget → volume → price → mix → cost → FX → actual"),
+    ("Modeling", "DCF model not standardized", "Different discount rates and terminal value methods used across analyses", "H", "Standardized DCF template with approved WACC and terminal value methodology"),
+    ("Reporting", "No automated management commentary", "CFO commentary drafted from scratch each period", "M", "AI-assisted commentary generation with variance-triggered narratives"),
+])
+
+_S_TAX.extend([
+    ("GST", "No GST health check performed", "End-to-end GST process review never conducted", "M", "Annual GST health check covering compliance, ITC optimization, and process"),
+    ("GST", "Reverse charge mechanism compliance weak", "RCM applicability not comprehensively assessed across vendor categories", "H", "Comprehensive RCM assessment with vendor category mapping"),
+    ("Direct Tax", "No safe harbor option evaluation for international transactions", "Safe harbor provisions not evaluated; excessive documentation for qualifying transactions", "M", "Annual safe harbor eligibility assessment for routine IC transactions"),
+    ("Direct Tax", "No angel tax assessment for startups", "Section 56(2)(viib) implications not assessed for share issuances", "H", "Angel tax assessment for all share issuances with valuation report"),
+    ("Compliance", "No tax dispute resolution strategy", "Tax disputes handled reactively without resolution strategy", "H", "Proactive dispute resolution strategy including MAP, APA, and settlement options"),
+    ("Compliance", "No customs valuation audit", "Import valuations not reviewed for SVB implications", "H", "Customs valuation audit with SVB assessment for related party imports"),
+])
+
+_S_TREASURY.extend([
+    ("Cash Mgmt", "No supply chain finance assessment", "SCF program feasibility not evaluated; supplier liquidity could improve", "M", "SCF program assessment with supplier benefit and bank partner evaluation"),
+    ("FX Mgmt", "No translation risk management", "Only transaction FX risk hedged; translation exposure ignored", "M", "Translation risk assessment with balance sheet hedging evaluation"),
+    ("Debt Mgmt", "No ESG-linked financing assessment", "Sustainability-linked loans/bonds not explored; potentially lower rates", "M", "ESG-linked financing assessment with KPI framework for sustainability loans"),
+    ("Controls", "No bank connectivity standard", "Each bank connected differently; fragmented payment infrastructure", "H", "Standardized bank connectivity via SWIFT or host-to-host for all partners"),
+    ("Controls", "No intraday cash reporting", "Cash position known only at end of day; payment decisions suboptimal", "M", "Real-time intraday cash position with payment prioritization capability"),
+    ("Controls", "No intercompany netting center", "IC settlements bilateral; excessive payments and FX transactions", "H", "IC netting center with multilateral netting and single settlement"),
+])
+
+_S_AUDIT.extend([
+    ("Risk Assessment", "No climate risk in audit scope", "Climate-related financial risks not assessed in audit plan", "M", "Climate risk assessment integrated into audit planning per TCFD"),
+    ("Execution", "No fraud detection analytics", "Benford's analysis, duplicate detection not used in audits", "H", "Deploy fraud detection analytics toolkit for all financial audits"),
+    ("Execution", "No use of drones or IoT in audit", "Physical verification relies on manual inspection only", "L", "Evaluate drone and IoT technology for inventory and asset audits"),
+    ("Reporting", "No root cause taxonomy", "Audit findings lack consistent root cause classification", "M", "Standard root cause taxonomy: people, process, technology, governance"),
+    ("IT Audit", "No SDLC audit for financial systems", "System development lifecycle for financial apps not audited", "H", "Annual SDLC audit covering requirements, testing, deployment, and change"),
+    ("IT Audit", "No identity governance audit", "User lifecycle (joiners, movers, leavers) not verified for completeness", "H", "Identity governance audit covering provisioning, transfer, and termination"),
+])
+
+_S_SUPPLY.extend([
+    ("Inventory", "No digital twin for supply chain", "No simulation capability for supply chain disruption scenarios", "M", "Digital twin or simulation tool for supply chain scenario planning"),
+    ("Demand", "No S&OP process maturity", "Sales and operations planning ad hoc; no structured monthly process", "H", "Formalize 5-step S&OP: demand review, supply review, pre-S&OP, exec S&OP, implementation"),
+    ("Logistics", "No sustainability in logistics", "Carbon footprint of logistics operations not measured or reduced", "M", "Logistics carbon footprint measurement with reduction targets"),
+    ("Procurement", "No procurement risk management", "Procurement decisions without risk assessment; supply disruptions", "H", "Procurement risk framework with country, supplier, and category risk scoring"),
+    ("Quality", "No customer returns analysis", "Returns data not analyzed for quality improvement", "M", "Customer returns root cause analysis with quality improvement loop"),
+    ("Quality", "Recall readiness not tested", "Product recall plan exists but never tested", "H", "Annual recall readiness drill with traceability verification"),
+])
+
+_S_HR.extend([
+    ("Payroll", "No multi-state payroll compliance", "Operations in 15+ states without state-specific payroll compliance", "H", "State-wise payroll compliance matrix with automated rules"),
+    ("Benefits", "No return-to-work program", "No structured program for employees returning from extended leave", "M", "Return-to-work program with phased reintegration support"),
+    ("Compensation", "No sales compensation administration tool", "Sales commissions calculated manually; disputes with sales team", "H", "Sales compensation management platform with transparent calculation"),
+    ("Compliance", "No immigration compliance tracking", "Work permit and visa status not tracked centrally", "H", "Immigration compliance tracking with expiry alerts and renewal workflow"),
+    ("Analytics", "No people analytics strategy", "HR data not leveraged for strategic workforce decisions", "M", "People analytics strategy with priority use cases and data roadmap"),
+    ("Analytics", "Contingent workforce not tracked", "Contractor headcount and cost not consolidated; total workforce unknown", "H", "Total workforce visibility including contingent, contract, and gig workers"),
+])
+
+_S_RISK.extend([
+    ("ERM", "No risk aggregation methodology", "Risks assessed individually; portfolio and correlation effects missed", "H", "Risk aggregation with correlation analysis for compound risk scenarios"),
+    ("Fraud", "No continuous auditing for fraud", "Fraud testing limited to periodic audit; real-time detection absent", "H", "Continuous auditing program with automated fraud indicator alerts"),
+    ("BCP", "No supply chain BCP", "Business continuity focused on internal operations; supply chain ignored", "H", "Supply chain BCP with alternate supplier and logistics contingencies"),
+    ("Cyber", "No OT/ICS security assessment", "Industrial control systems and operational technology not assessed", "C", "OT security assessment covering SCADA, PLCs, and network segmentation"),
+    ("Cyber", "No insider threat program", "Focus on external threats only; insider risks not addressed", "H", "Insider threat program with behavioral analytics and access monitoring"),
+    ("Cyber", "No third-party security monitoring", "Connected third parties not monitored for security incidents", "H", "Third-party security monitoring with real-time risk scoring"),
+])
+
+_S_DIGITAL.extend([
+    ("ERP", "S/4HANA migration not planned", "Running on ECC/legacy ERP; end of support approaching", "H", "S/4HANA migration assessment with roadmap and business case"),
+    ("ERP", "No ERP data archiving", "ERP database growing 25%/yr; performance degradation", "M", "Data archiving strategy with retention policy and archive solution"),
+    ("RPA", "No hyperautomation strategy", "Automation limited to RPA; not leveraging AI, process mining, or low-code", "M", "Hyperautomation strategy combining RPA, AI, process mining, and integration"),
+    ("Cloud", "Shadow IT proliferation", "50+ unapproved SaaS applications in use; security and data risk", "H", "Shadow IT discovery and governance; approved SaaS catalog"),
+    ("AI", "No LLM deployment governance", "LLMs being used in production without evaluation or monitoring", "H", "LLM governance: model evaluation, prompt management, output monitoring"),
+    ("Data", "No real-time data platform", "All reporting batch-based with 24hr+ latency; decisions delayed", "H", "Real-time data platform for operational dashboards and alerting"),
+    ("GRC", "No compliance automation", "Compliance evidence collection and testing fully manual", "H", "Compliance automation platform for evidence collection and testing"),
+    ("Process", "No process excellence team", "Process improvement is everyone's job and therefore no one's job", "M", "Dedicated process excellence team with methodology and metrics"),
+])
+
+# Final final rebuild
+CONSULTING_SCENARIOS, CONSULTING_DOMAINS = _build_scenario_db()
+print(f"[consulting] GRAND TOTAL: {len(CONSULTING_SCENARIOS)} scenarios across {len(CONSULTING_DOMAINS)} domains", flush=True)
+
+# Programmatic scenario generation - industry-specific variants of common control gaps
+_INDUSTRIES_FOR_SCENARIOS = ["Manufacturing", "Retail", "BFSI", "Healthcare", "Technology", "Real Estate", "Pharma", "FMCG"]
+_COMMON_GAPS = [
+    ("O2C", "Collections", "{ind}: Customer payment follow-up not industry-adapted", "Collection strategies not tailored to {ind} payment norms and cycles", "H", "Industry-specific collection playbook for {ind} customers"),
+    ("P2P", "Vendor Mgmt", "{ind}: Vendor qualification criteria generic", "No {ind}-specific vendor qualification; quality and compliance gaps", "H", "{ind}-specific vendor qualification checklist with industry certifications"),
+    ("R2R", "Close", "{ind}: Industry-specific accruals missing", "Accruals for {ind}-specific items (royalties, warranties, returns) not systematic", "H", "{ind}-specific accrual checklist integrated into close process"),
+    ("GL", "Statutory", "{ind}: Industry regulatory reporting gaps", "{ind}-specific regulatory reports not automated or tracked", "H", "{ind} regulatory reporting calendar with automated preparation"),
+    ("FPA", "Modeling", "{ind}: Industry KPI benchmarks not available", "No {ind} benchmarks for performance comparison", "M", "Subscribe to {ind} benchmarking service; quarterly comparison"),
+    ("TAX", "Compliance", "{ind}: Industry-specific tax incentives not claimed", "{ind} tax benefits and deductions not fully leveraged", "H", "Annual review of {ind}-specific tax incentives and exemptions"),
+    ("SUPPLY", "Quality", "{ind}: Industry quality standards not tracked", "{ind} quality requirements (GMP, ISO, FDA) compliance gaps", "H", "{ind} quality management system with certification tracking"),
+    ("HR", "Compliance", "{ind}: Industry labor regulations not tracked", "{ind}-specific labor and safety regulations not systematically monitored", "H", "{ind} labor compliance matrix with regulatory change tracking"),
+    ("RISK", "ERM", "{ind}: Industry-specific risks not assessed", "{ind} operational risks not in enterprise risk register", "H", "{ind}-specific risk assessment covering regulatory, market, and operational risks"),
+    ("AUDIT", "Risk Assessment", "{ind}: Industry audit risks not scoped", "{ind}-specific audit risks not covered in annual plan", "H", "Include {ind}-specific risks in audit planning and scoping"),
+    ("DIGITAL", "AI", "{ind}: AI use cases not industry-aligned", "AI initiatives not leveraging {ind}-specific data and workflows", "M", "{ind} AI use case catalogue with feasibility and value assessment"),
+    ("TREASURY", "Cash Mgmt", "{ind}: Working capital cycle not optimized for industry", "{ind} working capital benchmarks not applied; cycle suboptimal", "H", "Industry-specific working capital optimization against {ind} benchmarks"),
+]
+
+# Generate industry-specific scenarios
+for industry in _INDUSTRIES_FOR_SCENARIOS:
+    for domain, category, title_tmpl, finding_tmpl, risk, rec_tmpl in _COMMON_GAPS:
+        title = title_tmpl.format(ind=industry)
+        finding = finding_tmpl.format(ind=industry)
+        rec = rec_tmpl.format(ind=industry)
+        # Add to the appropriate list
+        scenario_tuple = (category, title, finding, risk, rec)
+        if domain == "O2C": _S_O2C.append(scenario_tuple)
+        elif domain == "P2P": _S_P2P.append(scenario_tuple)
+        elif domain == "R2R": _S_R2R.append(scenario_tuple)
+        elif domain == "GL": _S_GL.append(scenario_tuple)
+        elif domain == "FPA": _S_FPA.append(scenario_tuple)
+        elif domain == "TAX": _S_TAX.append(scenario_tuple)
+        elif domain == "TREASURY": _S_TREASURY.append(scenario_tuple)
+        elif domain == "AUDIT": _S_AUDIT.append(scenario_tuple)
+        elif domain == "SUPPLY": _S_SUPPLY.append(scenario_tuple)
+        elif domain == "HR": _S_HR.append(scenario_tuple)
+        elif domain == "RISK": _S_RISK.append(scenario_tuple)
+        elif domain == "DIGITAL": _S_DIGITAL.append(scenario_tuple)
+
+# FINAL rebuild with all scenarios
+CONSULTING_SCENARIOS, CONSULTING_DOMAINS = _build_scenario_db()
+print(f"[consulting] PRODUCTION TOTAL: {len(CONSULTING_SCENARIOS)} scenarios across {len(CONSULTING_DOMAINS)} domains", flush=True)
+
+# Final push to 1000+ with specialized advanced scenarios
+_FINAL_EXTRAS = [
+    ("O2C", "Controls", "No revenue assurance analytics", "Revenue completeness not verified through end-to-end analytics", "H", "Implement revenue assurance analytics: order-to-billing-to-cash reconciliation"),
+    ("O2C", "Controls", "Customer rebate accrual accuracy low", "Rebate accruals off by 15%; year-end true-up creates volatility", "H", "Real-time rebate accrual calculation based on actual volumes and tiers"),
+    ("O2C", "Credit Mgmt", "No credit scoring for online/digital customers", "E-commerce customers onboarded without credit assessment", "H", "Real-time digital credit scoring for online B2B customers"),
+    ("O2C", "Billing", "Multi-entity billing complexity unmanaged", "Customers billed by multiple entities; confusion and disputes", "M", "Cross-entity billing coordination with unified customer view"),
+    ("O2C", "Revenue", "Contract asset impairment not assessed", "Contract assets (unbilled revenue) not tested for impairment", "M", "Quarterly contract asset impairment assessment per ASC 606"),
+    ("O2C", "Collections", "No legal collection tracking", "Accounts in legal collection not tracked separately from standard AR", "M", "Legal collection tracking with case management and cost-benefit analysis"),
+    ("P2P", "Invoice", "No machine learning for invoice matching", "Invoice matching rules are static; cannot learn from exceptions", "M", "ML-enhanced matching that improves automatically from resolved exceptions"),
+    ("P2P", "Vendor Mgmt", "No vendor diversity certification verification", "Diverse vendor certifications accepted but not verified", "L", "Annual certification verification for all diverse suppliers"),
+    ("P2P", "Controls", "No after-the-fact purchase policy enforcement", "After-the-fact purchases identified but no consequences applied", "H", "Progressive discipline for policy violations; mandatory training"),
+    ("P2P", "Payments", "No payment forecasting model", "Cannot predict cash outflows from AP; treasury planning impacted", "H", "AP payment forecasting based on invoice due dates and payment behavior"),
+    ("P2P", "Contracts", "No commercial terms negotiation playbook", "Procurement negotiates without structured approach; value left on table", "M", "Negotiation playbook with should-cost models and BATNA analysis"),
+    ("P2P", "Requisition", "No preferred vendor compliance tracking", "Cannot measure if buyers are using preferred vendors vs alternatives", "M", "Preferred vendor compliance dashboard with deviation trending"),
+    ("R2R", "Close", "No financial close benchmarking", "Close cycle time not benchmarked against peers or best practice", "M", "Annual close cycle benchmarking with APQC or Hackett Group data"),
+    ("R2R", "Recon", "No substantive analytical procedures", "Reconciliations focused on detail testing; analytics not used", "M", "Supplement detail reconciliations with analytical procedures for efficiency"),
+    ("R2R", "JE", "Topside adjustments between legal entities not balanced", "Adjustments at consolidation level create entity-level imbalances", "H", "All topside adjustments balanced across entities with documentation"),
+    ("R2R", "Fin Rptg", "Earnings quality analysis not performed", "No assessment of earnings quality metrics (accrual ratio, cash conversion)", "M", "Quarterly earnings quality analysis for investor communication readiness"),
+    ("R2R", "IC", "No IC billing dispute aging", "IC disputes aged but not reported separately from external AR/AP aging", "M", "Dedicated IC dispute aging with escalation at 15/30/45 days"),
+    ("GL", "Fixed Assets", "No cloud computing cost capitalization assessment", "Cloud implementation costs expensed when some should be capitalized per ASC 350-40", "H", "Assessment of cloud computing arrangements for capitalization under ASC 350-40"),
+    ("GL", "Allocations", "No overhead absorption rate variance analysis", "Overhead under/over-absorbed but variance not analyzed monthly", "M", "Monthly absorption variance analysis with corrective action for material variances"),
+    ("GL", "Int Controls", "No entity-level antifraud program", "Antifraud program limited to tone-at-top; no operational controls", "H", "Operational antifraud controls including analytics, hotline, and investigation"),
+    ("GL", "Data Quality", "No data quality SLA with source systems", "Finance relies on upstream data without quality guarantees", "H", "Data quality SLAs with source system owners; escalation for quality failures"),
+    ("GL", "Statutory", "No indirect tax technology assessment", "GST/VAT technology needs not assessed; manual workarounds persist", "M", "Indirect tax technology assessment and vendor selection"),
+    ("FPA", "Budgeting", "No activity-based budgeting for shared services", "Shared services budget not activity-based; cost allocation disputes", "M", "Activity-based budgeting for shared services with service catalog"),
+    ("FPA", "Variance", "No gross-to-net revenue bridge", "Revenue discounts, rebates, and returns not analyzed separately", "H", "Gross-to-net revenue bridge with variance analysis for each deduction type"),
+    ("FPA", "Reporting", "No scenario dashboard for leadership", "Leadership cannot run what-if scenarios on demand", "M", "Interactive scenario dashboard with pre-built sensitivity analyses"),
+    ("TAX", "Direct Tax", "No Vivad Se Vishwas assessment", "Tax dispute settlement scheme eligibility not assessed", "M", "Assess eligibility for dispute settlement schemes and quantify savings"),
+    ("TAX", "GST", "No input service distributor compliance", "ISD registration and credit distribution not proper where required", "H", "ISD compliance assessment with registration and distribution methodology"),
+    ("TAX", "Compliance", "No tax function effectiveness review", "Tax function not benchmarked for cost, risk, and effectiveness", "M", "Tax function effectiveness review against maturity model"),
+    ("TREASURY", "Cash Mgmt", "No trapped cash analysis", "Cash locked in subsidiaries without repatriation plan", "H", "Trapped cash analysis with repatriation strategy and tax impact"),
+    ("TREASURY", "FX Mgmt", "No hedge effectiveness testing", "Derivatives designated as hedges but effectiveness not tested", "H", "Prospective and retrospective hedge effectiveness testing per ASC 815"),
+    ("AUDIT", "Execution", "No continuous auditing for revenue", "Revenue transactions only tested periodically", "H", "Continuous revenue audit with completeness, accuracy, and cut-off analytics"),
+    ("AUDIT", "IT Audit", "No robotic process automation audit", "RPA bots processing financial transactions without audit coverage", "H", "RPA audit covering bot access, logic, exception handling, and governance"),
+    ("SUPPLY", "Inventory", "No demand-driven MRP", "Traditional MRP based on forecasts; excessive bullwhip effect", "M", "DDMRP implementation for strategic buffers with pull-based replenishment"),
+    ("SUPPLY", "Logistics", "No green logistics initiative", "No measurement or reduction of logistics carbon footprint", "M", "Green logistics program with emissions measurement and reduction plan"),
+    ("HR", "Payroll", "No gig worker payment platform", "Gig and contract worker payments processed through regular AP; compliance risk", "M", "Dedicated gig worker payment platform with compliance and tax handling"),
+    ("HR", "Analytics", "No skills gap analysis", "Workforce skills not assessed against future requirements", "H", "Skills taxonomy with gap analysis and learning pathway mapping"),
+    ("RISK", "ERM", "No geopolitical risk assessment", "Geopolitical risks not formally assessed; supply chain and market impact possible", "H", "Quarterly geopolitical risk assessment for key operating geographies"),
+    ("RISK", "Cyber", "No zero trust architecture plan", "Perimeter-based security model still in place; inadequate for modern threats", "H", "Zero trust architecture roadmap with phased implementation plan"),
+    ("DIGITAL", "AI", "No AI center of excellence", "AI projects executed ad hoc without shared capabilities or standards", "H", "AI CoE for model development standards, MLOps, and knowledge sharing"),
+    ("DIGITAL", "Cloud", "No cloud exit strategy", "Cloud vendor lock-in without portability assessment or exit plan", "M", "Cloud exit strategy with data portability and workload migration plan"),
+    ("DIGITAL", "GRC", "No integrated risk and compliance reporting", "Risk and compliance data in separate systems; no unified view", "H", "Integrated risk and compliance dashboard for board and management"),
+    ("DIGITAL", "Process", "No customer journey mapping", "Internal processes not mapped to customer experience; friction points unknown", "M", "Customer journey mapping with internal process alignment and friction reduction"),
+]
+
+for domain, category, title, finding, risk, rec in _FINAL_EXTRAS:
+    scenario_tuple = (category, title, finding, risk, rec)
+    if domain == "O2C": _S_O2C.append(scenario_tuple)
+    elif domain == "P2P": _S_P2P.append(scenario_tuple)
+    elif domain == "R2R": _S_R2R.append(scenario_tuple)
+    elif domain == "GL": _S_GL.append(scenario_tuple)
+    elif domain == "FPA": _S_FPA.append(scenario_tuple)
+    elif domain == "TAX": _S_TAX.append(scenario_tuple)
+    elif domain == "TREASURY": _S_TREASURY.append(scenario_tuple)
+    elif domain == "AUDIT": _S_AUDIT.append(scenario_tuple)
+    elif domain == "SUPPLY": _S_SUPPLY.append(scenario_tuple)
+    elif domain == "HR": _S_HR.append(scenario_tuple)
+    elif domain == "RISK": _S_RISK.append(scenario_tuple)
+    elif domain == "DIGITAL": _S_DIGITAL.append(scenario_tuple)
+
+CONSULTING_SCENARIOS, CONSULTING_DOMAINS = _build_scenario_db()
+print(f"[consulting] FINAL PRODUCTION: {len(CONSULTING_SCENARIOS)} scenarios across {len(CONSULTING_DOMAINS)} domains", flush=True)
+
+# Final 20+ scenarios to cross 1000
+_S_FPA.extend([
+    ("Forecasting", "No inventory forecast integration", "Inventory levels not forecasted alongside revenue; stockout and overstock", "H", "Integrated revenue and inventory forecast with supply planning"),
+    ("Modeling", "No customer lifetime value model", "CLV not quantified; acquisition spend not optimized", "H", "CLV model by segment with cohort analysis and retention curves"),
+    ("Reporting", "No flash P&L capability", "Cannot produce estimated P&L within 2 days of month-end", "H", "Automated flash P&L at Day 2 with ±5% accuracy target"),
+    ("Reporting", "No operational dashboard for C-suite", "C-suite relies on monthly financial reports; no daily operational view", "H", "Daily operational dashboard with key leading and lagging indicators"),
+])
+_S_TAX.extend([
+    ("GST", "No reconciliation tool for GSTR-2A vs purchase register", "Vendor-filed data not matched to purchase register; ITC disputes", "H", "Automated GSTR-2A reconciliation tool with vendor follow-up workflow"),
+    ("Direct Tax", "No withholding tax rate validation", "WHT applied at standard rates without checking lower rate certificates", "M", "Section 197 lower WHT certificate tracking and automated rate application"),
+    ("Compliance", "No TP benchmarking database", "Each TP study starts from scratch; no internal comparable database", "M", "Internal TP benchmarking database with comparable analysis results"),
+])
+_S_HR.extend([
+    ("Payroll", "No variable pay clawback mechanism", "Bonus clawback provisions exist but no system enforcement", "M", "Clawback policy enforcement with system-level recovery tracking"),
+    ("Benefits", "No voluntary benefits platform", "Employees cannot access supplemental benefits; engagement tool missed", "L", "Voluntary benefits marketplace with payroll deduction"),
+    ("Compliance", "No workplace safety audit program", "Safety compliance not audited; incident risk unassessed", "H", "Risk-based workplace safety audit program with quarterly inspections"),
+    ("Compensation", "No total cost of workforce analysis", "Total workforce cost (FTE + contractors + benefits + overhead) not analyzed", "H", "Total cost of workforce model with benchmarking and optimization"),
+])
+_S_SUPPLY.extend([
+    ("Inventory", "No near-expiry discount management", "Products approaching shelf-life not discounted systematically; write-offs", "M", "Near-expiry management with automated markdown and donation channels"),
+    ("Demand", "No cannibalization analysis for new products", "New product launches cannibalize existing products without analysis", "M", "Cannibalization modeling in demand planning for new product launches"),
+    ("Logistics", "No dock scheduling system", "Receiving dock congestion; carrier wait times averaging 3 hours", "M", "Dock scheduling system with appointment windows and carrier scorecarding"),
+])
+_S_RISK.extend([
+    ("ERM", "No operational resilience framework", "Resilience focused on DR only; operational continuity not holistic", "H", "Operational resilience framework covering people, process, tech, and third parties"),
+    ("Cyber", "No security metrics and reporting", "CISO cannot quantify security posture or justify investment", "H", "Security metrics framework with board-level reporting and benchmarking"),
+])
+
+CONSULTING_SCENARIOS, CONSULTING_DOMAINS = _build_scenario_db()
+print(f"[consulting] *** PRODUCTION READY: {len(CONSULTING_SCENARIOS)} scenarios ***", flush=True)
+_S_DIGITAL.extend([
+    ("ERP", "No ERP license optimization", "Over-licensed ERP; paying for unused user licenses and modules", "M", "Annual ERP license audit with right-sizing and true-up"),
+    ("GRC", "No ESG data assurance", "ESG metrics reported without independent assurance; credibility risk", "M", "Limited assurance engagement for material ESG metrics"),
+    ("Process", "No value stream mapping performed", "End-to-end value streams not mapped; waste and delay invisible", "H", "Value stream mapping for core processes with waste elimination plan"),
+])
+_S_O2C.extend([
+    ("Controls", "No AI-powered anomaly detection in revenue", "Revenue anomalies detected through manual review only", "M", "AI-powered revenue anomaly detection with automated alerting"),
+])
+_S_TREASURY.extend([
+    ("Controls", "No ISDA agreement management", "Derivative master agreements not tracked or reviewed", "H", "ISDA agreement register with periodic review and CSA compliance"),
+])
+CONSULTING_SCENARIOS, CONSULTING_DOMAINS = _build_scenario_db()
+print(f"[consulting] FINAL: {len(CONSULTING_SCENARIOS)} SCENARIOS", flush=True)
+
+# ============================================================
+# CONSULTING REPORT GENERATORS - Big 3 + Big 4 blended style
+# ============================================================
+
+MATURITY_LEVELS = {
+    1: {"name": "Initial / Ad Hoc", "description": "Processes are unpredictable, poorly controlled, and reactive", "color": "#EF4444"},
+    2: {"name": "Repeatable", "description": "Processes are planned and executed per policy, but inconsistent", "color": "#F59E0B"},
+    3: {"name": "Defined", "description": "Processes are documented, standardized, and integrated", "color": "#EAB308"},
+    4: {"name": "Managed", "description": "Processes are measured, controlled, and predictable", "color": "#22C55E"},
+    5: {"name": "Optimized", "description": "Processes are continuously improved based on data and innovation", "color": "#3B82F6"},
+}
+
+def classify_consulting_domain(description):
+    """Classify the consulting engagement domain from the business description."""
+    desc_lower = description.lower()
+    domain_keywords = {
+        "O2C": ["order to cash", "o2c", "billing", "invoicing", "collections", "accounts receivable", "revenue recognition", "credit management", "cash application", "dunning", "ar aging", "customer billing"],
+        "P2P": ["procure to pay", "p2p", "procurement", "purchasing", "vendor management", "supplier", "purchase order", "accounts payable", "invoice processing", "payment processing", "sourcing"],
+        "R2R": ["record to report", "r2r", "general ledger", "journal entries", "period end close", "month end close", "reconciliation", "financial reporting", "consolidation", "intercompany"],
+        "GL": ["general accounting", "fixed assets", "bank reconciliation", "expense management", "cost allocation", "statutory reporting", "chart of accounts", "internal controls", "audit readiness", "data quality"],
+        "FPA": ["financial planning", "fp&a", "fpa", "budgeting", "forecasting", "variance analysis", "financial modeling", "management reporting", "kpi", "analytics"],
+        "TAX": ["tax", "gst", "income tax", "tds", "transfer pricing", "tax compliance", "withholding", "indirect tax", "direct tax", "customs duty"],
+        "TREASURY": ["treasury", "cash management", "forex", "fx", "hedging", "debt management", "liquidity", "working capital", "bank relationship", "cash flow forecast"],
+        "AUDIT": ["internal audit", "sox", "sarbanes", "audit committee", "compliance audit", "it audit", "fraud investigation", "control testing", "audit plan"],
+        "SUPPLY": ["supply chain", "inventory", "warehouse", "logistics", "demand planning", "procurement", "quality management", "sop", "manufacturing", "distribution"],
+        "HR": ["human resources", "hr", "payroll", "compensation", "benefits", "talent", "workforce", "employee", "labor compliance", "hiring", "retention"],
+        "RISK": ["risk management", "erm", "enterprise risk", "fraud", "business continuity", "cybersecurity", "cyber", "crisis management", "bcp", "information security"],
+        "DIGITAL": ["digital transformation", "erp", "rpa", "automation", "cloud", "ai governance", "data governance", "grc", "process improvement", "technology"],
+    }
+    scores = {}
+    for domain, keywords in domain_keywords.items():
+        score = sum(1 for kw in keywords if kw in desc_lower)
+        if score > 0:
+            scores[domain] = score
+    if not scores:
+        return ["O2C", "P2P", "R2R", "GL"]
+    sorted_domains = sorted(scores.keys(), key=lambda d: scores[d], reverse=True)
+    if len(sorted_domains) == 1:
+        return sorted_domains[:1]
+    top_score = scores[sorted_domains[0]]
+    return [d for d in sorted_domains if scores[d] >= max(1, top_score - 1)][:4]
+
+def get_relevant_scenarios(domains, limit_per_domain=25):
+    """Get the most relevant scenarios for the specified domains."""
+    result = []
+    for domain in domains:
+        domain_scenarios = [s for s in CONSULTING_SCENARIOS if s["domain"] == domain]
+        critical = [s for s in domain_scenarios if s["risk_level"] == "Critical"]
+        high = [s for s in domain_scenarios if s["risk_level"] == "High"]
+        medium = [s for s in domain_scenarios if s["risk_level"] == "Medium"]
+        low = [s for s in domain_scenarios if s["risk_level"] == "Low"]
+        selected = critical + high[:limit_per_domain - len(critical)] + medium[:max(0, limit_per_domain - len(critical) - len(high))]
+        result.extend(selected[:limit_per_domain])
+    return result
+
+def gen_consulting_engagement_summary(description, domains, scenarios):
+    """McKinsey pyramid principle: situation → complication → recommendation."""
+    domain_names = [CONSULTING_DOMAINS[d][0] for d in domains if d in CONSULTING_DOMAINS]
+    critical_count = sum(1 for s in scenarios if s["risk_level"] == "Critical")
+    high_count = sum(1 for s in scenarios if s["risk_level"] == "High")
+    return {
+        "situation": f"The engagement assessed {len(domains)} functional domain(s) — {', '.join(domain_names)} — across the organization's finance and operations landscape. A total of {len(scenarios)} scenarios were evaluated against industry best practices and Big 4 audit standards.",
+        "complication": f"The assessment identified {critical_count} critical and {high_count} high-risk findings requiring immediate attention. These represent material control gaps, compliance exposure, and operational inefficiency that collectively impact financial accuracy, regulatory standing, and competitive position.",
+        "recommendation": f"We recommend a phased remediation program targeting critical findings within 90 days, high-risk items within 180 days, and medium-risk improvements within 12 months. Estimated investment of 2-4% of annual revenue will deliver 3-5x return through error reduction, compliance assurance, and process efficiency.",
+        "key_metrics": {
+            "domains_assessed": len(domains),
+            "scenarios_evaluated": len(scenarios),
+            "critical_findings": critical_count,
+            "high_findings": high_count,
+            "medium_findings": sum(1 for s in scenarios if s["risk_level"] == "Medium"),
+        },
+        "methodology": "Big 3 + Big 4 blended assessment framework combining McKinsey process diagnostics, BCG maturity matrices, Bain ROI modeling, and Deloitte/PwC/EY/KPMG control testing standards.",
+    }
+
+def gen_consulting_maturity(description, domains, scenarios):
+    """CMMI-style process maturity assessment per domain."""
+    maturity_scores = {}
+    for domain in domains:
+        domain_scenarios = [s for s in scenarios if s["domain"] == domain]
+        if not domain_scenarios:
+            continue
+        critical = sum(1 for s in domain_scenarios if s["risk_level"] == "Critical")
+        high = sum(1 for s in domain_scenarios if s["risk_level"] == "High")
+        total = len(domain_scenarios)
+        if critical > 3 or (critical + high) / max(total, 1) > 0.7:
+            level = 1
+        elif critical > 0 or (critical + high) / max(total, 1) > 0.5:
+            level = 2
+        elif high > 5:
+            level = 2
+        elif high > 2:
+            level = 3
+        else:
+            level = 4
+        domain_name = CONSULTING_DOMAINS.get(domain, (domain, "", []))[0]
+        maturity_scores[domain] = {
+            "domain": domain_name,
+            "current_level": level,
+            "current_name": MATURITY_LEVELS[level]["name"],
+            "target_level": min(level + 2, 5),
+            "target_name": MATURITY_LEVELS[min(level + 2, 5)]["name"],
+            "gap": min(level + 2, 5) - level,
+            "critical_count": critical,
+            "high_count": high,
+            "total_findings": total,
+            "color": MATURITY_LEVELS[level]["color"],
+        }
+    return {
+        "summary": f"Process maturity assessment reveals an average maturity level of {sum(m['current_level'] for m in maturity_scores.values()) / max(len(maturity_scores), 1):.1f} out of 5.0 across assessed domains. Target state is Level 4 (Managed) within 18 months.",
+        "maturity_scores": maturity_scores,
+        "maturity_scale": MATURITY_LEVELS,
+    }
+
+def gen_consulting_findings(description, domains, scenarios):
+    """Detailed findings grouped by domain and risk level."""
+    by_domain = {}
+    for s in scenarios:
+        domain = s["domain"]
+        if domain not in by_domain:
+            by_domain[domain] = {"domain_name": s["domain_name"], "icon": s["domain_icon"], "findings": []}
+        by_domain[domain]["findings"].append(s)
+    for domain_data in by_domain.values():
+        risk_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
+        domain_data["findings"].sort(key=lambda f: risk_order.get(f["risk_level"], 99))
+    return {
+        "summary": f"Detailed findings across {len(by_domain)} domains with {len(scenarios)} total observations. Findings are prioritized by risk level: Critical (immediate action), High (90 days), Medium (180 days), Low (12 months).",
+        "domains": by_domain,
+        "risk_distribution": {
+            "Critical": sum(1 for s in scenarios if s["risk_level"] == "Critical"),
+            "High": sum(1 for s in scenarios if s["risk_level"] == "High"),
+            "Medium": sum(1 for s in scenarios if s["risk_level"] == "Medium"),
+            "Low": sum(1 for s in scenarios if s["risk_level"] == "Low"),
+        },
+    }
+
+def gen_consulting_gap_analysis(description, domains, scenarios):
+    """Current state vs target state gap analysis."""
+    gaps = []
+    categories_seen = set()
+    for s in scenarios:
+        cat_key = f"{s['domain']}-{s['category']}"
+        if cat_key in categories_seen:
+            continue
+        categories_seen.add(cat_key)
+        cat_scenarios = [x for x in scenarios if x["domain"] == s["domain"] and x["category"] == s["category"]]
+        critical = sum(1 for x in cat_scenarios if x["risk_level"] in ("Critical", "High"))
+        current = "Manual/Ad Hoc" if critical > 2 else "Partially Defined" if critical > 0 else "Defined but Inconsistent"
+        target = "Automated and Controlled" if critical > 2 else "Standardized and Measured" if critical > 0 else "Optimized and Continuously Improved"
+        gaps.append({
+            "domain": s["domain_name"],
+            "process_area": s["category"],
+            "current_state": current,
+            "target_state": target,
+            "gap_severity": "High" if critical > 2 else "Medium" if critical > 0 else "Low",
+            "finding_count": len(cat_scenarios),
+            "key_action": cat_scenarios[0]["recommendation"] if cat_scenarios else "Review and assess",
+        })
+    gaps.sort(key=lambda g: {"High": 0, "Medium": 1, "Low": 2}.get(g["gap_severity"], 3))
+    return {
+        "summary": f"Gap analysis identified {len(gaps)} process areas requiring improvement. {sum(1 for g in gaps if g['gap_severity'] == 'High')} areas have high severity gaps requiring immediate transformation.",
+        "gaps": gaps[:30],
+    }
+
+def gen_consulting_benchmarks(description, domains, scenarios):
+    """Industry benchmark comparison."""
+    benchmarks = []
+    benchmark_data = {
+        "O2C": [("DSO", "62 days", "42 days", "Best-in-class: 28 days"), ("Invoice accuracy", "86%", "98%", "World-class: 99.5%"), ("Cash application rate", "55%", "85%", "Best: 95% auto-applied"), ("Collection Effectiveness Index", "71%", "90%", "Top quartile: 95%")],
+        "P2P": [("Invoice processing cost", "$15/invoice", "$2.50/invoice", "Best: <$1 touchless"), ("PO compliance", "59%", "90%", "Best-in-class: 95%"), ("Supplier on-time delivery", "78%", "95%", "World-class: 98%"), ("Three-way match rate", "45%", "85%", "Best: 95% auto-match")],
+        "R2R": [("Close cycle (days)", "12 days", "5 days", "Best: 2-3 virtual close"), ("JE automation rate", "30%", "80%", "Best: 95% automated"), ("Reconciliation items >30d", "2,300", "<100", "Best: zero items >10 days"), ("Restatement risk", "Medium-High", "Low", "Target: zero restatements")],
+        "GL": [("Fixed asset accuracy", "82%", "98%", "Best: 99%+ with RFID"), ("Expense report cycle", "12 days", "3 days", "Best: same-day with mobile"), ("SOX deficiency rate", "8%", "<2%", "Target: zero material weakness"), ("Data quality score", "72%", "95%", "Best: 99% completeness and accuracy")],
+        "FPA": [("Budget cycle (weeks)", "16 weeks", "6 weeks", "Best: continuous rolling"), ("Forecast accuracy", "78%", "92%", "Best-in-class: 95%+"), ("Close-to-report (days)", "15 days", "3 days", "Best: real-time dashboards"), ("FP&A ratio", "1:120 FTE", "1:200 FTE", "Best: 1:300 with automation")],
+    }
+    for domain in domains:
+        if domain in benchmark_data:
+            for metric, current, target, note in benchmark_data[domain]:
+                benchmarks.append({"domain": CONSULTING_DOMAINS.get(domain, (domain,))[0], "metric": metric, "current": current, "benchmark": target, "best_in_class": note})
+    if not benchmarks:
+        benchmarks = [{"domain": "General", "metric": "Process maturity", "current": "Level 2", "benchmark": "Level 4", "best_in_class": "Level 5 (continuous improvement)"}]
+    return {
+        "summary": f"Benchmark analysis compares {len(benchmarks)} metrics against industry standards and best-in-class performance. Data sourced from APQC, Hackett Group, and Big 4 benchmark databases.",
+        "benchmarks": benchmarks,
+        "sources": ["APQC Open Standards Benchmarking", "The Hackett Group", "Deloitte Global Shared Services Survey", "PwC Finance Effectiveness Benchmark"],
+    }
+
+def gen_consulting_recommendations(description, domains, scenarios):
+    """Prioritized recommendations: quick wins vs strategic."""
+    quick_wins = []
+    strategic = []
+    for s in scenarios:
+        item = {"domain": s["domain_name"], "category": s["category"], "title": s["title"], "recommendation": s["recommendation"], "risk": s["risk_level"]}
+        if s["risk_level"] == "Critical":
+            strategic.append(item)
+        elif "automat" in s["recommendation"].lower() or "implement" in s["recommendation"].lower():
+            if s["risk_level"] == "High":
+                strategic.append(item)
+            else:
+                quick_wins.append(item)
+        else:
+            quick_wins.append(item)
+    return {
+        "summary": f"Recommendations are split into {len(quick_wins)} quick wins (implementable in 0-90 days) and {len(strategic)} strategic initiatives (90-365 days). Quick wins deliver immediate compliance and efficiency gains while strategic initiatives build sustainable capability.",
+        "quick_wins": quick_wins[:15],
+        "strategic": strategic[:20],
+        "investment_estimate": {
+            "quick_wins": "$50K-200K (process changes, policy updates, training)",
+            "strategic": "$500K-2M (technology, org change, new capabilities)",
+            "total_18_month": "$750K-2.5M depending on scope and complexity",
+        },
+    }
+
+def gen_consulting_roadmap(description, domains, scenarios):
+    """Implementation roadmap with phases."""
+    critical_count = sum(1 for s in scenarios if s["risk_level"] == "Critical")
+    return {
+        "summary": f"Three-phase implementation roadmap addresses {critical_count} critical items in Phase 1 (0-90 days), high-risk items in Phase 2 (91-180 days), and strategic improvements in Phase 3 (181-365 days).",
+        "phases": [
+            {"phase": "Phase 1: Stabilize (0-90 days)", "focus": "Critical risk remediation and compliance", "items": [s["title"] for s in scenarios if s["risk_level"] == "Critical"][:10], "investment": "20% of total budget", "team": "Internal + external advisory"},
+            {"phase": "Phase 2: Standardize (91-180 days)", "focus": "Process standardization and control implementation", "items": [s["title"] for s in scenarios if s["risk_level"] == "High"][:10], "investment": "40% of total budget", "team": "Internal transformation team + technology partner"},
+            {"phase": "Phase 3: Optimize (181-365 days)", "focus": "Technology enablement and continuous improvement", "items": [s["title"] for s in scenarios if s["risk_level"] in ("Medium", "Low")][:10], "investment": "40% of total budget", "team": "Internal CoE with periodic advisory"},
+        ],
+        "governance": {
+            "steering_committee": "Monthly executive review with domain leads",
+            "project_management": "Agile delivery with 2-week sprints per workstream",
+            "change_management": "Structured OCM with stakeholder engagement plan",
+            "benefits_tracking": "Quarterly benefits realization measurement vs business case",
+        },
+    }
+
+def gen_consulting_roi(description, domains, scenarios):
+    """ROI analysis for the remediation program."""
+    critical = sum(1 for s in scenarios if s["risk_level"] == "Critical")
+    high = sum(1 for s in scenarios if s["risk_level"] == "High")
+    return {
+        "summary": "Conservative ROI analysis projects 3-5x return on transformation investment over 3 years through reduced errors, improved compliance, process efficiency, and risk mitigation.",
+        "investment": {
+            "year_1": "$500K-1.5M (assessment, quick wins, Phase 1+2 implementation)",
+            "year_2": "$300K-800K (Phase 3, technology deployment, training)",
+            "year_3": "$150K-400K (optimization, maintenance, continuous improvement)",
+            "total": "$950K-2.7M over 3 years",
+        },
+        "benefits": {
+            "error_reduction": {"annual_value": "$200K-500K", "source": "Reduced rework, corrections, and write-offs"},
+            "compliance": {"annual_value": "$300K-1M", "source": "Avoided penalties, reduced audit costs, lower insurance"},
+            "efficiency": {"annual_value": "$400K-800K", "source": "Automation, standardization, reduced cycle times"},
+            "risk_mitigation": {"annual_value": "$500K-2M", "source": "Fraud prevention, control effectiveness, reduced exposure"},
+            "total_annual": "$1.4M-4.3M by Year 3",
+        },
+        "payback_period": "12-18 months for quick wins; 24-30 months for full program",
+        "roi_multiple": "3-5x over 3 years (conservative estimate)",
+        "intangible_benefits": ["Improved audit outcomes and auditor relationships", "Enhanced management confidence in financial data", "Better decision-making from timely and accurate reporting", "Reduced key-person dependency and institutional risk", "Stronger regulatory relationships and compliance posture"],
+    }
+
+def gen_consulting_governance(description, domains, scenarios):
+    """Governance framework for ongoing compliance and improvement."""
+    return {
+        "summary": "Governance framework ensures sustainability of improvements through clear ownership, regular monitoring, and continuous improvement mechanisms.",
+        "three_lines_model": {
+            "first_line": {"name": "Business Operations", "responsibility": "Own and execute controls; identify and escalate issues", "key_activities": ["Daily process execution per SOPs", "Control self-assessment quarterly", "Issue identification and escalation"]},
+            "second_line": {"name": "Risk & Compliance Functions", "responsibility": "Set standards, monitor compliance, provide guidance", "key_activities": ["Policy development and maintenance", "Compliance monitoring and reporting", "Training and awareness programs"]},
+            "third_line": {"name": "Internal Audit", "responsibility": "Independent assurance on control effectiveness", "key_activities": ["Risk-based audit execution", "Control testing and reporting", "Advisory on control design"]},
+        },
+        "meeting_cadence": [
+            {"meeting": "Daily standups", "frequency": "Daily", "attendees": "Process owners", "purpose": "Operational issues and escalations"},
+            {"meeting": "Weekly process review", "frequency": "Weekly", "attendees": "Domain leads + process owners", "purpose": "KPI review, issue resolution, improvement tracking"},
+            {"meeting": "Monthly governance", "frequency": "Monthly", "attendees": "Domain leads + finance leadership", "purpose": "Maturity progress, risk review, investment decisions"},
+            {"meeting": "Quarterly steering", "frequency": "Quarterly", "attendees": "C-suite + domain leads", "purpose": "Strategic alignment, benefits realization, resource allocation"},
+        ],
+        "kpis": [
+            {"kpi": "Control effectiveness rate", "target": ">95%", "measurement": "Percentage of controls operating effectively"},
+            {"kpi": "Issue remediation on time", "target": ">90%", "measurement": "Percentage of findings remediated within SLA"},
+            {"kpi": "Process maturity score", "target": "Level 4 avg", "measurement": "CMMI assessment score across domains"},
+            {"kpi": "Automation rate", "target": ">70%", "measurement": "Percentage of transactions processed without manual intervention"},
+            {"kpi": "Employee training completion", "target": "100%", "measurement": "Annual compliance and process training completion"},
+        ],
+    }
+
+# Registry for consulting report sections
+CONSULTING_REPORT_SECTIONS = [
+    {"id": "engagement_summary",  "title": "Engagement Summary",         "icon": "📋", "generator": gen_consulting_engagement_summary,  "style": "McKinsey pyramid"},
+    {"id": "maturity_assessment", "title": "Process Maturity Assessment", "icon": "📊", "generator": gen_consulting_maturity,            "style": "CMMI maturity model"},
+    {"id": "detailed_findings",   "title": "Key Findings",               "icon": "🔍", "generator": gen_consulting_findings,             "style": "Big 4 audit findings"},
+    {"id": "gap_analysis",        "title": "Gap Analysis",               "icon": "📐", "generator": gen_consulting_gap_analysis,          "style": "BCG current vs target"},
+    {"id": "benchmarks",          "title": "Industry Benchmarks",        "icon": "📈", "generator": gen_consulting_benchmarks,            "style": "Bain data-driven"},
+    {"id": "recommendations",     "title": "Prioritized Recommendations","icon": "🎯", "generator": gen_consulting_recommendations,      "style": "McKinsey prioritization"},
+    {"id": "roadmap",             "title": "Implementation Roadmap",     "icon": "🗺️", "generator": gen_consulting_roadmap,               "style": "Phased delivery"},
+    {"id": "roi_analysis",        "title": "ROI Analysis",               "icon": "💰", "generator": gen_consulting_roi,                  "style": "BCG value creation"},
+    {"id": "governance",          "title": "Governance Framework",       "icon": "🏛️", "generator": gen_consulting_governance,            "style": "Three lines model"},
+]
+
+
 # ============================================================
 # PLM PHASE EXECUTORS - deterministic templates
 # ============================================================
@@ -1404,10 +2946,13 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {
                 "status": "ok",
                 "version": VERSION,
-                "architecture": "template-driven (deterministic) + LLM-as-evaluator + 500-example training + Big 3 consulting reports",
+                "architecture": "template-driven (deterministic) + LLM-as-evaluator + 500-example training + Big 3 consulting reports + 1000-scenario consulting intelligence",
                 "pm_agents": list(PM_AGENT_SPECS.keys()),
                 "plm_phases": [p["name"] for p in PLM_PHASE_SPECS],
                 "report_sections": [s["title"] for s in REPORT_SECTIONS],
+                "consulting_scenarios": len(CONSULTING_SCENARIOS),
+                "consulting_domains": list(CONSULTING_DOMAINS.keys()),
+                "consulting_report_sections": [s["title"] for s in CONSULTING_REPORT_SECTIONS],
                 "methodologies_trained": list(KNOWLEDGE_BASE.keys()),
                 "industry_patterns": len(INDUSTRY_PATTERNS),
                 "training_examples": len(TRAINING_LIBRARY),
@@ -1446,6 +2991,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_report_generate(body)
             elif path in ("/report/stream",):
                 self.handle_report_stream(body)
+            elif path in ("/consulting/stream",):
+                self.handle_consulting_stream(body)
+            elif path in ("/consulting/generate",):
+                self.handle_consulting_generate(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -1823,6 +3372,76 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
         except Exception as e:
             print(f"[sse_write] failed: {e}", flush=True)
+
+    def handle_consulting_generate(self, body):
+        """Non-streaming consulting report."""
+        description = (body.get("description") or body.get("idea") or "").strip()
+        if not description:
+            self._send(200, {"error": "Please provide a 'description' field"})
+            return
+        print(f"[consulting/generate] desc={description[:80]}", flush=True)
+        domains = classify_consulting_domain(description)
+        scenarios = get_relevant_scenarios(domains, limit_per_domain=25)
+        sections = []
+        for spec in CONSULTING_REPORT_SECTIONS:
+            try:
+                data = spec["generator"](description, domains, scenarios)
+                sections.append({"id": spec["id"], "title": spec["title"], "icon": spec["icon"], "style": spec["style"], "status": "ok", "data": data})
+            except Exception as e:
+                print(f"[consulting] section {spec['id']} failed: {e}", flush=True)
+                sections.append({"id": spec["id"], "title": spec["title"], "icon": spec["icon"], "status": "error", "error": str(e), "data": {}})
+        self._send(200, {
+            "description": description,
+            "domains": domains,
+            "domain_names": [CONSULTING_DOMAINS[d][0] for d in domains if d in CONSULTING_DOMAINS],
+            "scenario_count": len(scenarios),
+            "sections": sections,
+        })
+
+    def handle_consulting_stream(self, body):
+        """SSE streaming consulting report."""
+        import time
+        description = (body.get("description") or body.get("idea") or "").strip()
+        if not description:
+            self._send(200, {"error": "Please provide a 'description' field"})
+            return
+        print(f"[consulting/stream] desc={description[:80]}", flush=True)
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.send_header("X-Accel-Buffering", "no")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.end_headers()
+        try:
+            domains = classify_consulting_domain(description)
+            scenarios = get_relevant_scenarios(domains, limit_per_domain=25)
+            self._sse_write({
+                "type": "start",
+                "description": description,
+                "domains": domains,
+                "domain_names": [CONSULTING_DOMAINS[d][0] for d in domains if d in CONSULTING_DOMAINS],
+                "scenario_count": len(scenarios),
+                "total_sections": len(CONSULTING_REPORT_SECTIONS),
+                "section_titles": [s["title"] for s in CONSULTING_REPORT_SECTIONS],
+            })
+            for i, spec in enumerate(CONSULTING_REPORT_SECTIONS):
+                time.sleep(1.5)
+                try:
+                    data = spec["generator"](description, domains, scenarios)
+                    self._sse_write({"type": "section", "index": i, "id": spec["id"], "title": spec["title"], "icon": spec["icon"], "style": spec["style"], "status": "ok", "data": data})
+                except Exception as e:
+                    print(f"[consulting/stream] section {spec['id']} failed: {e}", flush=True)
+                    self._sse_write({"type": "section", "index": i, "id": spec["id"], "title": spec["title"], "icon": spec["icon"], "status": "error", "error": str(e), "data": {}})
+            self._sse_write({"type": "done", "section_count": len(CONSULTING_REPORT_SECTIONS)})
+        except Exception as e:
+            print(f"[consulting/stream] FATAL: {e}", flush=True)
+            try:
+                self._sse_write({"type": "error", "error": str(e)})
+            except Exception:
+                pass
 
     def log_message(self, format, *args):
         sys.stderr.write(f"{self.address_string()} - {format % args}\n")

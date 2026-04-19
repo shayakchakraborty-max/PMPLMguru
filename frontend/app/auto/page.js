@@ -1,212 +1,149 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-// v12: /auto is the launcher. User enters idea, picks one of three actions:
-//   1. Generate Consulting Report (Big 3 style, streaming)
-//   2. Build PM Workspace (Linear/Jira-style tool)
-//   3. Run PLM Cycle (8-phase product lifecycle with infographics)
-
-export default function AutoPage() {
-  const [idea, setIdea] = useState("");
-  const [loading, setLoading] = useState(null);
-  const [error, setError] = useState("");
-  const [recentProjects, setRecentProjects] = useState([]);
-
-  useEffect(() => {
-    try {
-      const keys = Object.keys(localStorage).filter(k => k.startsWith("pmguru_project_"));
-      const projects = keys.map(k => {
-        try {
-          const ws = JSON.parse(localStorage.getItem(k));
-          return {
-            id: ws.project.id,
-            name: ws.project.name,
-            methodology: ws.project.methodology,
-            industry: ws.project.industry,
-            tasks: ws.tasks?.length || 0,
-          };
-        } catch { return null; }
-      }).filter(Boolean);
-      setRecentProjects(projects.slice(0, 6));
-    } catch {}
-  }, []);
-
-  function goToReport() {
-    if (!idea.trim()) { setError("Please enter a project idea first."); return; }
-    setError("");
-    sessionStorage.setItem("pmguru_pending_idea", idea);
-    window.location.href = `/report?idea=${encodeURIComponent(idea)}`;
-  }
-
-  async function goToWorkspace() {
-    if (!idea.trim()) { setError("Please enter a project idea first."); return; }
-    setError("");
-    setLoading("workspace");
-    try {
-      const r = await fetch("/api/pipeline", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage: "workspace", idea }),
-      });
-      const data = await r.json();
-      if (data.error) { setError(data.error); setLoading(null); return; }
-      const ws = data.workspace;
-      ws._created_at = new Date().toISOString();
-      ws._idea = idea;
-      localStorage.setItem(`pmguru_project_${ws.project.id}`, JSON.stringify(ws));
-      localStorage.setItem("pmguru_current_project", ws.project.id);
-      window.location.href = `/workspace?id=${ws.project.id}`;
-    } catch (e) {
-      setError("Network error: " + e.message);
-      setLoading(null);
-    }
-  }
-
-  function goToPlmCycle() {
-    if (!idea.trim()) { setError("Please enter a project idea first."); return; }
-    setError("");
-    sessionStorage.setItem("pmguru_pending_idea", idea);
-    window.location.href = `/plm-cycle?idea=${encodeURIComponent(idea)}`;
-  }
-
-  function openProject(id) {
-    localStorage.setItem("pmguru_current_project", id);
-    window.location.href = `/workspace?id=${id}`;
-  }
-
-  function deleteProject(id, e) {
-    e.stopPropagation();
-    if (!confirm("Delete this project?")) return;
-    localStorage.removeItem(`pmguru_project_${id}`);
-    setRecentProjects(rp => rp.filter(p => p.id !== id));
-  }
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="max-w-5xl mx-auto p-6">
-        <header className="mb-8 pt-8">
-          <div className="inline-block px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold mb-3">
-            PMGuru v12 · Consulting-Grade PM Platform
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900">
+      <div className="max-w-6xl mx-auto px-6 py-12">
+        {/* Header */}
+        <header className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-xs font-bold mb-6">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+            PMGuru v12 · 1,003 Consulting Scenarios · 500 PM Training Examples
           </div>
-          <h1 className="text-5xl font-black tracking-tight">From idea to execution, in three stages</h1>
-          <p className="text-slate-600 mt-3 text-lg max-w-2xl">
-            Enter your idea once. Get a Big 3-style due diligence report, a working PM workspace, and a complete product lifecycle plan — all from the same input.
+          <h1 className="text-6xl font-black tracking-tight leading-tight">
+            The AI brain behind<br />
+            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              great products & great audits
+            </span>
+          </h1>
+          <p className="text-xl text-slate-600 mt-6 max-w-2xl mx-auto">
+            Two platforms, one intelligence engine. Whether you're building a product or auditing a business,
+            PMGuru delivers consulting-grade insights in seconds.
           </p>
         </header>
 
-        <div className="bg-white rounded-2xl shadow-lg border p-8 mb-6">
-          <label className="block text-sm font-bold text-slate-700 mb-3">What do you want to build?</label>
-          <textarea
-            value={idea}
-            onChange={(e) => setIdea(e.target.value)}
-            rows={4}
-            placeholder="e.g. AI-powered grocery assistant for Indian kirana stores with voice ordering, inventory management, and GST filing..."
-            className="w-full p-4 border-2 border-slate-200 rounded-xl text-base focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition"
-            disabled={loading !== null}
-          />
-          {error && (
-            <div className="mt-3 bg-rose-50 border border-rose-300 rounded-lg p-3">
-              <pre className="text-xs text-rose-800 whitespace-pre-wrap">{error}</pre>
+        {/* Two paths */}
+        <div className="grid md:grid-cols-2 gap-6 mb-16">
+          {/* PM Tool */}
+          <div className="group relative bg-white rounded-3xl border-2 border-slate-200 hover:border-indigo-500 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
+            <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 text-white p-8">
+              <div className="text-5xl mb-4">🚀</div>
+              <h2 className="text-3xl font-black">Product & PM Tool</h2>
+              <p className="text-sm opacity-80 mt-2">For founders, PMs, and product teams</p>
             </div>
-          )}
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-4 mb-8">
-          <StageCard
-            num="1"
-            icon="📑"
-            title="Due Diligence Report"
-            desc="Big 3 consulting-style report with 11 sections. Market sizing, competitive landscape, tech stack, financials, GTM. Streaming delivery (~16 sec). Download as PDF."
-            cta="Generate Report"
-            color="from-purple-600 to-indigo-700"
-            onClick={goToReport}
-            loading={loading === "report"}
-            disabled={loading !== null || !idea.trim()}
-          />
-          <StageCard
-            num="2"
-            icon="🛠️"
-            title="PM Workspace"
-            desc="Linear/Jira/Asana-blended tool. Pre-filled tasks, sprints, kanban board, risk register, team roster, stakeholder map, timeline, dashboard. Edit everything inline."
-            cta="Build Workspace"
-            color="from-emerald-600 to-teal-700"
-            onClick={goToWorkspace}
-            loading={loading === "workspace"}
-            disabled={loading !== null || !idea.trim()}
-          />
-          <StageCard
-            num="3"
-            icon="🔄"
-            title="PLM Cycle"
-            desc="8-phase product lifecycle with infographic-rich reports. Discovery, ideation, definition, design, development, testing, launch, iterate. Niche consulting style."
-            cta="Run PLM Cycle"
-            color="from-rose-600 to-orange-600"
-            onClick={goToPlmCycle}
-            loading={loading === "plm"}
-            disabled={loading !== null || !idea.trim()}
-          />
-        </div>
-
-        {recentProjects.length > 0 && (
-          <div>
-            <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">Recent projects</h2>
-            <div className="grid md:grid-cols-2 gap-3">
-              {recentProjects.map(p => (
-                <div
-                  key={p.id}
-                  onClick={() => openProject(p.id)}
-                  className="bg-white rounded-xl border p-4 hover:shadow-md hover:border-indigo-300 cursor-pointer transition group"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-slate-900 truncate">{p.name}</div>
-                      <div className="text-xs text-slate-500 mt-1 flex gap-2 flex-wrap">
-                        <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 font-bold">{p.methodology}</span>
-                        <span>{p.industry}</span>
-                        <span>·</span>
-                        <span>{p.tasks} tasks</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => deleteProject(p.id, e)}
-                      className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 transition text-sm px-2"
-                      title="Delete"
-                    >✕</button>
-                  </div>
-                </div>
-              ))}
+            <div className="p-8">
+              <p className="text-slate-600 mb-6">
+                Enter your idea and get a complete consulting-grade due diligence report,
+                a working PM workspace, and a full product lifecycle plan.
+              </p>
+              <div className="space-y-3 mb-8">
+                <Feature icon="📑" text="Big 3-style due diligence report (11 sections, streaming)" />
+                <Feature icon="🛠️" text="PM workspace with kanban, sprints, risks, team & timeline" />
+                <Feature icon="🔄" text="8-phase product lifecycle with infographics" />
+                <Feature icon="📊" text="Market sizing, competitive landscape, financial projections" />
+                <Feature icon="⚙️" text="Technology stack & methodology recommendations" />
+                <Feature icon="📥" text="Download everything as PDF" />
+              </div>
+              <a
+                href="/pm"
+                className="block w-full text-center px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-black text-lg hover:opacity-90 transition"
+              >
+                Launch PM Tool →
+              </a>
             </div>
           </div>
-        )}
 
-        <div className="mt-12 text-center text-xs text-slate-400">
-          Trained on 500+ real project examples · 97.8% methodology classification accuracy · Template-driven, zero LLM failures
+          {/* Consulting Pro */}
+          <div className="group relative bg-white rounded-3xl border-2 border-slate-200 hover:border-emerald-500 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
+            <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white p-8">
+              <div className="text-5xl mb-4">🏛️</div>
+              <h2 className="text-3xl font-black">Consulting Pro</h2>
+              <p className="text-sm opacity-80 mt-2">For consultants, auditors, and advisory teams</p>
+            </div>
+            <div className="p-8">
+              <p className="text-slate-600 mb-6">
+                Describe any business and get a Big 3 + Big 4 style assessment report
+                powered by 1,003 real-world scenarios across 12 finance domains.
+              </p>
+              <div className="space-y-3 mb-8">
+                <Feature icon="💰" text="O2C, P2P, R2R, General Accounting — deep coverage" />
+                <Feature icon="📈" text="FP&A, Tax, Treasury, Internal Audit, Supply Chain" />
+                <Feature icon="🛡️" text="Risk, Fraud, Cyber, HR, Digital Transformation" />
+                <Feature icon="📊" text="CMMI maturity assessment with gap analysis" />
+                <Feature icon="🎯" text="Prioritized recommendations with ROI analysis" />
+                <Feature icon="📥" text="Consulting-grade PDF report, ready to deliver" />
+              </div>
+              <a
+                href="/consulting"
+                className="block w-full text-center px-6 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-black text-lg hover:opacity-90 transition"
+              >
+                Launch Consulting Pro →
+              </a>
+            </div>
+          </div>
         </div>
+
+        {/* Stats bar */}
+        <div className="bg-slate-900 rounded-2xl p-8 grid grid-cols-2 md:grid-cols-5 gap-6 text-center text-white mb-12">
+          <Stat value="1,003" label="Live scenarios" />
+          <Stat value="12" label="Finance domains" />
+          <Stat value="500+" label="PM training examples" />
+          <Stat value="97.8%" label="Classification accuracy" />
+          <Stat value="0" label="LLM failures" />
+        </div>
+
+        {/* Domain grid */}
+        <div className="mb-12">
+          <h3 className="text-center text-sm font-bold text-slate-600 uppercase tracking-wider mb-6">
+            Consulting Pro covers 12 finance & operations domains
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {[
+              { icon: "💰", name: "O2C", full: "Order to Cash" },
+              { icon: "🛒", name: "P2P", full: "Procure to Pay" },
+              { icon: "📊", name: "R2R", full: "Record to Report" },
+              { icon: "📒", name: "GL", full: "General Accounting" },
+              { icon: "📈", name: "FP&A", full: "Planning & Analysis" },
+              { icon: "⚖️", name: "Tax", full: "Tax & Compliance" },
+              { icon: "🏦", name: "Treasury", full: "Cash & FX" },
+              { icon: "🔍", name: "Audit", full: "Internal Audit & SOX" },
+              { icon: "🚚", name: "Supply", full: "Supply Chain" },
+              { icon: "👥", name: "HR", full: "HR & Payroll" },
+              { icon: "🛡️", name: "Risk", full: "Risk, Fraud & Cyber" },
+              { icon: "🖥️", name: "Digital", full: "Digital & GRC" },
+            ].map(d => (
+              <div key={d.name} className="bg-white rounded-xl border p-4 text-center hover:shadow-md transition">
+                <div className="text-2xl">{d.icon}</div>
+                <div className="font-black text-sm mt-1">{d.name}</div>
+                <div className="text-[10px] text-slate-500">{d.full}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <footer className="text-center text-xs text-slate-400 pb-8">
+          Template-driven intelligence · Zero LLM dependency · Sub-second response · Big 3 + Big 4 blended methodology
+        </footer>
       </div>
     </div>
   );
 }
 
-function StageCard({ num, icon, title, desc, cta, color, onClick, loading, disabled }) {
+function Feature({ icon, text }) {
   return (
-    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col">
-      <div className={`bg-gradient-to-br ${color} text-white p-5`}>
-        <div className="flex items-center justify-between">
-          <span className="text-3xl">{icon}</span>
-          <span className="text-xs font-bold opacity-60 uppercase">Stage {num}</span>
-        </div>
-        <h3 className="text-xl font-black mt-3">{title}</h3>
-      </div>
-      <div className="p-5 flex-1 flex flex-col">
-        <p className="text-sm text-slate-600 flex-1">{desc}</p>
-        <button
-          onClick={onClick}
-          disabled={disabled}
-          className="mt-4 w-full px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed transition"
-        >
-          {loading ? "Loading..." : cta}
-        </button>
-      </div>
+    <div className="flex items-start gap-3">
+      <span className="text-lg">{icon}</span>
+      <span className="text-sm text-slate-700">{text}</span>
+    </div>
+  );
+}
+
+function Stat({ value, label }) {
+  return (
+    <div>
+      <div className="text-3xl font-black">{value}</div>
+      <div className="text-xs opacity-60 mt-1">{label}</div>
     </div>
   );
 }
