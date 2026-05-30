@@ -23,6 +23,27 @@ export default function LandingPage() {
           </p>
         </header>
 
+        {/* Featured: MSME Advisor */}
+        <a href="/advisor"
+          className="group block relative overflow-hidden rounded-3xl mb-8 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-8 hover:shadow-2xl transition">
+          <div className="flex flex-col md:flex-row md:items-center gap-6">
+            <div className="text-5xl">🧭</div>
+            <div className="flex-1">
+              <div className="inline-flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full text-[11px] font-bold mb-2">
+                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" /> NEW · 20 research-grade AI agents
+              </div>
+              <h2 className="text-3xl font-black">MSME Advisor</h2>
+              <p className="text-sm text-slate-300 mt-2 max-w-2xl">
+                An AI consulting team for every Indian business. Two modes — <b>New Startup</b> and <b>Existing Business</b> —
+                with detailed forms, a full business-type filter, and audit-ready reports (citations, ERP & Notion actions, risks, KPIs).
+              </p>
+            </div>
+            <span className="shrink-0 px-6 py-3.5 bg-white text-slate-900 rounded-xl font-black group-hover:bg-emerald-300 transition">
+              Open Advisor →
+            </span>
+          </div>
+        </a>
+
         {/* Two paths */}
         <div className="grid md:grid-cols-2 gap-6 mb-16">
           {/* PM Tool */}

@@ -26,6 +26,14 @@ except Exception:
 
 import httpx
 
+# Research-grade MSME agent layer (self-contained, deterministic). Optional import
+# so the legacy engine still boots even if this module is absent.
+try:
+    import msme_agents as MSME
+except Exception as _e:
+    MSME = None
+    print(f"[msme_agents] not loaded: {_e}", flush=True)
+
 VERSION = "12.0"
 
 # ============================================================
@@ -3316,6 +3324,11 @@ class Handler(BaseHTTPRequestHandler):
                 "industry_patterns": len(INDUSTRY_PATTERNS),
                 "training_examples": len(TRAINING_LIBRARY),
                 "groq_key": bool(os.getenv("GROQ_API_KEY", "").strip()),
+                "msme_agents": ({
+                    "total": len(MSME.MSME_AGENTS),
+                    "live": [k for k, a in MSME.MSME_AGENTS.items() if a.get("status") == "live"],
+                    "endpoints": ["GET /agents/meta", "GET /agents/tests", "POST /agents/run"],
+                } if MSME else "not loaded"),
             })
         elif path == "/simulations":
             # Run all 500+ examples through the classifier and return accuracy report
@@ -3336,6 +3349,27 @@ class Handler(BaseHTTPRequestHandler):
             })
         elif path == "/consulting/demos":
             self._send(200, {"demos": DEMO_ENGAGEMENTS, "count": len(DEMO_ENGAGEMENTS)})
+        elif path == "/agents/meta":
+            if not MSME:
+                self._send(200, {"error": "msme_agents module not loaded"})
+                return
+            self._send(200, {
+                "agents": MSME.list_agents(),
+                "envelope_keys": MSME.ENVELOPE_KEYS,
+                "erp_modules": MSME.ERP_MODULES,
+                "notion_databases": MSME.NOTION_DATABASES,
+                "citations": MSME.CITATIONS,
+                "benchmarks": MSME.BENCHMARKS,
+                "business_taxonomy": getattr(MSME, "BUSINESS_TAXONOMY", {}),
+                "compliance_map": getattr(MSME, "COMPLIANCE_MAP", {}),
+                "live_count": sum(1 for a in MSME.MSME_AGENTS.values() if a.get("status") == "live"),
+                "total_count": len(MSME.MSME_AGENTS),
+            })
+        elif path == "/agents/tests":
+            if not MSME:
+                self._send(200, {"error": "msme_agents module not loaded"})
+                return
+            self._send(200, MSME.run_agent_tests())
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3371,6 +3405,8 @@ class Handler(BaseHTTPRequestHandler):
             elif path.startswith("/consulting/demo/"):
                 demo_id = path.split("/consulting/demo/")[1].strip("/")
                 self.handle_consulting_demo(demo_id)
+            elif path in ("/agents/run",):
+                self.handle_agent_run(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -3424,6 +3460,22 @@ class Handler(BaseHTTPRequestHandler):
                 "complexity": classification["complexity"],
             },
         })
+
+    def handle_agent_run(self, body):
+        """Run a research-grade MSME agent against a scenario; returns the audit-ready envelope."""
+        if not MSME:
+            self._send(200, {"error": "msme_agents module not loaded"})
+            return
+        agent_key = (body.get("agent") or "").strip()
+        if not agent_key:
+            self._send(200, {"error": "Please provide an 'agent' field", "available": list(MSME.MSME_AGENTS.keys())})
+            return
+        scenario = {
+            "description": (body.get("description") or body.get("idea") or "").strip(),
+            "data": body.get("data") or {},
+        }
+        print(f"[agents/run] agent={agent_key} desc={scenario['description'][:80]}", flush=True)
+        self._send(200, MSME.run_agent(agent_key, scenario))
 
     def handle_plm_execute(self, body):
         idea = (body.get("idea") or "").strip()
