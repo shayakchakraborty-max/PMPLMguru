@@ -5,7 +5,8 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const BRAIN = (process.env.BRAIN_URL || "").replace(/\/$/, "");
+let BRAIN = (process.env.BRAIN_URL || "").trim().replace(/\/$/, "");
+if (BRAIN && !/^https?:\/\//i.test(BRAIN)) BRAIN = "https://" + BRAIN;
 
 export async function POST(req) {
   if (!BRAIN) {

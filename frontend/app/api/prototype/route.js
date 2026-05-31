@@ -4,7 +4,8 @@
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const BRAIN = (process.env.BRAIN_URL || "").replace(/\/$/, "");
+let BRAIN = (process.env.BRAIN_URL || "").trim().replace(/\/$/, "");
+if (BRAIN && !/^https?:\/\//i.test(BRAIN)) BRAIN = "https://" + BRAIN;
 const PROTOTYPE_PATHS = ["/plm/prototype", "/pipeline/prototype", "/prototype"];
 
 export async function POST(req) {
