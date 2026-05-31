@@ -3591,11 +3591,15 @@ class Handler(BaseHTTPRequestHandler):
         cur = c.get("currency", "$")
         kb = KNOWLEDGE_BASE[c["method_key"]]
 
+        india = c.get("geo") == "India"
+        c_usd = dict(c); c_usd["geo"] = "Global"; c_usd["currency"] = "$"
+
         market = gen_market_sizing(idea, c)
         comp = gen_competitive_landscape(idea, c)
         tech = gen_tech_stack(idea, c)
         meth = gen_methodology_recommendation(idea, c)
-        fin = gen_financial_projections(idea, c)
+        fin = gen_financial_projections(idea, c)          # native (₹ for India)
+        fin_usd = gen_financial_projections(idea, c_usd)  # USD twin (for dual display)
         risk = gen_risk_assessment(idea, c)
         gtm = gen_gtm_strategy(idea, c)
         reg = gen_regulatory_compliance(idea, c)
@@ -3603,6 +3607,20 @@ class Handler(BaseHTTPRequestHandler):
 
         def P(lst, n=8):
             return [str(x) for x in (lst or [])][:n]
+
+        # Dual-currency: show ₹ and $ together for India; just $ otherwise.
+        def dual(native, usd):
+            return f"{native}  ·  {usd}" if (india and native != usd) else usd
+
+        # Parse "550B" / "1.2B" / "85M" -> float (USD) for infographic proportions.
+        def _bn(s):
+            s = str(s).replace("$", "").strip().upper()
+            mult = 1.0
+            if s.endswith("B"): mult, s = 1e9, s[:-1]
+            elif s.endswith("M"): mult, s = 1e6, s[:-1]
+            elif s.endswith("T"): mult, s = 1e12, s[:-1]
+            try: return float(s) * mult
+            except Exception: return 0.0
 
         sections = []
 
@@ -3616,7 +3634,7 @@ class Handler(BaseHTTPRequestHandler):
                 f"Funding need (seed): {fin['funding_requirement']['seed']}",
             ]})
 
-        # Market study with TAM/SAM/SOM hero metrics
+        # Market study with TAM/SAM/SOM hero metrics + funnel infographic
         sections.append({"id": "market", "title": "Market Study — TAM / SAM / SOM", "icon": "📈",
             "summary": market["summary"],
             "metrics": [
@@ -3624,6 +3642,11 @@ class Handler(BaseHTTPRequestHandler):
                 {"label": "SAM", "value": market["sam"]["value"], "note": "Serviceable available"},
                 {"label": "SOM", "value": market["som"]["value"], "note": "Serviceable obtainable (3-5 yr)"},
                 {"label": "Growth", "value": market["growth_rate"], "note": "Sector CAGR"},
+            ],
+            "funnel": [
+                {"label": "TAM", "value": market["tam"]["value"], "n": _bn(market["tam"]["value"])},
+                {"label": "SAM", "value": market["sam"]["value"], "n": _bn(market["sam"]["value"])},
+                {"label": "SOM", "value": market["som"]["value"], "n": _bn(market["som"]["value"])},
             ],
             "points": ([("India context: " + market["india_context"])] if market.get("india_context") else [])
                       + ["Growth drivers: " + market.get("growth_drivers", "")]
@@ -3643,13 +3666,19 @@ class Handler(BaseHTTPRequestHandler):
             "summary": risk.get("summary", "") + " " + reg.get("summary", ""),
             "points": dd_points[:7] + ["Registration/compliance: " + "; ".join(P(reg.get("key_regulations", []), 6))]})
 
-        sections.append({"id": "financials", "title": f"Financial Projections ({cur})", "icon": "💰",
+        rp, rpu = fin["revenue_projection"], fin_usd["revenue_projection"]
+        fin_title = "Financial Projections (₹ & $)" if india else "Financial Projections ($)"
+        sections.append({"id": "financials", "title": fin_title, "icon": "💰",
             "summary": fin["summary"],
             "table": {"headers": ["Year", "Users", "Revenue", "Growth"],
-                      "rows": [[r["year"], r["users"], r["revenue"], r["growth"]] for r in fin["revenue_projection"]]},
-            "points": [f"Blended CAC {fin['unit_economics']['blended_cac']} · LTV {fin['unit_economics']['ltv_estimate']} · target LTV:CAC {fin['unit_economics']['ltv_cac_target']}",
+                      "rows": [[rp[i]["year"], rp[i]["users"], dual(rp[i]["revenue"], rpu[i]["revenue"]), rp[i]["growth"]] for i in range(len(rp))]},
+            "chart": {"labels": [r["year"] for r in rpu],
+                      "values": [p["revenue"] for p in fin_usd["profit_loss"]],
+                      "display": [dual(rp[i]["revenue"], rpu[i]["revenue"]) for i in range(len(rp))]},
+            "points": [f"Blended CAC {dual(fin['unit_economics']['blended_cac'], fin_usd['unit_economics']['blended_cac'])} · LTV {dual(fin['unit_economics']['ltv_estimate'], fin_usd['unit_economics']['ltv_estimate'])} · target LTV:CAC {fin['unit_economics']['ltv_cac_target']}",
                        f"Gross margin {fin['unit_economics']['gross_margin']}",
-                       f"Seed {fin['funding_requirement']['seed']} · Series A {fin['funding_requirement']['series_a']}"]})
+                       f"Seed: {dual(fin['funding_requirement']['seed'], fin_usd['funding_requirement']['seed'])}",
+                       f"Series A: {dual(fin['funding_requirement']['series_a'], fin_usd['funding_requirement']['series_a'])}"]})
 
         # Product lifecycle (PLM) from the methodology's phases
         plm_rows = []
