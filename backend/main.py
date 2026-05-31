@@ -34,6 +34,18 @@ except Exception as _e:
     MSME = None
     print(f"[msme_agents] not loaded: {_e}", flush=True)
 
+try:
+    import sim_library as SIM
+except Exception as _e:
+    SIM = None
+    print(f"[sim_library] not loaded: {_e}", flush=True)
+
+try:
+    import llm_stack as LLM
+except Exception as _e:
+    LLM = None
+    print(f"[llm_stack] not loaded: {_e}", flush=True)
+
 VERSION = "12.0"
 
 # ============================================================
@@ -3404,6 +3416,8 @@ class Handler(BaseHTTPRequestHandler):
                     "live": [k for k, a in MSME.MSME_AGENTS.items() if a.get("status") == "live"],
                     "endpoints": ["GET /agents/meta", "GET /agents/tests", "POST /agents/run"],
                 } if MSME else "not loaded"),
+                "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
+                "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
         elif path == "/simulations":
             # Run all 500+ examples through the classifier and return accuracy report
@@ -3490,6 +3504,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_workspace_erp(body)
             elif path in ("/studio", "/studio/generate"):
                 self.handle_studio(body)
+            elif path in ("/simulate", "/situation"):
+                self.handle_simulate(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -3575,6 +3591,78 @@ class Handler(BaseHTTPRequestHandler):
             return
         print(f"[agents/journey] mode={mode} desc={scenario['description'][:80]}", flush=True)
         self._send(200, MSME.run_journey(mode, scenario))
+
+    def handle_simulate(self, body):
+        """Situation simulator — match a real MSME situation against the 100+/type
+        scale-wise library, run the recommended agent CREW (CrewAI-style) in a
+        sequence (LangGraph-style), and assemble an end-to-end grow-in-India +
+        scale-internationally plan. Optionally synthesised by the free-LLM stack."""
+        if not (MSME and SIM):
+            self._send(200, {"error": "simulation engine not loaded"})
+            return
+        situation = (body.get("situation") or body.get("idea") or body.get("description") or "").strip()
+        if not situation:
+            self._send(200, {"error": "Please describe your business situation."})
+            return
+        print(f"[simulate] {situation[:90]}", flush=True)
+
+        m = SIM.match(situation, top=12)
+        scenario = {"description": situation, "data": body.get("data") or {}}
+
+        # Run the crew (cap to keep it swift) — LangGraph-style sequential pass.
+        crew_keys = (m["crew"] or [])[:6]
+        crew_out = []
+        for k in crew_keys:
+            r = MSME.run_agent(k, scenario)
+            if r.get("status") != "ok":
+                continue
+            o = r["output"]
+            crew_out.append({
+                "agent": k, "name": r["name"], "icon": r["icon"],
+                "recommendations": (o.get("recommendations") or [])[:3],
+                "top_risk": (o.get("risks") or [{}])[0].get("risk", ""),
+            })
+
+        # End-to-end plan split into India growth vs international scale-up.
+        india_keys = {"market_research", "sales_gtm", "cfo_finance", "gst_compliance", "ceo_copilot", "competitor_intel", "product_manager"}
+        intl_keys = {"export_compliance", "msme_due_diligence", "investor_readiness", "legal_contracts", "procurement_agent"}
+        india_growth, intl_scaleup = [], []
+        for c in crew_out:
+            for rec in c["recommendations"]:
+                (india_growth if c["agent"] in india_keys else intl_scaleup if c["agent"] in intl_keys else india_growth).append(f"{c['icon']} {rec}")
+
+        # Optional free-LLM executive synthesis (graceful: deterministic if no keys).
+        exec_summary, llm_provider = "", None
+        if LLM and LLM.available():
+            sys_p = ("You are a Big-3 MSME consultant for India. Write a crisp 4-6 sentence executive "
+                     "synthesis for the founder: how to grow in India and scale internationally. Be concrete, India-aware (₹, GST, IEC, APEDA/RoDTEP where relevant). No preamble.")
+            usr_p = (f"Situation: {situation}\nBusiness type: {m['business_type']} · Stage: {m['stage']}\n"
+                     f"Key moves: " + "; ".join((india_growth + intl_scaleup)[:10]))
+            res = LLM.augment(sys_p, usr_p, max_tokens=500)
+            exec_summary, llm_provider = res.get("text") or "", res.get("provider")
+        if not exec_summary:
+            exec_summary = (f"As a {m['stage'].lower()} {m['business_type'].replace('_',' ')} business, win an India beachhead first "
+                            f"(clean GST/Udyam, tight unit economics, a focused channel), then scale internationally with IEC, "
+                            f"the right export incentives and verified buyers. The crew below sequences the work.")
+
+        self._send(200, {
+            "situation": situation,
+            "business_type": m["business_type"],
+            "stage": m["stage"],
+            "library_size_for_type": m["library_size_for_type"],
+            "total_situations": m["total_situations"],
+            "matched_situations": [s["situation"] for s in m["matched"][:8]],
+            "crew": [{"agent": c["agent"], "name": c["name"], "icon": c["icon"]} for c in crew_out],
+            "plan": {
+                "india_growth": india_growth[:10],
+                "international_scaleup": intl_scaleup[:10],
+                "agents": crew_out,
+            },
+            "exec_summary": exec_summary,
+            "llm_provider": llm_provider,
+            "llm_available": bool(LLM and LLM.available()),
+            "orchestration": "CrewAI-style crew + LangGraph-style sequence (in-engine); free-LLM augmentation optional",
+        })
 
     def handle_studio(self, body):
         """Business Studio — ONE idea in, a complete research-grade report out:

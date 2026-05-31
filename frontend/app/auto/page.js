@@ -13,6 +13,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-1 text-sm">
             <a href="/studio" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">New</a>
             <a href="/advisor" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Existing</a>
+            <a href="/simulate" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Simulate</a>
           </div>
         </div>
       </nav>
