@@ -3810,6 +3810,42 @@ class Handler(BaseHTTPRequestHandler):
                 {"sop": "Statutory due-date checklist (GST/TDS/PF/ESI/ROC)", "process": "Compliance", "owner": "CA/CS", "status": "Draft"},
             ]
 
+        # --- PM Methodology (project-type aware) ---
+        meth = gen_methodology_recommendation(idea, c)
+        meth_rows = [{"event": e["event"], "frequency": e["frequency"], "duration": e["duration"], "attendees": e["attendees"]}
+                     for e in meth.get("ceremony_calendar", [])]
+        meth_help = (f"Recommended: {meth['recommended']} ({meth.get('confidence','')}). {meth.get('primary_rationale','')[:240]} "
+                     f"Tooling: {meth.get('tooling', {}).get('primary', '')}.")
+
+        # --- Tech Stack (project-type aware) ---
+        tech = gen_tech_stack(idea, c)
+        tech_rows = []
+        for layer_key, layer_label in [("frontend", "Frontend"), ("backend", "Backend"),
+                                        ("infrastructure", "Infrastructure"), ("ai_ml", "AI / ML"),
+                                        ("integrations", "Integrations")]:
+            vals = tech.get(layer_key) or []
+            tech_rows.append({"layer": layer_label, "choice": ", ".join(vals) if isinstance(vals, list) else str(vals), "notes": ""})
+        for bv in tech.get("build_vs_buy", []):
+            tech_rows.append({"layer": bv.get("capability", ""), "choice": bv.get("decision", ""), "notes": bv.get("reason", "")})
+
+        # --- AI Agents: how the 20 research-grade agents help THIS project ---
+        agent_rows = []
+        if MSME:
+            cls_b = MSME.classify_business(idea)
+            proj_mode = "startup" if (cls_b.get("is_startup") or cls_b.get("is_tech")) else "existing"
+            cat_rank = {cat: i for i, cat in enumerate(
+                ["Strategy & Growth", "Finance & Compliance", "Operations", "Risk & Diligence", "Workspace"])}
+            items = sorted(MSME.list_agents().items(),
+                           key=lambda kv: (cat_rank.get(kv[1].get("category"), 9), kv[1].get("name", "")))
+            for key, a in items:
+                modes = a.get("modes", [])
+                best = "Startup & Existing" if len(modes) > 1 else ("Startup" if "startup" in modes else "Existing")
+                agent_rows.append({
+                    "agent": f"{a.get('icon','')} {a.get('name', key)}",
+                    "helps": a.get("purpose", ""),
+                    "best": ("★ " + best) if proj_mode in modes else best,
+                })
+
         def module(mid, name, icon, help_text, columns, rows):
             return {"id": mid, "name": name, "icon": icon, "help": help_text,
                     "columns": columns, "rows": rows, "count": len(rows)}
@@ -3818,6 +3854,12 @@ class Handler(BaseHTTPRequestHandler):
             module("master", "Master Data", "🏢",
                    "Your single source of truth: entity, registrations and key parameters. In India, fill GSTIN/PAN/Udyam/DPIIT as you register — every other module references these.",
                    [{"key": "field", "label": "Field"}, {"key": "value", "label": "Value"}, {"key": "notes", "label": "Notes"}], master),
+            module("methodology", "PM Methodology", "🧠",
+                   meth_help,
+                   [{"key": "event", "label": "Ceremony"}, {"key": "frequency", "label": "Frequency"}, {"key": "duration", "label": "Duration"}, {"key": "attendees", "label": "Attendees"}], meth_rows),
+            module("techstack", "Tech Stack", "🧰",
+                   tech.get("summary", "Recommended technology stack for this project type, with build-vs-buy guidance."),
+                   [{"key": "layer", "label": "Layer / Capability"}, {"key": "choice", "label": "Recommendation"}, {"key": "notes", "label": "Notes"}], tech_rows),
             module("backlog", "Product Backlog", "🧱",
                    "Every unit of work as an ERP-style line item with a reference, sprint, priority and story points. This is what the team executes sprint by sprint.",
                    [{"key": "ref", "label": "Ref"}, {"key": "title", "label": "Work item"}, {"key": "sprint", "label": "Sprint"}, {"key": "priority", "label": "Priority"}, {"key": "points", "label": "Pts"}, {"key": "status", "label": "Status"}, {"key": "owner", "label": "Owner"}], tasks),
@@ -3837,6 +3879,9 @@ class Handler(BaseHTTPRequestHandler):
             module("sops", "SOPs", "📋",
                    "Standard operating procedures so the team runs consistently. Draft now, refine as you go.",
                    [{"key": "sop", "label": "SOP"}, {"key": "process", "label": "Process"}, {"key": "owner", "label": "Owner"}, {"key": "status", "label": "Status"}], sops),
+            module("agents", "AI Agents — how they help", "🤖",
+                   "Your 20 research-grade AI agents and how each one helps THIS project. ★ = most relevant to your stage. Open the Advisor to run any of them and get an audit-ready report.",
+                   [{"key": "agent", "label": "Agent"}, {"key": "helps", "label": "How it helps this project"}, {"key": "best", "label": "Best for"}], agent_rows),
             module("team", "Team", "👥",
                    "The roles you need and how many of each, scaled to the project's complexity.",
                    [{"key": "role", "label": "Role"}, {"key": "count", "label": "Count"}, {"key": "responsibilities", "label": "Responsibilities"}], team),

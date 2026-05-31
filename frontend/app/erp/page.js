@@ -185,9 +185,17 @@ export default function ErpWorkspace() {
               {/* Active module */}
               {active && (
                 <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                  <div className="p-4 border-b bg-slate-50">
-                    <h2 className="font-black text-slate-900 flex items-center gap-2">{active.icon} {active.name}</h2>
-                    <p className="text-xs text-slate-500 mt-1">💡 {active.help}</p>
+                  <div className="p-4 border-b bg-slate-50 flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="font-black text-slate-900 flex items-center gap-2">{active.icon} {active.name}</h2>
+                      <p className="text-xs text-slate-500 mt-1">💡 {active.help}</p>
+                    </div>
+                    {active.id === "agents" && (
+                      <a href={`/advisor?idea=${encodeURIComponent(ws?.project?.name || "")}`}
+                        className="shrink-0 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 whitespace-nowrap">
+                        Open Advisor →
+                      </a>
+                    )}
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
