@@ -2081,7 +2081,7 @@ def gen_sales_gtm(scenario: dict, cls: dict) -> dict:
         ],
         "analysis": {
             "recommended_motion": motion,
-            "beat_plan": (f"~{int(outlets)} outlets ÷ coverage frequency ÷ ~30-40 calls/salesman/day → required salesmen + route clusters." if is_distribution else "N/A"),
+            "beat_plan": ((f"~{int(outlets)} outlets" if outlets else "Your outlet universe") + " ÷ coverage frequency ÷ ~30-40 calls/salesman/day → required salesmen + route clusters." if is_distribution else "N/A"),
             "funnel": ("Acquire → Activate → Retain; track CAC, conversion, LTV per channel." if not is_distribution else "Primary → secondary sales; track outlet productivity + range-selling."),
             "pricing_levers": ["Differentiated price list by channel", "Scheme/discount governance", "Push high-margin range"],
             "unit_economics": _bench("ltv_cac") if (cls["is_tech"] or cls["industry"] == "d2c") else _bench("dso_days"),
@@ -2465,6 +2465,77 @@ def run_agent(agent_key: str, scenario: dict) -> dict:
         "envelope_complete": len(missing) == 0,
         "missing_keys": missing,
         "output": env,
+    }
+
+
+# ============================================================
+# 14b. END-TO-END ENGAGEMENT (JOURNEY) ORCHESTRATOR
+# ============================================================
+# Runs every agent relevant to the chosen mode (startup / existing) against ONE
+# business scenario and assembles a consolidated engagement pack — the platform's
+# "full advisory team", end-to-end. Works for all 17 sectors incl. import/export
+# (the classifier + compliance_for cover trade roles automatically).
+_CATEGORY_RANK = {c: i for i, c in enumerate(
+    ["Strategy & Growth", "Finance & Compliance", "Operations", "Risk & Diligence", "Workspace"])}
+
+
+def agents_for_mode(mode: str, cls: dict = None) -> list:
+    """Ordered list of live agent keys relevant to a mode (and business, if given)."""
+    keys = [k for k, a in MSME_AGENTS.items()
+            if a.get("status") == "live" and mode in a.get("modes", [])]
+    # If the business does no cross-border trade, drop the export/customs agent
+    # from the auto-journey (still available to run individually).
+    if cls and cls.get("trade_role") == "domestic":
+        keys = [k for k in keys if k != "export_compliance"]
+    keys.sort(key=lambda k: (_CATEGORY_RANK.get(MSME_AGENTS[k].get("category"), 9), MSME_AGENTS[k]["name"]))
+    return keys
+
+
+def run_journey(mode: str, scenario: dict) -> dict:
+    """End-to-end: run all relevant agents + aggregate an executive summary."""
+    mode = mode if mode in ("startup", "existing") else "existing"
+    desc = (scenario or {}).get("description", "")
+    cls = classify_business(desc)
+    keys = agents_for_mode(mode, cls)
+
+    agents_out = []
+    sev = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
+    recs = actions = kpis = 0
+    incentives, sources = {}, {}
+    for k in keys:
+        r = run_agent(k, scenario)
+        if r.get("status") != "ok":
+            continue
+        o = r["output"]
+        agents_out.append({
+            "agent": k, "name": r["name"], "icon": r["icon"],
+            "category": MSME_AGENTS[k].get("category"), "output": o,
+        })
+        for risk in o.get("risks", []):
+            s = risk.get("severity", "Medium")
+            sev[s] = sev.get(s, 0) + 1
+        recs += len(o.get("recommendations", []))
+        actions += len(o.get("action_plan", []))
+        kpis += len(o.get("kpis_to_monitor", []))
+        for g in o.get("government_incentives", []):
+            incentives[g.get("benefit")] = g
+        for c in o.get("citations", []):
+            sources[c.get("key")] = c
+
+    return {
+        "mode": mode,
+        "classification": cls,
+        "summary": {
+            "agents_run": len(agents_out),
+            "risks": sev,
+            "total_risks": sum(sev.values()),
+            "recommendations": recs,
+            "action_items": actions,
+            "kpis": kpis,
+            "government_incentives": list(incentives.values()),
+            "compliance_sources": sorted(sources.values(), key=lambda c: (c.get("tier", "Z"), c.get("title", ""))),
+        },
+        "agents": agents_out,
     }
 
 

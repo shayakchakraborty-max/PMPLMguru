@@ -3407,6 +3407,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_consulting_demo(demo_id)
             elif path in ("/agents/run",):
                 self.handle_agent_run(body)
+            elif path in ("/agents/journey",):
+                self.handle_agent_journey(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -3476,6 +3478,22 @@ class Handler(BaseHTTPRequestHandler):
         }
         print(f"[agents/run] agent={agent_key} desc={scenario['description'][:80]}", flush=True)
         self._send(200, MSME.run_agent(agent_key, scenario))
+
+    def handle_agent_journey(self, body):
+        """Run the full end-to-end engagement (all relevant agents) for a mode + business."""
+        if not MSME:
+            self._send(200, {"error": "msme_agents module not loaded"})
+            return
+        mode = (body.get("mode") or "existing").strip()
+        scenario = {
+            "description": (body.get("description") or body.get("idea") or "").strip(),
+            "data": body.get("data") or {},
+        }
+        if not scenario["description"]:
+            self._send(200, {"error": "Please provide a 'description' of the business."})
+            return
+        print(f"[agents/journey] mode={mode} desc={scenario['description'][:80]}", flush=True)
+        self._send(200, MSME.run_journey(mode, scenario))
 
     def handle_plm_execute(self, body):
         idea = (body.get("idea") or "").strip()
