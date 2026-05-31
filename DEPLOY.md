@@ -27,7 +27,7 @@ dependency). Below are two always-on hosts — pick one. **Railway is the simple
    `"msme_agents": {"total": 20, ...}`.
 5. **Point the frontend at it** (see "Wire the frontend" below).
 
-Railway's usage-based plan does **not** sleep like Render's free tier, so no cold starts.
+Railway's usage-based plan stays always-on, so there are no cold starts.
 
 ---
 

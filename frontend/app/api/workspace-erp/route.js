@@ -1,5 +1,5 @@
 // frontend/app/api/workspace-erp/route.js
-// Proxies the ERP-styled PLM/PM workspace builder to the Render backend brain.
+// Proxies the ERP-styled PLM/PM workspace builder to the backend brain (Railway).
 //   POST { idea, data? } -> { project, modules[] }
 // Never returns a raw 500 — upstream failures are wrapped in a 200 with an error field.
 
@@ -32,7 +32,7 @@ export async function POST(req) {
     return Response.json(data, { status: 200 });
   } catch (e) {
     return Response.json(
-      { error: `Workspace build failed (${e.message}). Render may be sleeping — wait ~30s and retry.` },
+      { error: `Workspace build failed (${e.message}). The backend may be waking up — wait ~30s and retry.` },
       { status: 200 }
     );
   }

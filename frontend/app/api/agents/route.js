@@ -1,5 +1,5 @@
 // frontend/app/api/agents/route.js
-// Proxies the research-grade MSME agent layer to the Render backend brain.
+// Proxies the research-grade MSME agent layer to the backend brain (Railway).
 //   GET  -> /agents/meta   (registry, ERP/Notion model, taxonomy, citations)
 //   POST -> /agents/run    (body: { agent, description, data? }) -> audit-ready envelope
 // Never returns a raw 500 — upstream failures are wrapped in a 200 with an error field.
@@ -23,7 +23,7 @@ export async function GET() {
     return Response.json(data, { status: 200 });
   } catch (e) {
     return Response.json(
-      { error: `Could not reach the brain (${e.message}). Render may be sleeping — wait ~30s and retry.` },
+      { error: `Could not reach the brain (${e.message}). It may be waking up — wait ~30s and retry.` },
       { status: 200 }
     );
   }
@@ -56,7 +56,7 @@ export async function POST(req) {
     return Response.json(data, { status: 200 });
   } catch (e) {
     return Response.json(
-      { error: `Agent run failed (${e.message}). Render may be sleeping — wait ~30s and retry.` },
+      { error: `Agent run failed (${e.message}). The backend may be waking up — wait ~30s and retry.` },
       { status: 200 }
     );
   }

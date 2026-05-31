@@ -168,7 +168,7 @@ export default function AdvisorPage() {
 
   const [retrying, setRetrying] = useState(false);
 
-  // Load the agent registry. The backend (Render free tier) can be asleep and
+  // Load the agent registry. The backend can be waking up and
   // take ~30s to wake on the first request, so we auto-retry a few times before
   // surfacing a clear, actionable error.
   async function loadMeta(attempt = 0) {

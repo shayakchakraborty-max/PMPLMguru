@@ -1,5 +1,5 @@
 // frontend/app/api/pipeline/route.js
-// Proxies PM planning and PLM execution requests to the Render backend brain.
+// Proxies PM planning and PLM execution requests to the backend brain (Railway).
 // Auto-fallback: tries v9.1 paths first, falls back to legacy /pipeline/* paths on 404.
 // Never returns a raw 500 - always wraps upstream failures in a 200 with an error field.
 
@@ -55,7 +55,7 @@ async function tryBackend(paths, payload) {
   }
   return {
     ok: false,
-    error: `All backend endpoints failed. Last error: ${lastError}. Render may be sleeping (wait 30s) or the backend wasn't updated. Check ${BRAIN}/health to see which version is running.`,
+    error: `All backend endpoints failed. Last error: ${lastError}. The backend may be waking up (wait 30s) or wasn't updated. Check ${BRAIN}/health to see which version is running.`,
   };
 }
 

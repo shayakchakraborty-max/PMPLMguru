@@ -1,5 +1,5 @@
 // frontend/app/api/blueprint/route.js
-// Proxies the one-click Startup Blueprint to the Render backend brain.
+// Proxies the one-click Startup Blueprint to the backend brain (Railway).
 //   POST { idea, data? } -> consolidated India-aware startup blueprint
 // Never returns a raw 500 — upstream failures are wrapped in a 200 with an error field.
 
@@ -32,7 +32,7 @@ export async function POST(req) {
     return Response.json(data, { status: 200 });
   } catch (e) {
     return Response.json(
-      { error: `Blueprint generation failed (${e.message}). Render may be sleeping — wait ~30s and retry.` },
+      { error: `Blueprint generation failed (${e.message}). The backend may be waking up — wait ~30s and retry.` },
       { status: 200 }
     );
   }

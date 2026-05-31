@@ -631,7 +631,7 @@ TECH_STACKS = {
     "SaaS/Product": {
         "frontend": ["Next.js 14", "React 18", "Tailwind CSS", "shadcn/ui components"],
         "backend": ["Node.js + tRPC", "PostgreSQL + Prisma ORM", "Redis for sessions"],
-        "infrastructure": ["Vercel (web)", "Railway or Render (services)", "Cloudflare (CDN + WAF)"],
+        "infrastructure": ["Vercel (web)", "Railway (services)", "Cloudflare (CDN + WAF)"],
         "ai_ml": ["Anthropic Claude or OpenAI for features", "Vector DB (Pinecone/Qdrant)"],
         "integrations": ["Stripe billing", "Auth0 or Clerk", "Sentry, PostHog", "Slack notifications"],
         "rationale": "Type-safe full-stack with tRPC eliminates API boilerplate. Vercel + Railway gives developer-velocity comparable to a 10-person team at 1-person cost.",
