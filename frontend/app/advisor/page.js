@@ -166,12 +166,34 @@ export default function AdvisorPage() {
   const [report, setReport] = useState(null);
   const [runErr, setRunErr] = useState("");
 
-  useEffect(() => {
-    fetch("/api/agents")
-      .then((r) => r.json())
-      .then((d) => (d.error ? setMetaErr(d.error) : setMeta(d)))
-      .catch((e) => setMetaErr(e.message));
-  }, []);
+  const [retrying, setRetrying] = useState(false);
+
+  // Load the agent registry. The backend (Render free tier) can be asleep and
+  // take ~30s to wake on the first request, so we auto-retry a few times before
+  // surfacing a clear, actionable error.
+  async function loadMeta(attempt = 0) {
+    setMetaErr(""); setRetrying(attempt > 0);
+    try {
+      const r = await fetch("/api/agents", { cache: "no-store" });
+      const d = await r.json();
+      if (d && d.agents && Object.keys(d.agents).length) {
+        setMeta(d); setRetrying(false); return;
+      }
+      // Reachable but stale/old backend (no agents) or an error payload
+      const why = d?.error
+        ? `Backend reachable but returned: "${d.error}". It is likely running an older build without the agent layer.`
+        : "Backend reachable but returned no agents (older build).";
+      if (attempt < 3) { setTimeout(() => loadMeta(attempt + 1), 4000); return; }
+      setMetaErr(why);
+    } catch (e) {
+      if (attempt < 3) { setTimeout(() => loadMeta(attempt + 1), 4000); return; }
+      setMetaErr(`Could not reach the backend (${e.message}).`);
+    } finally {
+      setRetrying(false);
+    }
+  }
+
+  useEffect(() => { loadMeta(0); /* eslint-disable-next-line */ }, []);
 
   const agents = meta?.agents || {};
   const taxonomy = meta?.business_taxonomy || {};
@@ -290,11 +312,25 @@ export default function AdvisorPage() {
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {metaErr && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-4 text-sm mb-6">
-            {metaErr}
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-5 text-sm mb-6">
+            <div className="font-black mb-1">Couldn't load the AI agents</div>
+            <p className="text-amber-800">{metaErr}</p>
+            <ul className="list-disc pl-5 mt-2 space-y-0.5 text-amber-800">
+              <li>The backend may be waking up (free tier sleeps ~30s) — wait a moment and retry.</li>
+              <li>Or the backend needs to be redeployed to the latest version.</li>
+            </ul>
+            <button onClick={() => loadMeta(0)} disabled={retrying}
+              className="mt-3 px-4 py-2 rounded-lg bg-amber-600 text-white font-bold hover:bg-amber-700 disabled:opacity-50">
+              {retrying ? "Retrying…" : "Retry"}
+            </button>
           </div>
         )}
-        {!meta && !metaErr && <SkeletonGrid />}
+        {!meta && !metaErr && (
+          <div>
+            <div className="text-center text-slate-500 text-sm mb-4">{retrying ? "Waking up the backend…" : "Loading agents…"}</div>
+            <SkeletonGrid />
+          </div>
+        )}
 
         {/* ---------- Filters ---------- */}
         {meta && (
