@@ -23,6 +23,12 @@ export default function PmLauncher() {
     window.location.href = `/report?idea=${encodeURIComponent(idea)}`;
   }
 
+  function goToBlueprint() {
+    if (!idea.trim()) { setError("Please enter a project idea first."); return; }
+    sessionStorage.setItem("pmguru_pending_idea", idea);
+    window.location.href = `/blueprint?idea=${encodeURIComponent(idea)}`;
+  }
+
   async function goToWorkspace() {
     if (!idea.trim()) { setError("Please enter a project idea first."); return; }
     setError(""); setLoading("workspace");
@@ -61,6 +67,19 @@ export default function PmLauncher() {
             disabled={loading !== null} />
           {error && <div className="mt-3 bg-rose-50 border border-rose-300 rounded-lg p-3"><pre className="text-xs text-rose-800 whitespace-pre-wrap">{error}</pre></div>}
         </div>
+
+        <button onClick={goToBlueprint} disabled={!idea.trim()}
+          className="w-full mb-4 text-left rounded-2xl overflow-hidden bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 hover:shadow-xl transition disabled:opacity-50">
+          <div className="flex items-center gap-4">
+            <span className="text-4xl">🧭</span>
+            <div className="flex-1">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">One-click · India-aware</div>
+              <div className="text-xl font-black">Startup Blueprint</div>
+              <div className="text-sm text-white/70">Everything in one document — market, model, GTM, ₹ financials, compliance & registration, funding & govt incentives, 90-day plan, and how to scale.</div>
+            </div>
+            <span className="shrink-0 px-4 py-2.5 bg-white text-slate-900 rounded-lg font-black text-sm">Generate →</span>
+          </div>
+        </button>
 
         <div className="grid md:grid-cols-3 gap-4 mb-8">
           <StageCard num="1" icon="📑" title="Due Diligence Report" desc="11-section Big 3 consulting report. Market sizing, competition, tech stack, financials, GTM. Download as PDF." cta="Generate Report" color="from-purple-600 to-indigo-700" onClick={goToReport} loading={loading === "report"} disabled={loading !== null || !idea.trim()} />

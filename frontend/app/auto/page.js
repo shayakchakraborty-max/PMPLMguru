@@ -66,12 +66,15 @@ export default function LandingPage() {
                 <Feature icon="🧭" text="Startup AI agents: market sizing, competitor intel, investor readiness" />
                 <Feature icon="📥" text="Download everything as PDF" />
               </div>
+              <a href="/blueprint" className="block text-center px-4 py-3.5 mb-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-black hover:opacity-90 transition">
+                🧭 Generate Startup Blueprint →
+              </a>
               <div className="grid grid-cols-2 gap-3">
-                <a href="/pm" className="block text-center px-4 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-black hover:opacity-90 transition">
-                  PM Tool →
+                <a href="/pm" className="block text-center px-4 py-3.5 bg-slate-100 text-slate-800 rounded-xl font-bold hover:bg-slate-200 transition">
+                  PM Tool
                 </a>
-                <a href="/advisor" className="block text-center px-4 py-4 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 transition">
-                  Startup Agents →
+                <a href="/advisor" className="block text-center px-4 py-3.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">
+                  Startup Agents
                 </a>
               </div>
             </div>

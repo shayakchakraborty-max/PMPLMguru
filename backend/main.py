@@ -3484,6 +3484,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_agent_run(body)
             elif path in ("/agents/journey",):
                 self.handle_agent_journey(body)
+            elif path in ("/blueprint", "/startup/blueprint"):
+                self.handle_blueprint(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -3569,6 +3571,120 @@ class Handler(BaseHTTPRequestHandler):
             return
         print(f"[agents/journey] mode={mode} desc={scenario['description'][:80]}", flush=True)
         self._send(200, MSME.run_journey(mode, scenario))
+
+    def handle_blueprint(self, body):
+        """One-click consolidated STARTUP BLUEPRINT — fuses the India-aware report
+        generators with the startup-agent journey into one uniform, render-friendly
+        document: market, model, product, GTM, financials (₹), compliance &
+        registration, funding & govt incentives, risk/DD, 90-day plan, scaling."""
+        idea = (body.get("idea") or body.get("description") or "").strip()
+        if not idea:
+            self._send(200, {"error": "Please provide an 'idea' / 'description' of the startup."})
+            return
+        print(f"[blueprint] idea={idea[:80]}", flush=True)
+        c = classify_idea(idea)
+        cur = c.get("currency", "$")
+        kb = KNOWLEDGE_BASE[c["method_key"]]
+
+        # India-aware report generators (currency + registration localized)
+        market = gen_market_sizing(idea, c)
+        fin = gen_financial_projections(idea, c)
+        gtm = gen_gtm_strategy(idea, c)
+        reg = gen_regulatory_compliance(idea, c)
+        road = gen_implementation_roadmap(idea, c)
+
+        # Startup-agent journey for India depth + aggregation
+        journey = MSME.run_journey("startup", {"description": idea, "data": body.get("data") or {}}) if MSME else {"agents": [], "summary": {}}
+        by = {a["agent"]: a["output"] for a in journey.get("agents", [])}
+        jsum = journey.get("summary", {})
+
+        def _pts(lst, n=6):
+            return [str(x) for x in (lst or [])][:n]
+
+        sections = []
+        sections.append({"id": "exec", "title": "Executive Summary", "icon": "📌",
+            "summary": idea,
+            "points": [
+                f"Geography: {c['geo']} · currency {cur}",
+                f"Industry: {c['industry']} · complexity: {c['complexity'].replace('_', ' ')}",
+                f"Recommended methodology: {kb['name']}",
+                f"Funding need (seed): {fin['funding_requirement']['seed']}",
+                f"Agents consulted: {jsum.get('agents_run', 0)} · open risks: {jsum.get('total_risks', 0)} · incentives mapped: {len(jsum.get('government_incentives', []))}",
+            ]})
+
+        sections.append({"id": "market", "title": "Market Opportunity", "icon": "📈",
+            "summary": market["summary"],
+            "points": [
+                f"TAM {market['tam']['value']} · SAM {market['sam']['value']} · SOM {market['som']['value']}",
+                f"Growth: {market['growth_rate']} — {market['growth_drivers']}",
+                *( ["India context: " + market["india_context"]] if market.get("india_context") else [] ),
+                *["Geo priority — " + g for g in market.get("geographic_priorities", [])],
+            ]})
+
+        pm = by.get("product_manager", {})
+        sections.append({"id": "product", "title": "Product & Roadmap", "icon": "🧩",
+            "summary": (pm.get("analysis", {}) or {}).get("mvp_principle", "Ship the smallest slice that validates the riskiest assumption, then iterate on usage data."),
+            "points": _pts((pm.get("analysis", {}) or {}).get("roadmap_90d", [])) + _pts([f"{q['quarter']}: {q['theme']}" for q in road.get("quarters", [])], 6)})
+
+        sections.append({"id": "gtm", "title": "Go-to-Market", "icon": "🚀",
+            "summary": gtm["summary"],
+            "points": [f"Motion: {gtm['primary_motion']}",
+                       f"Target CAC {gtm['unit_economics']['target_cac']} · LTV {gtm['unit_economics']['target_ltv']}",
+                       *["Channel — " + ch for ch in _pts(gtm.get("channels", []))]]})
+
+        sections.append({"id": "financials", "title": f"Financial Plan ({cur})", "icon": "💰",
+            "summary": fin["summary"],
+            "table": {"headers": ["Year", "Users", "Revenue", "Growth"],
+                      "rows": [[r["year"], r["users"], r["revenue"], r["growth"]] for r in fin["revenue_projection"]]},
+            "points": [f"Blended CAC: {fin['unit_economics']['blended_cac']} · LTV: {fin['unit_economics']['ltv_estimate']} · target LTV:CAC {fin['unit_economics']['ltv_cac_target']}",
+                       f"Gross margin: {fin['unit_economics']['gross_margin']}",
+                       f"Seed: {fin['funding_requirement']['seed']}",
+                       f"Series A: {fin['funding_requirement']['series_a']}"]})
+
+        sections.append({"id": "compliance", "title": "Compliance & Registration Roadmap", "icon": "⚖️",
+            "summary": reg["summary"],
+            "points": [f"{step['timeline']}: " + "; ".join(step["items"]) for step in reg.get("compliance_roadmap", [])]
+                      + [f"Compliance budget — Y1 {reg['compliance_budget']['year_1']}, Y2 {reg['compliance_budget']['year_2']}"]})
+
+        ir = by.get("investor_readiness", {})
+        incentives = jsum.get("government_incentives", []) or (ir.get("government_incentives", []) if ir else [])
+        sections.append({"id": "funding", "title": "Funding & Government Incentives", "icon": "🏦",
+            "summary": "Capital plan plus the Indian government benefits this startup can pursue (verify eligibility with certificates).",
+            "points": [f"{g.get('benefit')}: {g.get('value')}" for g in incentives][:8] or ["Map DPIIT recognition → 80-IAC tax holiday, angel-tax exemption, SISFS, and state startup incentives."]})
+
+        dd = by.get("msme_due_diligence", {})
+        sections.append({"id": "risk", "title": "Risk & Due-Diligence Watch-outs", "icon": "⚠️",
+            "summary": "The red flags an investor/lender will probe — close these early.",
+            "points": [f"[{r.get('severity')}] {r.get('risk')}" for r in (dd.get("risks", []) if dd else [])][:7]
+                      or [f"[{k}] {v}" for k, v in [("Critical", jsum.get("risks", {}).get("Critical", 0)), ("High", jsum.get("risks", {}).get("High", 0))]]})
+
+        sections.append({"id": "scaling", "title": "Scaling Playbook", "icon": "📈",
+            "summary": "How to scale once you have product-market fit.",
+            "points": [
+                "Phase 1 — Win a Tier-1 metro beachhead; nail unit economics (LTV:CAC ≥ 3) before spending on growth.",
+                "Phase 2 — Expand to Tier-2/3 cities with vernacular content, WhatsApp + ONDC/marketplace channels and distributor partners.",
+                "Phase 3 — Multi-state GST + ops, build a repeatable sales motion, hire functional leadership, raise Series A.",
+                "Phase 4 — Pan-India scale; consider adjacent products and select export markets (Middle East, SEA).",
+                *["Milestone — " + f"{q['quarter']}: {q['theme']} ({q.get('success_criteria','')})" for q in road.get("quarters", []) if "Scale" in q.get("theme", "")],
+            ]})
+
+        # 90-day action plan — aggregate first actions across key startup agents
+        actions = []
+        for k in ("ceo_copilot", "gst_compliance", "product_manager", "investor_readiness", "market_research"):
+            for a in (by.get(k, {}).get("action_plan", []) or [])[:2]:
+                actions.append({"step": a.get("step"), "owner": a.get("owner"), "timeline": a.get("timeline"), "agent": MSME.MSME_AGENTS.get(k, {}).get("name", k) if MSME else k})
+
+        self._send(200, {
+            "idea": idea,
+            "geo": c["geo"],
+            "currency": cur,
+            "industry": c["industry"],
+            "methodology": kb["name"],
+            "sections": sections,
+            "ninety_day_plan": actions,
+            "summary": jsum,
+            "agents_used": [a.get("name") for a in journey.get("agents", [])],
+        })
 
     def handle_plm_execute(self, body):
         idea = (body.get("idea") or "").strip()
