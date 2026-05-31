@@ -3488,6 +3488,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_blueprint(body)
             elif path in ("/workspace/erp",):
                 self.handle_workspace_erp(body)
+            elif path in ("/studio", "/studio/generate"):
+                self.handle_studio(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -3573,6 +3575,127 @@ class Handler(BaseHTTPRequestHandler):
             return
         print(f"[agents/journey] mode={mode} desc={scenario['description'][:80]}", flush=True)
         self._send(200, MSME.run_journey(mode, scenario))
+
+    def handle_studio(self, body):
+        """Business Studio — ONE idea in, a complete research-grade report out:
+        deep due diligence, market study (TAM/SAM/SOM), product lifecycle (PLM),
+        recommended PM method, tech stack, financials (₹ for India), risk,
+        regulatory/registration, GTM and roadmap — plus a handoff to the preloaded
+        PM workspace copilot. Uniform section schema for a stunning, PDF-able UI."""
+        idea = (body.get("idea") or body.get("description") or "").strip()
+        if not idea:
+            self._send(200, {"error": "Please provide an 'idea' / 'description'."})
+            return
+        print(f"[studio] idea={idea[:80]}", flush=True)
+        c = classify_idea(idea)
+        cur = c.get("currency", "$")
+        kb = KNOWLEDGE_BASE[c["method_key"]]
+
+        market = gen_market_sizing(idea, c)
+        comp = gen_competitive_landscape(idea, c)
+        tech = gen_tech_stack(idea, c)
+        meth = gen_methodology_recommendation(idea, c)
+        fin = gen_financial_projections(idea, c)
+        risk = gen_risk_assessment(idea, c)
+        gtm = gen_gtm_strategy(idea, c)
+        reg = gen_regulatory_compliance(idea, c)
+        road = gen_implementation_roadmap(idea, c)
+
+        def P(lst, n=8):
+            return [str(x) for x in (lst or [])][:n]
+
+        sections = []
+
+        sections.append({"id": "exec", "title": "Executive Summary", "icon": "📌",
+            "summary": idea,
+            "points": [
+                f"Geography: {c['geo']} · currency {cur}",
+                f"Industry: {c['industry']} · complexity: {c['complexity'].replace('_',' ')}",
+                f"Recommended PM method: {meth['recommended']} ({meth.get('confidence','')})",
+                f"Market: TAM {market['tam']['value']} · SAM {market['sam']['value']} · SOM {market['som']['value']}",
+                f"Funding need (seed): {fin['funding_requirement']['seed']}",
+            ]})
+
+        # Market study with TAM/SAM/SOM hero metrics
+        sections.append({"id": "market", "title": "Market Study — TAM / SAM / SOM", "icon": "📈",
+            "summary": market["summary"],
+            "metrics": [
+                {"label": "TAM", "value": market["tam"]["value"], "note": "Total addressable market"},
+                {"label": "SAM", "value": market["sam"]["value"], "note": "Serviceable available"},
+                {"label": "SOM", "value": market["som"]["value"], "note": "Serviceable obtainable (3-5 yr)"},
+                {"label": "Growth", "value": market["growth_rate"], "note": "Sector CAGR"},
+            ],
+            "points": ([("India context: " + market["india_context"])] if market.get("india_context") else [])
+                      + ["Growth drivers: " + market.get("growth_drivers", "")]
+                      + ["Geo priority — " + g for g in market.get("geographic_priorities", [])]})
+
+        sections.append({"id": "competition", "title": "Competitive Landscape", "icon": "🎯",
+            "summary": comp["summary"],
+            "points": [f"{x.get('name','')}: strength — {x.get('strength','')}; gap — {x.get('weakness','')}" for x in comp.get("competitors", [])][:6]
+                      + [f"White space: {comp.get('competitive_positioning',{}).get('white_space','')}"]})
+
+        # Due diligence = risk + regulatory/registration
+        dd_points = []
+        for cat in risk.get("risk_categories", []):
+            for r in cat.get("risks", [])[:2]:
+                dd_points.append(f"[{cat['category']}] {r['description']} — {r.get('likelihood','')}/{r.get('impact','')} · {r.get('mitigation','')}")
+        sections.append({"id": "diligence", "title": "Due Diligence — Risk & Regulatory", "icon": "🔍",
+            "summary": risk.get("summary", "") + " " + reg.get("summary", ""),
+            "points": dd_points[:7] + ["Registration/compliance: " + "; ".join(P(reg.get("key_regulations", []), 6))]})
+
+        sections.append({"id": "financials", "title": f"Financial Projections ({cur})", "icon": "💰",
+            "summary": fin["summary"],
+            "table": {"headers": ["Year", "Users", "Revenue", "Growth"],
+                      "rows": [[r["year"], r["users"], r["revenue"], r["growth"]] for r in fin["revenue_projection"]]},
+            "points": [f"Blended CAC {fin['unit_economics']['blended_cac']} · LTV {fin['unit_economics']['ltv_estimate']} · target LTV:CAC {fin['unit_economics']['ltv_cac_target']}",
+                       f"Gross margin {fin['unit_economics']['gross_margin']}",
+                       f"Seed {fin['funding_requirement']['seed']} · Series A {fin['funding_requirement']['series_a']}"]})
+
+        # Product lifecycle (PLM) from the methodology's phases
+        plm_rows = []
+        wk = 0
+        for ph in kb["phases"]:
+            dur = ph.get("duration_weeks", 0)
+            wk_range = f"W{wk+1}-{wk+dur}" if dur > 0 else "Ongoing"
+            if dur > 0:
+                wk += dur
+            plm_rows.append([ph["name"], wk_range, ", ".join(ph.get("key_activities", [])[:3]), ", ".join(ph.get("deliverables", [])[:2])])
+        sections.append({"id": "plm", "title": "Product Lifecycle (PLM)", "icon": "🔄",
+            "summary": f"End-to-end product lifecycle under {meth['recommended']}, phase by phase.",
+            "table": {"headers": ["Phase", "Timeline", "Key activities", "Deliverables"], "rows": plm_rows}})
+
+        sections.append({"id": "method", "title": "Project Management Method", "icon": "🧠",
+            "summary": f"{meth['recommended']} — {meth.get('primary_rationale','')[:220]} Tooling: {meth.get('tooling',{}).get('primary','')}.",
+            "table": {"headers": ["Ceremony", "Frequency", "Duration", "Attendees"],
+                      "rows": [[e["event"], e["frequency"], e["duration"], e["attendees"]] for e in meth.get("ceremony_calendar", [])]}})
+
+        tech_rows = [[lbl, ", ".join(tech.get(k) or []) if isinstance(tech.get(k), list) else str(tech.get(k, "")), ""]
+                     for k, lbl in [("frontend", "Frontend"), ("backend", "Backend"), ("infrastructure", "Infrastructure"), ("ai_ml", "AI / ML"), ("integrations", "Integrations")]]
+        for bv in tech.get("build_vs_buy", []):
+            tech_rows.append([bv.get("capability", ""), bv.get("decision", ""), bv.get("reason", "")])
+        sections.append({"id": "tech", "title": "Tech Stack", "icon": "🧰",
+            "summary": tech.get("summary", ""),
+            "table": {"headers": ["Layer / Capability", "Recommendation", "Notes"], "rows": tech_rows}})
+
+        sections.append({"id": "gtm", "title": "Go-to-Market", "icon": "🚀",
+            "summary": gtm["summary"],
+            "points": [f"Motion: {gtm['primary_motion']}",
+                       f"CAC {gtm['unit_economics']['target_cac']} · LTV {gtm['unit_economics']['target_ltv']}"]
+                      + ["Channel — " + ch for ch in P(gtm.get("channels", []), 5)]})
+
+        sections.append({"id": "roadmap", "title": "Implementation Roadmap", "icon": "🗺️",
+            "summary": road.get("summary", ""),
+            "table": {"headers": ["Phase", "Theme", "Success criteria"],
+                      "rows": [[q["quarter"], q["theme"], q.get("success_criteria", "")] for q in road.get("quarters", [])]}})
+
+        self._send(200, {
+            "idea": idea,
+            "geo": c["geo"],
+            "currency": cur,
+            "industry": c["industry"],
+            "methodology": meth["recommended"],
+            "sections": sections,
+        })
 
     def handle_blueprint(self, body):
         """One-click consolidated STARTUP BLUEPRINT — fuses the India-aware report

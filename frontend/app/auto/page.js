@@ -11,7 +11,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <span className="font-black tracking-tight">PMGuru</span>
           <div className="flex items-center gap-1 text-sm">
-            <NavLink href="/blueprint">Blueprint</NavLink>
+            <NavLink href="/studio">Studio</NavLink>
             <NavLink href="/advisor">AI Agents</NavLink>
             <NavLink href="/erp">Workspace</NavLink>
             <NavLink href="/consulting">Consulting</NavLink>
@@ -36,8 +36,28 @@ export default function LandingPage() {
           </p>
         </header>
 
-        {/* The one question */}
-        <p className="text-center text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Where are you today?</p>
+        {/* Primary: Business Studio — one idea -> full plan */}
+        <a href="/studio"
+          className="group block rounded-3xl overflow-hidden mb-10 bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 text-white p-7 sm:p-9 hover:shadow-2xl transition">
+          <div className="flex flex-col md:flex-row md:items-center gap-6">
+            <div className="text-5xl">✨</div>
+            <div className="flex-1">
+              <div className="inline-flex items-center gap-2 bg-white/15 px-3 py-1 rounded-full text-[11px] font-bold mb-2">START HERE · one idea → a complete plan</div>
+              <h2 className="text-2xl sm:text-3xl font-black">Business Studio</h2>
+              <p className="text-sm sm:text-base text-white/85 mt-2 max-w-2xl">
+                Type your idea once. Get a research-grade report — deep due diligence, market study (TAM/SAM/SOM),
+                product lifecycle, the right PM method, tech stack, ₹ financials, GTM & roadmap — then open your
+                preloaded PM workspace. Downloadable as PDF.
+              </p>
+            </div>
+            <span className="shrink-0 px-6 py-4 bg-white text-slate-900 rounded-xl font-black group-hover:bg-emerald-300 transition">
+              Open Studio →
+            </span>
+          </div>
+        </a>
+
+        {/* Or go straight to a specialised path */}
+        <p className="text-center text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">…or jump to a focused path</p>
 
         {/* Two doors */}
         <div className="grid md:grid-cols-2 gap-5 mb-10">
@@ -100,6 +120,7 @@ export default function LandingPage() {
         <div className="mb-10">
           <p className="text-center text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">All tools</p>
           <div className="flex flex-wrap justify-center gap-2">
+            <Tool href="/studio" icon="✨" label="Business Studio" />
             <Tool href="/blueprint" icon="🧭" label="Startup Blueprint" />
             <Tool href="/advisor" icon="🤖" label="AI Agents (20)" />
             <Tool href="/erp" icon="🗂️" label="ERP Workspace" />
