@@ -29,6 +29,12 @@ export default function PmLauncher() {
     window.location.href = `/blueprint?idea=${encodeURIComponent(idea)}`;
   }
 
+  function goToErp() {
+    if (!idea.trim()) { setError("Please enter a project idea first."); return; }
+    sessionStorage.setItem("pmguru_pending_idea", idea);
+    window.location.href = `/erp?idea=${encodeURIComponent(idea)}`;
+  }
+
   async function goToWorkspace() {
     if (!idea.trim()) { setError("Please enter a project idea first."); return; }
     setError(""); setLoading("workspace");
@@ -79,6 +85,17 @@ export default function PmLauncher() {
             </div>
             <span className="shrink-0 px-4 py-2.5 bg-white text-slate-900 rounded-lg font-black text-sm">Generate →</span>
           </div>
+        </button>
+
+        <button onClick={goToErp} disabled={!idea.trim()}
+          className="w-full mb-6 text-left rounded-2xl overflow-hidden bg-white border-2 border-slate-200 hover:border-violet-400 p-5 transition disabled:opacity-50 flex items-center gap-4">
+          <span className="text-3xl">🗂️</span>
+          <div className="flex-1">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-violet-600">ERP-styled · self-explanatory · exports to Notion</div>
+            <div className="text-lg font-black">ERP Workspace Copilot</div>
+            <div className="text-sm text-slate-600">Master data, backlog, sprints, risk register, compliance calendar, KPIs & SOPs — auto-filled per project, editable, and one-click export to Notion.</div>
+          </div>
+          <span className="shrink-0 px-4 py-2.5 bg-slate-900 text-white rounded-lg font-black text-sm">Open →</span>
         </button>
 
         <div className="grid md:grid-cols-3 gap-4 mb-8">

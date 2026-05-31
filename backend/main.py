@@ -3486,6 +3486,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_agent_journey(body)
             elif path in ("/blueprint", "/startup/blueprint"):
                 self.handle_blueprint(body)
+            elif path in ("/workspace/erp",):
+                self.handle_workspace_erp(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -3684,6 +3686,167 @@ class Handler(BaseHTTPRequestHandler):
             "ninety_day_plan": actions,
             "summary": jsum,
             "agents_used": [a.get("name") for a in journey.get("agents", [])],
+        })
+
+    def handle_workspace_erp(self, body):
+        """In-app ERP-styled PLM/PM workspace copilot. Returns self-explanatory
+        modules (master data, backlog, sprints, risk register, compliance calendar,
+        KPIs, SOPs, team) as a uniform {columns, rows} schema the UI renders as ERP
+        tables and exports to Notion. India-aware (₹, GST/Udyam/DPIIT/EPF/ESI/ROC)."""
+        idea = (body.get("idea") or body.get("description") or "").strip()
+        if not idea:
+            self._send(200, {"error": "Please provide an 'idea' / 'description' field"})
+            return
+        print(f"[workspace/erp] idea={idea[:80]}", flush=True)
+        c = classify_idea(idea)
+        kb = KNOWLEDGE_BASE[c["method_key"]]
+        india = c.get("geo") == "India"
+        cur = c.get("currency", "$")
+
+        # --- Sprints from methodology phases ---
+        sprints, week = [], 0
+        for i, phase in enumerate(kb["phases"]):
+            if phase["duration_weeks"] <= 0:
+                continue
+            sprints.append({"num": i + 1, "name": phase["name"],
+                            "goal": (phase["deliverables"][0] if phase.get("deliverables") else phase["name"]),
+                            "weeks": f"W{week+1}-{week+phase['duration_weeks']}", "status": "Planned",
+                            "_activities": phase.get("key_activities", []), "_deliverables": phase.get("deliverables", [])})
+            week += phase["duration_weeks"]
+
+        # --- Backlog (tasks) from sprint activities + deliverables ---
+        tasks, n = [], 1
+        prio = ["High", "Medium", "Medium", "Low", "High"]
+        for sp in sprints:
+            for j, act in enumerate(sp["_activities"]):
+                tasks.append({"ref": f"PMG-{n}", "title": act, "sprint": sp["name"],
+                              "priority": prio[j % len(prio)], "points": [2, 3, 5, 8][j % 4],
+                              "status": "To Do", "owner": "—"})
+                n += 1
+            for d in sp["_deliverables"][:2]:
+                tasks.append({"ref": f"PMG-{n}", "title": f"Deliver: {d}", "sprint": sp["name"],
+                              "priority": "High", "points": 5, "status": "To Do", "owner": "—"})
+                n += 1
+        for sp in sprints:
+            sp.pop("_activities", None); sp.pop("_deliverables", None)
+
+        # --- Risk register ---
+        risks = [{"id": r["id"], "type": r["type"], "risk": r["description"],
+                  "prob": r["probability"], "impact": r["impact"], "score": r["probability"] * r["impact"],
+                  "mitigation": r["mitigation"], "owner": r["owner"], "status": "Open"} for r in kb["risks"]]
+
+        # --- Team roster ---
+        team = [{"role": t["role"], "count": t["count"],
+                 "responsibilities": ", ".join(t.get("responsibilities", [])) if isinstance(t.get("responsibilities"), list) else t.get("responsibilities", "")}
+                for t in kb.get("team_composition", [])]
+
+        # --- Master data (ERP) — India-aware ---
+        master = [
+            {"field": "Entity name", "value": idea[:60], "notes": "Legal name once incorporated"},
+            {"field": "Industry", "value": c["industry"], "notes": "Auto-classified"},
+            {"field": "Methodology", "value": kb["name"], "notes": kb.get("confidence", "")},
+            {"field": "Currency", "value": cur, "notes": "India → ₹" if india else "Default"},
+        ]
+        if india:
+            master += [
+                {"field": "Constitution", "value": "Pvt Ltd / LLP (to register)", "notes": "Via MCA"},
+                {"field": "GSTIN", "value": "<pending>", "notes": "Register before invoicing"},
+                {"field": "PAN / TAN", "value": "<pending>", "notes": "PAN for entity, TAN for TDS"},
+                {"field": "Udyam (MSME)", "value": "<pending>", "notes": "Unlocks MSME benefits"},
+                {"field": "DPIIT recognition", "value": "<pending>", "notes": "Unlocks 80-IAC / angel-tax"},
+                {"field": "Financial year", "value": "1 Apr – 31 Mar", "notes": "India FY"},
+            ]
+
+        # --- Compliance calendar (India-aware) ---
+        if india:
+            compliance = [
+                {"obligation": "GSTR-1 (outward supplies)", "authority": "GST", "frequency": "Monthly", "due": "11th", "status": "Set up"},
+                {"obligation": "GSTR-3B (summary + tax)", "authority": "GST", "frequency": "Monthly", "due": "20th", "status": "Set up"},
+                {"obligation": "TDS deposit", "authority": "Income Tax", "frequency": "Monthly", "due": "7th", "status": "Set up"},
+                {"obligation": "TDS return (24Q/26Q)", "authority": "Income Tax", "frequency": "Quarterly", "due": "Q+1 month", "status": "Set up"},
+                {"obligation": "PF ECR", "authority": "EPFO", "frequency": "Monthly", "due": "15th", "status": "If ≥ staff"},
+                {"obligation": "ESI contribution", "authority": "ESIC", "frequency": "Monthly", "due": "15th", "status": "If applicable"},
+                {"obligation": "Advance tax", "authority": "Income Tax", "frequency": "Quarterly", "due": "15 Jun/Sep/Dec/Mar", "status": "Set up"},
+                {"obligation": "ROC AOC-4 + MGT-7", "authority": "MCA", "frequency": "Annual", "due": "Post-AGM", "status": "Set up"},
+                {"obligation": "Income tax return", "authority": "Income Tax", "frequency": "Annual", "due": "31 Oct (audit)", "status": "Set up"},
+            ]
+            # sector-specific licences via the MSME agent layer
+            if MSME:
+                try:
+                    cls_b = MSME.classify_business(idea)
+                    for key in MSME.compliance_for(cls_b):
+                        cit = MSME.CITATIONS.get(key, {})
+                        if cit and key not in ("gst_portal", "income_tax", "udyam", "shops_act"):
+                            compliance.append({"obligation": cit.get("title"), "authority": cit.get("authority", ""),
+                                               "frequency": "As applicable", "due": "—", "status": "Review"})
+                except Exception:
+                    pass
+        else:
+            compliance = [
+                {"obligation": "Privacy policy + ToS", "authority": "Legal", "frequency": "One-time", "due": "Pre-launch", "status": "Set up"},
+                {"obligation": "Data-protection (DPDP/GDPR)", "authority": "Regulator", "frequency": "Ongoing", "due": "Months 1-6", "status": "Set up"},
+                {"obligation": "SOC 2 / ISO 27001 (if B2B)", "authority": "Auditor", "frequency": "Annual", "due": "Months 7-18", "status": "Plan"},
+            ]
+
+        # --- KPIs ---
+        kpis = [
+            {"kpi": "Velocity (story points/sprint)", "target": "Stabilise by sprint 3", "owner": "Scrum Master", "source": "Backlog"},
+            {"kpi": "On-time delivery %", "target": "> 90%", "owner": "PM", "source": "Sprints"},
+            {"kpi": "Open high/critical risks", "target": "0", "owner": "PM", "source": "Risk register"},
+            {"kpi": "Compliance on-time %", "target": "100%", "owner": "Founder/CA", "source": "Compliance calendar"},
+            {"kpi": "Burn vs plan", "target": f"Within plan ({cur})", "owner": "Founder", "source": "Finance"},
+        ]
+
+        # --- SOPs ---
+        sops = [
+            {"sop": "Sprint planning & standups", "process": "Delivery", "owner": "Scrum Master", "status": "Draft"},
+            {"sop": "Definition of Done / quality gate", "process": "Delivery", "owner": "QA Lead", "status": "Draft"},
+            {"sop": "Release & rollback", "process": "DevOps", "owner": "DevOps", "status": "Draft"},
+            {"sop": "Risk review cadence", "process": "Governance", "owner": "PM", "status": "Draft"},
+        ]
+        if india:
+            sops += [
+                {"sop": "GST invoicing & monthly filing", "process": "Finance/Compliance", "owner": "Accountant/CA", "status": "Draft"},
+                {"sop": "Statutory due-date checklist (GST/TDS/PF/ESI/ROC)", "process": "Compliance", "owner": "CA/CS", "status": "Draft"},
+            ]
+
+        def module(mid, name, icon, help_text, columns, rows):
+            return {"id": mid, "name": name, "icon": icon, "help": help_text,
+                    "columns": columns, "rows": rows, "count": len(rows)}
+
+        modules = [
+            module("master", "Master Data", "🏢",
+                   "Your single source of truth: entity, registrations and key parameters. In India, fill GSTIN/PAN/Udyam/DPIIT as you register — every other module references these.",
+                   [{"key": "field", "label": "Field"}, {"key": "value", "label": "Value"}, {"key": "notes", "label": "Notes"}], master),
+            module("backlog", "Product Backlog", "🧱",
+                   "Every unit of work as an ERP-style line item with a reference, sprint, priority and story points. This is what the team executes sprint by sprint.",
+                   [{"key": "ref", "label": "Ref"}, {"key": "title", "label": "Work item"}, {"key": "sprint", "label": "Sprint"}, {"key": "priority", "label": "Priority"}, {"key": "points", "label": "Pts"}, {"key": "status", "label": "Status"}, {"key": "owner", "label": "Owner"}], tasks),
+            module("sprints", "Sprints / Cycles", "🔄",
+                   "The delivery timeline broken into cycles from your chosen methodology. Each cycle has a goal and a week-range.",
+                   [{"key": "num", "label": "#"}, {"key": "name", "label": "Cycle"}, {"key": "goal", "label": "Goal"}, {"key": "weeks", "label": "Weeks"}, {"key": "status", "label": "Status"}], sprints),
+            module("risks", "Risk Register (RAID)", "⚠️",
+                   "Probability × Impact scored risks with a mitigation and an owner. Anything scoring high needs an owner and a plan before it bites.",
+                   [{"key": "id", "label": "ID"}, {"key": "type", "label": "Type"}, {"key": "risk", "label": "Risk"}, {"key": "score", "label": "Score"}, {"key": "mitigation", "label": "Mitigation"}, {"key": "owner", "label": "Owner"}, {"key": "status", "label": "Status"}], risks),
+            module("compliance", "Compliance Calendar", "⚖️",
+                   ("Your statutory due-date tracker. In India this is the difference between clean books and penalties — set a reminder for each." if india
+                    else "Key compliance obligations to track from pre-launch onward."),
+                   [{"key": "obligation", "label": "Obligation"}, {"key": "authority", "label": "Authority"}, {"key": "frequency", "label": "Frequency"}, {"key": "due", "label": "Due"}, {"key": "status", "label": "Status"}], compliance),
+            module("kpis", "KPIs", "📊",
+                   "The handful of numbers that tell you if the project is healthy. Review them every sprint.",
+                   [{"key": "kpi", "label": "KPI"}, {"key": "target", "label": "Target"}, {"key": "owner", "label": "Owner"}, {"key": "source", "label": "Source"}], kpis),
+            module("sops", "SOPs", "📋",
+                   "Standard operating procedures so the team runs consistently. Draft now, refine as you go.",
+                   [{"key": "sop", "label": "SOP"}, {"key": "process", "label": "Process"}, {"key": "owner", "label": "Owner"}, {"key": "status", "label": "Status"}], sops),
+            module("team", "Team", "👥",
+                   "The roles you need and how many of each, scaled to the project's complexity.",
+                   [{"key": "role", "label": "Role"}, {"key": "count", "label": "Count"}, {"key": "responsibilities", "label": "Responsibilities"}], team),
+        ]
+
+        self._send(200, {
+            "project": {"name": idea[:100], "industry": c["industry"], "geo": c["geo"],
+                        "currency": cur, "methodology": kb["name"],
+                        "total_weeks": sum(p["duration_weeks"] for p in kb["phases"] if p["duration_weeks"] > 0)},
+            "modules": modules,
         })
 
     def handle_plm_execute(self, body):
