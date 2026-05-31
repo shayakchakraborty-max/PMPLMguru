@@ -499,12 +499,37 @@ def classify_idea(idea: str) -> dict:
             best = pattern
     if not best:
         best = {"industry": "General", "complexity": "medium", "method": "scrum"}
+    # Geography detection — when India is mentioned, the report localizes to
+    # Indian currency (₹), market context, compliance and funding.
+    india_signals = ("india", "indian", "bharat", "₹", " inr", "rupee", "gst",
+                     "kirana", "udyam", "msme", "dpiit", "upi", "ondc", "fssai",
+                     "tier 2", "tier-2", "tier 3", "tier-3", "bengaluru", "mumbai",
+                     "delhi", "pune", "hyderabad", "chennai", "startup india")
+    is_india = any(s in idea_lower for s in india_signals)
     return {
         "method_key": best["method"],
         "industry": best["industry"],
         "complexity": best["complexity"],
         "confidence_score": best_score,
+        "geo": "India" if is_india else "Global",
+        "currency": "₹" if is_india else "$",
     }
+
+
+# ---- India localization helpers (used by the report generators) ----
+INR_PER_USD = 83
+
+def _inr(usd) -> str:
+    """Format a USD amount as Indian currency with lakh/crore units."""
+    try:
+        n = int(round(float(usd) * INR_PER_USD))
+    except Exception:
+        return f"₹{usd}"
+    if n >= 10000000:
+        return f"₹{n/10000000:.2f} Cr"
+    if n >= 100000:
+        return f"₹{n/100000:.1f} L"
+    return f"₹{n:,}"
 
 
 # ============================================================
@@ -832,8 +857,18 @@ def gen_executive_summary(idea, classification):
 def gen_market_sizing(idea, classification):
     """BCG-style market sizing with TAM/SAM/SOM and growth analysis."""
     market = MARKET_SIZES.get(classification["industry"], MARKET_SIZES["SaaS/Product"])
+    india = classification.get("geo") == "India"
+    india_context = (
+        "India view: the figures below are the global sector pool. India is typically 3-7% of "
+        "global TAM today but among the fastest-growing markets (UPI/ONDC rails, Digital India, rising "
+        "MSME digitisation). Size your SAM bottom-up: target customers × annual price (₹) × realistic reach, "
+        "starting with a Tier-1/Tier-2 city beachhead before expanding."
+    ) if india else None
     return {
-        "summary": f"Bottoms-up sizing reveals a ${market['som']} serviceable obtainable market within the broader ${market['tam']} {classification['industry']} sector.",
+        "summary": (f"India-focused sizing: anchor your SAM/SOM bottom-up in ₹ for a Tier-1/Tier-2 beachhead within the broader ${market['tam']} global {classification['industry']} sector."
+                    if india else
+                    f"Bottoms-up sizing reveals a ${market['som']} serviceable obtainable market within the broader ${market['tam']} {classification['industry']} sector."),
+        **({"india_context": india_context} if india else {}),
         "tam": {"value": f"${market['tam']}", "definition": "Total Addressable Market - the entire global revenue pool if 100% market share were achievable", "calculation": f"Industry-wide spend on {classification['industry']} solutions across all geographies and segments"},
         "sam": {"value": f"${market['sam']}", "definition": "Serviceable Available Market - portion realistically reachable with current product and channels", "calculation": "TAM filtered by geography (initial markets), customer segment (target ICP), and product fit"},
         "som": {"value": f"${market['som']}", "definition": "Serviceable Obtainable Market - realistic revenue capture in 3-5 years", "calculation": "SAM multiplied by realistic market share given competitive dynamics and execution capacity"},
@@ -844,7 +879,7 @@ def gen_market_sizing(idea, classification):
             {"year": "Year 2", "target": "0.3% of SAM", "rationale": "Geographic and segment expansion"},
             {"year": "Year 3", "target": "1.2% of SAM", "rationale": "Full GTM motion at scale"},
         ],
-        "geographic_priorities": ["Initial: India (Tier 1 + Tier 2 cities)", "Year 2: Southeast Asia (Indonesia, Vietnam)", "Year 3: Middle East + select African markets"] if "India" in str(market.get("drivers", "")).lower() or "ondc" in str(market.get("drivers", "")).lower() else ["Initial: Domestic market", "Year 2: Adjacent English-speaking markets", "Year 3: Strategic expansion based on traction"],
+        "geographic_priorities": ["Initial: India (Tier-1 metros — Mumbai, Delhi NCR, Bengaluru)", "Year 2: Tier-2/3 expansion (Pune, Jaipur, Kochi, Indore) + vernacular GTM", "Year 3: Pan-India scale + select export markets (Middle East, SEA)"] if india else ["Initial: Domestic market", "Year 2: Adjacent English-speaking markets", "Year 3: Strategic expansion based on traction"],
     }
 
 
@@ -929,36 +964,46 @@ def gen_methodology_recommendation(idea, classification):
 
 
 def gen_financial_projections(idea, classification):
-    """3-year financial model."""
+    """3-year financial model (currency-localized: ₹ for India, $ otherwise)."""
     fin = FINANCIAL_MULTIPLIERS[classification["complexity"]]
     budget = COMPLEXITY_BUDGETS[classification["complexity"]]
     y1_loss = fin["burn_y1"] - fin["y1_revenue"]
     y2_breakeven = fin["y2_revenue"] - (fin["burn_y1"] * 1.4)
     y3_profit = fin["y3_revenue"] - (fin["burn_y1"] * 1.8)
+    india = classification.get("geo") == "India"
+    cur = "₹" if india else "$"
+    mult = INR_PER_USD if india else 1
+    # money(): plain figure in the right currency; m(): compact (₹ L/Cr or $)
+    money = (lambda v: _inr(v)) if india else (lambda v: f"${v:,.0f}")
+
     return {
-        "summary": f"3-year model shows path to profitability by Year {2 if y2_breakeven > 0 else 3}, with cumulative revenue of ${(fin['y1_revenue'] + fin['y2_revenue'] + fin['y3_revenue']):,} and total investment requirement of ${(fin['burn_y1'] * 4.2):,.0f}.",
+        "currency": cur,
+        "summary": f"3-year model shows a path to profitability by Year {2 if y2_breakeven > 0 else 3}, with cumulative revenue of {money(fin['y1_revenue'] + fin['y2_revenue'] + fin['y3_revenue'])} and a total investment need of {money(fin['burn_y1'] * 4.2)}."
+                   + (" Figures localized to Indian rupees." if india else ""),
         "revenue_projection": [
-            {"year": "Year 1", "users": f"{fin['y1_users']:,}", "revenue": f"${fin['y1_revenue']:,}", "growth": "Launch year"},
-            {"year": "Year 2", "users": f"{fin['y1_users'] * 6:,}", "revenue": f"${fin['y2_revenue']:,}", "growth": f"{round(100 * (fin['y2_revenue'] / fin['y1_revenue'] - 1))}% YoY"},
-            {"year": "Year 3", "users": f"{fin['y3_users']:,}", "revenue": f"${fin['y3_revenue']:,}", "growth": f"{round(100 * (fin['y3_revenue'] / fin['y2_revenue'] - 1))}% YoY"},
+            {"year": "Year 1", "users": f"{fin['y1_users']:,}", "revenue": money(fin['y1_revenue']), "growth": "Launch year"},
+            {"year": "Year 2", "users": f"{fin['y1_users'] * 6:,}", "revenue": money(fin['y2_revenue']), "growth": f"{round(100 * (fin['y2_revenue'] / fin['y1_revenue'] - 1))}% YoY"},
+            {"year": "Year 3", "users": f"{fin['y3_users']:,}", "revenue": money(fin['y3_revenue']), "growth": f"{round(100 * (fin['y3_revenue'] / fin['y2_revenue'] - 1))}% YoY"},
         ],
-        "cost_structure": budget,
+        "cost_structure": ({k: (int(v * mult) if isinstance(v, (int, float)) else v) for k, v in budget.items()} if india else budget),
         "unit_economics": {
-            "blended_cac": f"${round(fin['burn_y1'] / fin['y1_users'])}",
-            "ltv_estimate": f"${round(fin['y3_revenue'] / fin['y3_users'] * 3)}",
+            "blended_cac": money(fin['burn_y1'] / fin['y1_users']),
+            "ltv_estimate": money(fin['y3_revenue'] / fin['y3_users'] * 3),
             "ltv_cac_target": "≥ 3:1 by end of Year 2",
             "payback_period": "12-18 months",
             "gross_margin": "65-78% depending on infrastructure efficiency",
         },
         "profit_loss": [
-            {"year": "Year 1", "revenue": fin["y1_revenue"], "costs": fin["burn_y1"], "net": y1_loss, "status": "Loss (investment phase)"},
-            {"year": "Year 2", "revenue": fin["y2_revenue"], "costs": int(fin["burn_y1"] * 1.4), "net": int(y2_breakeven), "status": "Approaching breakeven" if y2_breakeven > -100000 else "Loss (growth phase)"},
-            {"year": "Year 3", "revenue": fin["y3_revenue"], "costs": int(fin["burn_y1"] * 1.8), "net": int(y3_profit), "status": "Profitable" if y3_profit > 0 else "Path to profitability"},
+            {"year": "Year 1", "revenue": int(fin["y1_revenue"] * mult), "costs": int(fin["burn_y1"] * mult), "net": int(y1_loss * mult), "status": "Loss (investment phase)"},
+            {"year": "Year 2", "revenue": int(fin["y2_revenue"] * mult), "costs": int(fin["burn_y1"] * 1.4 * mult), "net": int(y2_breakeven * mult), "status": "Approaching breakeven" if y2_breakeven > -100000 else "Loss (growth phase)"},
+            {"year": "Year 3", "revenue": int(fin["y3_revenue"] * mult), "costs": int(fin["burn_y1"] * 1.8 * mult), "net": int(y3_profit * mult), "status": "Profitable" if y3_profit > 0 else "Path to profitability"},
         ],
         "funding_requirement": {
-            "seed": f"${(fin['burn_y1'] * 1.5):,.0f} - 18 month runway to PMF + early traction",
-            "series_a": f"${(fin['burn_y1'] * 4):,.0f} - 24 month runway to scale GTM",
+            "seed": f"{money(fin['burn_y1'] * 1.5)} - 18 month runway to PMF + early traction"
+                    + (" (plus Startup India Seed Fund up to ₹50L via approved incubators)" if india else ""),
+            "series_a": f"{money(fin['burn_y1'] * 4)} - 24 month runway to scale GTM",
             "use_of_funds": ["55% engineering and product", "25% sales and marketing", "12% G&A and operations", "8% reserves"],
+            **({"india_incentives": ["DPIIT recognition → Sec 80-IAC 3-year tax holiday", "Angel-tax exemption (Sec 56(2)(viib))", "Startup India Seed Fund Scheme (SISFS)", "State startup-policy subsidies (SGST refund, patent/lease reimbursement)"]} if india else {}),
         },
     }
 
@@ -1017,14 +1062,20 @@ def gen_risk_assessment(idea, classification):
 
 
 def gen_gtm_strategy(idea, classification):
-    """Go-to-market strategy."""
+    """Go-to-market strategy (India-localized channels + economics when applicable)."""
     gtm = GTM_STRATEGIES.get(classification["industry"], GTM_STRATEGIES["SaaS/Product"])
+    india = classification.get("geo") == "India"
+    india_channels = ["WhatsApp Business + vernacular content", "ONDC / marketplace listings (Amazon, Flipkart)",
+                      "UPI-led frictionless onboarding", "Tier-2/3 field reps + distributor partnerships",
+                      "Regional influencer & community marketing"]
     return {
-        "summary": f"GTM motion is {gtm['motion']}, optimized for {classification['industry']} buyer behavior and economics.",
+        "summary": (f"India GTM: {gtm['motion']}, adapted for Indian buyers — vernacular, WhatsApp-first, UPI/ONDC rails, and a Tier-1→Tier-2/3 city rollout."
+                    if india else
+                    f"GTM motion is {gtm['motion']}, optimized for {classification['industry']} buyer behavior and economics."),
         "primary_motion": gtm["motion"],
-        "channels": gtm["channels"],
+        "channels": (india_channels if india else gtm["channels"]),
         "unit_economics": {
-            "target_cac": gtm["cac"],
+            "target_cac": gtm["cac"] + (" (validate in ₹; India CAC is typically lower)" if india else ""),
             "target_ltv": gtm["ltv"],
             "target_ltv_cac": "≥ 3:1",
             "payback_target": "12-18 months",
@@ -1084,8 +1135,32 @@ def gen_team_resource_plan(idea, classification):
 
 
 def gen_regulatory_compliance(idea, classification):
-    """Regulatory and compliance requirements."""
+    """Regulatory and compliance requirements (India registration roadmap when applicable)."""
     reg = REGULATIONS.get(classification["industry"], REGULATIONS["SaaS/Product"])
+    india = classification.get("geo") == "India"
+    if india:
+        india_regs = ["Company incorporation (Pvt Ltd / LLP via MCA)", "GST registration + returns (GSTR-1/3B)",
+                      "Udyam (MSME) registration", "DPIIT / Startup India recognition", "DPDP Act 2023 (data protection)",
+                      "Professional Tax + Shops & Establishment (state)"] + reg["key_regs"][:2]
+        return {
+            "summary": f"India regulatory roadmap for {classification['industry']}: incorporate, register for GST + Udyam, get DPIIT recognition to unlock tax benefits, and stay DPDP-compliant. Failures here are existential, not merely costly.",
+            "key_regulations": india_regs,
+            "required_certifications": ["GST registration", "Udyam (MSME)", "DPIIT recognition", "DPDP readiness"] + reg["certifications"],
+            "data_residency": "India (DPDP Act 2023 — store personal data in India per sectoral rules)",
+            "high_risk_areas": reg["high_risk"],
+            "compliance_roadmap": [
+                {"timeline": "Pre-launch", "items": ["Incorporate (Pvt Ltd/LLP) on MCA", "PAN/TAN + current account", "GST registration", "Founder agreements + IP assignment"]},
+                {"timeline": "Months 1-6", "items": ["Udyam (MSME) registration", "DPIIT / Startup India recognition", "DPDP Act data-flow mapping + privacy policy", "Sector licences (FSSAI / Drug licence / IEC) if applicable"]},
+                {"timeline": "Months 7-12", "items": ["Apply for Sec 80-IAC tax holiday (IMB certificate)", "Angel-tax exemption filing", "EPF/ESI registration once ≥ staff thresholds", "ROC annual filings (AOC-4, MGT-7)"]},
+                {"timeline": "Months 13-24", "items": ["State startup-policy incentive claims (SGST refund, subsidies)", "ISO 27001 / SOC 2 if enterprise B2B", "Annual statutory + GST audit cycle"]},
+            ],
+            "compliance_budget": {
+                "year_1": "₹1.5L-5L (incorporation, GST, registrations, basic legal)",
+                "year_2": "₹5L-15L (DPIIT/80-IAC, DPDP, sector licences, audits)",
+                "year_3": "₹15L-40L (certifications + part-time CS/compliance + audit cycle)",
+            },
+            "external_advisors": ["CA (GST, ITR, ROC, 80-IAC)", "Company Secretary (incorporation, ROC, cap table)", "DPDP/data-protection lawyer", "Sector licence consultant (FSSAI/Drugs/IEC)"],
+        }
     return {
         "summary": f"Regulatory landscape for {classification['industry']} requires proactive compliance planning. Failures here are existential, not merely costly.",
         "key_regulations": reg["key_regs"],

@@ -506,6 +506,7 @@ function MethodologySec({ data }) {
 }
 
 function FinancialProjections({ data }) {
+  const cur = data.currency || "$";
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-700">{data.summary}</p>
@@ -531,8 +532,8 @@ function FinancialProjections({ data }) {
           {data.profit_loss?.map((p, i) => (
             <div key={i} className={`p-3 rounded-lg flex items-center gap-4 ${p.net > 0 ? "bg-emerald-50" : "bg-rose-50"}`}>
               <span className="font-black w-20">{p.year}</span>
-              <span className="text-xs flex-1">Rev: ${p.revenue?.toLocaleString()} · Costs: ${p.costs?.toLocaleString()}</span>
-              <span className={`font-black ${p.net > 0 ? "text-emerald-700" : "text-rose-700"}`}>${(p.net || 0).toLocaleString()}</span>
+              <span className="text-xs flex-1">Rev: {cur}{p.revenue?.toLocaleString()} · Costs: {cur}{p.costs?.toLocaleString()}</span>
+              <span className={`font-black ${p.net > 0 ? "text-emerald-700" : "text-rose-700"}`}>{cur}{(p.net || 0).toLocaleString()}</span>
               <span className="text-xs text-slate-500">{p.status}</span>
             </div>
           ))}
@@ -551,7 +552,7 @@ function FinancialProjections({ data }) {
           <div className="text-xs font-bold text-purple-700 uppercase mb-2">Cost Structure (Y1)</div>
           <div className="text-xs space-y-1">
             {data.cost_structure && Object.entries(data.cost_structure).map(([k, v]) => (
-              <div key={k}><strong className="capitalize">{k}:</strong> ${typeof v === "number" ? v.toLocaleString() : v}</div>
+              <div key={k}><strong className="capitalize">{k}:</strong> {typeof v === "number" ? `${cur}${v.toLocaleString()}` : v}</div>
             ))}
           </div>
         </div>

@@ -46,32 +46,34 @@ export default function LandingPage() {
 
         {/* Two paths */}
         <div className="grid md:grid-cols-2 gap-6 mb-16">
-          {/* PM Tool */}
+          {/* Startup */}
           <div className="group relative bg-white rounded-3xl border-2 border-slate-200 hover:border-indigo-500 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
             <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 text-white p-8">
               <div className="text-5xl mb-4">🚀</div>
-              <h2 className="text-3xl font-black">Product & PM Tool</h2>
-              <p className="text-sm opacity-80 mt-2">For founders, PMs, and product teams</p>
+              <h2 className="text-3xl font-black">Startup</h2>
+              <p className="text-sm opacity-80 mt-2">Build & scale a new India business — idea to execution</p>
             </div>
             <div className="p-8">
               <p className="text-slate-600 mb-6">
-                Enter your idea and get a complete consulting-grade due diligence report,
-                a working PM workspace, and a full product lifecycle plan.
+                Enter your idea (mention India for ₹ + Indian market, compliance & funding) and get a
+                consulting-grade blueprint, a working PM workspace, and a full lifecycle plan — plus the
+                startup AI agents (market research, DD, investor readiness, GST).
               </p>
               <div className="space-y-3 mb-8">
-                <Feature icon="📑" text="Big 3-style due diligence report (11 sections, streaming)" />
+                <Feature icon="📑" text="India-aware due-diligence report (₹, GST/Udyam/DPIIT, funding incentives)" />
                 <Feature icon="🛠️" text="PM workspace with kanban, sprints, risks, team & timeline" />
-                <Feature icon="🔄" text="8-phase product lifecycle with infographics" />
-                <Feature icon="📊" text="Market sizing, competitive landscape, financial projections" />
-                <Feature icon="⚙️" text="Technology stack & methodology recommendations" />
+                <Feature icon="🔄" text="8-phase product lifecycle + how to scale (Tier-1→2/3→pan-India)" />
+                <Feature icon="🧭" text="Startup AI agents: market sizing, competitor intel, investor readiness" />
                 <Feature icon="📥" text="Download everything as PDF" />
               </div>
-              <a
-                href="/pm"
-                className="block w-full text-center px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-black text-lg hover:opacity-90 transition"
-              >
-                Launch PM Tool →
-              </a>
+              <div className="grid grid-cols-2 gap-3">
+                <a href="/pm" className="block text-center px-4 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-black hover:opacity-90 transition">
+                  PM Tool →
+                </a>
+                <a href="/advisor" className="block text-center px-4 py-4 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 transition">
+                  Startup Agents →
+                </a>
+              </div>
             </div>
           </div>
 
@@ -79,28 +81,30 @@ export default function LandingPage() {
           <div className="group relative bg-white rounded-3xl border-2 border-slate-200 hover:border-emerald-500 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
             <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white p-8">
               <div className="text-5xl mb-4">🏛️</div>
-              <h2 className="text-3xl font-black">Consulting Pro</h2>
-              <p className="text-sm opacity-80 mt-2">For consultants, auditors, and advisory teams</p>
+              <h2 className="text-3xl font-black">Existing Business</h2>
+              <p className="text-sm opacity-80 mt-2">Run, fix & scale an operating India MSME</p>
             </div>
             <div className="p-8">
               <p className="text-slate-600 mb-6">
-                Describe any business and get a Big 3 + Big 4 style assessment report
-                powered by 1,003 real-world scenarios across 12 finance domains.
+                Describe your running business and get a Big 3 + Big 4 style assessment (1,003 scenarios,
+                12 finance domains) — plus the operating AI agents (CFO, GST, operations, inventory,
+                procurement, HR/payroll, risk & audit) for your sector, including import/export.
               </p>
               <div className="space-y-3 mb-8">
-                <Feature icon="💰" text="O2C, P2P, R2R, General Accounting — deep coverage" />
-                <Feature icon="📈" text="FP&A, Tax, Treasury, Internal Audit, Supply Chain" />
-                <Feature icon="🛡️" text="Risk, Fraud, Cyber, HR, Digital Transformation" />
-                <Feature icon="📊" text="CMMI maturity assessment with gap analysis" />
-                <Feature icon="🎯" text="Prioritized recommendations with ROI analysis" />
+                <Feature icon="💰" text="O2C, P2P, R2R, FP&A, Tax, Treasury, Audit, Supply Chain" />
+                <Feature icon="🧭" text="Operating AI agents: CFO, GST, COO, inventory, procurement, HR" />
+                <Feature icon="🛡️" text="Risk, fraud & audit + India compliance (GST/EPF/ESI/customs)" />
+                <Feature icon="📊" text="CMMI maturity assessment with gap analysis + ROI" />
                 <Feature icon="📥" text="Consulting-grade PDF report, ready to deliver" />
               </div>
-              <a
-                href="/consulting"
-                className="block w-full text-center px-6 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-black text-lg hover:opacity-90 transition"
-              >
-                Launch Consulting Pro →
-              </a>
+              <div className="grid grid-cols-2 gap-3">
+                <a href="/consulting" className="block text-center px-4 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-black hover:opacity-90 transition">
+                  Consulting Pro →
+                </a>
+                <a href="/advisor" className="block text-center px-4 py-4 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 transition">
+                  Business Agents →
+                </a>
+              </div>
             </div>
           </div>
         </div>
