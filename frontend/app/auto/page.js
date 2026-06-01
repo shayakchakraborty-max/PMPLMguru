@@ -13,6 +13,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-1 text-sm">
             <a href="/studio" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">New</a>
             <a href="/advisor" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Existing</a>
+            <a href="/playbooks" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Playbooks</a>
             <a href="/simulate" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Simulate</a>
           </div>
         </div>
@@ -77,6 +78,23 @@ export default function LandingPage() {
             </div>
           </a>
         </div>
+
+        {/* Industry Playbooks banner */}
+        <a href="/playbooks" className="group block mt-6 rounded-3xl border-2 border-slate-200 hover:border-indigo-500 bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-6 sm:p-8 shadow-sm hover:shadow-2xl transition">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <div className="text-xs font-semibold text-indigo-300 uppercase tracking-wide">Consulting Command Center</div>
+              <div className="text-xl sm:text-2xl font-black mt-1">30 Industry Playbooks</div>
+              <p className="text-slate-300 text-sm mt-1 max-w-2xl">
+                Research-grade 13-part operating blueprints for every priority Indian-MSME sector — operating model,
+                value chain, bottlenecks, AI-automation map, KPI tree, ₹ profitability, growth & digital-maturity ladder.
+              </p>
+            </div>
+            <span className="shrink-0 px-6 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl font-black group-hover:opacity-90 transition">
+              Browse playbooks →
+            </span>
+          </div>
+        </a>
 
         {/* accurate stats */}
         <div className="bg-slate-900 rounded-2xl p-6 sm:p-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center text-white mt-10">

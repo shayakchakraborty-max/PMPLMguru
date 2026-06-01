@@ -35,6 +35,12 @@ except Exception as _e:
     print(f"[msme_agents] not loaded: {_e}", flush=True)
 
 try:
+    import industry_playbooks as PLAYBOOKS
+except Exception as _e:
+    PLAYBOOKS = None
+    print(f"[industry_playbooks] not loaded: {_e}", flush=True)
+
+try:
     import sim_library as SIM
 except Exception as _e:
     SIM = None
@@ -3416,6 +3422,11 @@ class Handler(BaseHTTPRequestHandler):
                     "live": [k for k, a in MSME.MSME_AGENTS.items() if a.get("status") == "live"],
                     "endpoints": ["GET /agents/meta", "GET /agents/tests", "POST /agents/run"],
                 } if MSME else "not loaded"),
+                "industry_playbooks": ({
+                    "total": len(PLAYBOOKS.PLAYBOOKS),
+                    "sections": len(PLAYBOOKS.PLAYBOOK_SECTIONS),
+                    "endpoints": ["GET /playbooks/meta", "GET /playbooks/tests", "POST /playbook"],
+                } if PLAYBOOKS else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3459,6 +3470,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "msme_agents module not loaded"})
                 return
             self._send(200, MSME.run_agent_tests())
+        elif path == "/playbooks/meta":
+            if not PLAYBOOKS:
+                self._send(200, {"error": "industry_playbooks module not loaded"})
+                return
+            self._send(200, PLAYBOOKS.meta())
+        elif path == "/playbooks/tests":
+            if not PLAYBOOKS:
+                self._send(200, {"error": "industry_playbooks module not loaded"})
+                return
+            self._send(200, PLAYBOOKS.run_playbook_tests())
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3502,6 +3523,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_blueprint(body)
             elif path in ("/workspace/erp",):
                 self.handle_workspace_erp(body)
+            elif path in ("/playbook", "/playbooks/get"):
+                self.handle_playbook(body)
             elif path in ("/studio", "/studio/generate"):
                 self.handle_studio(body)
             elif path in ("/simulate", "/situation"):
@@ -3575,6 +3598,24 @@ class Handler(BaseHTTPRequestHandler):
         }
         print(f"[agents/run] agent={agent_key} desc={scenario['description'][:80]}", flush=True)
         self._send(200, MSME.run_agent(agent_key, scenario))
+
+    def handle_playbook(self, body):
+        """Return one full 13-part industry playbook by key, business_type, or a
+        free-text description (auto-matched to the best-fit sector)."""
+        if not PLAYBOOKS:
+            self._send(200, {"error": "industry_playbooks module not loaded"})
+            return
+        key = (body.get("key") or body.get("business_type") or "").strip()
+        description = (body.get("description") or body.get("idea") or "").strip()
+        pb, matched, how = PLAYBOOKS.resolve(business_type=key or None, key=key or None, description=description or None)
+        if not pb:
+            self._send(200, {
+                "error": "Could not match a playbook. Pass a 'key', 'business_type', or a 'description'.",
+                "available": [c["key"] for c in PLAYBOOKS.list_playbooks()],
+            })
+            return
+        print(f"[playbook] matched={matched} how={how} desc={description[:60]}", flush=True)
+        self._send(200, {"status": "ok", "matched_key": matched, "matched_by": how, "playbook": pb})
 
     def handle_agent_journey(self, body):
         """Run the full end-to-end engagement (all relevant agents) for a mode + business."""

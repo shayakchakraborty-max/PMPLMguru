@@ -135,6 +135,8 @@ CITATIONS = {
     "ibef":            {"title": "IBEF Sectoral Reports", "ref": "India Brand Equity Foundation — sector size, growth and structure data", "authority": "IBEF (Dept of Commerce)", "url": "https://www.ibef.org", "tier": "B"},
     "contract_act":    {"title": "Indian Contract Act, 1872", "ref": "Validity, consideration, breach, indemnity, termination of agreements", "authority": "Govt. of India", "url": "", "tier": "A"},
     "stamp_act":       {"title": "Indian Stamp Act, 1899 (State)", "ref": "Stamp duty on agreements; unstamped/under-stamped docs inadmissible as evidence", "authority": "State Govt", "url": "", "tier": "A"},
+    "consumer_protection": {"title": "Consumer Protection Act, 2019", "ref": "Deficiency-in-service & product liability; warranty/repair obligations; e-commerce & unfair-trade rules; CCPA jurisdiction", "authority": "Dept of Consumer Affairs", "url": "https://consumeraffairs.nic.in", "tier": "A"},
+    "ewaste":          {"title": "E-Waste (Management) Rules, 2022", "ref": "Extended Producer Responsibility (EPR) for electronics; authorised collection/recycling; CPCB EPR portal registration", "authority": "MoEFCC / CPCB", "url": "https://eprewastecpcb.in", "tier": "A"},
 }
 
 
