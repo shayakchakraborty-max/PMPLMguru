@@ -84,10 +84,10 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <div className="text-xs font-semibold text-indigo-300 uppercase tracking-wide">Consulting Command Center</div>
-              <div className="text-xl sm:text-2xl font-black mt-1">30 Industry Playbooks</div>
+              <div className="text-xl sm:text-2xl font-black mt-1">Customised AI Engagement + 30 Playbooks</div>
               <p className="text-slate-300 text-sm mt-1 max-w-2xl">
-                Research-grade 13-part operating blueprints for every priority Indian-MSME sector — operating model,
-                value chain, bottlenecks, AI-automation map, KPI tree, ₹ profitability, growth & digital-maturity ladder.
+                Tell the brain your specifics and it builds a <b>customised</b> engagement — grounded on your sector playbook,
+                <b> live open-source research</b>, and what it learned from past prompts. Plus the full 13-part library for all 30 sectors.
               </p>
             </div>
             <span className="shrink-0 px-6 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl font-black group-hover:opacity-90 transition">

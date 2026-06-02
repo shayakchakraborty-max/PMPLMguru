@@ -41,6 +41,12 @@ except Exception as _e:
     print(f"[industry_playbooks] not loaded: {_e}", flush=True)
 
 try:
+    import live_brain as BRAIN
+except Exception as _e:
+    BRAIN = None
+    print(f"[live_brain] not loaded: {_e}", flush=True)
+
+try:
     import sim_library as SIM
 except Exception as _e:
     SIM = None
@@ -3427,6 +3433,12 @@ class Handler(BaseHTTPRequestHandler):
                     "sections": len(PLAYBOOKS.PLAYBOOK_SECTIONS),
                     "endpoints": ["GET /playbooks/meta", "GET /playbooks/tests", "POST /playbook"],
                 } if PLAYBOOKS else "not loaded"),
+                "live_brain": ({
+                    "endpoints": ["GET /consult/meta", "POST /consult", "GET /brain/stats"],
+                    "llm_providers": (LLM.available() if LLM else []),
+                    "learning": BRAIN.brain_stats().get("total_engagements", 0),
+                    "web_search": "keyless (DuckDuckGo + Wikipedia)",
+                } if BRAIN else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3480,6 +3492,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "industry_playbooks module not loaded"})
                 return
             self._send(200, PLAYBOOKS.run_playbook_tests())
+        elif path == "/consult/meta":
+            if not BRAIN:
+                self._send(200, {"error": "live_brain module not loaded"})
+                return
+            self._send(200, BRAIN.intake_meta())
+        elif path == "/brain/stats":
+            if not BRAIN:
+                self._send(200, {"error": "live_brain module not loaded"})
+                return
+            self._send(200, BRAIN.brain_stats())
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3525,6 +3547,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_workspace_erp(body)
             elif path in ("/playbook", "/playbooks/get"):
                 self.handle_playbook(body)
+            elif path in ("/consult", "/brain/consult"):
+                self.handle_consult(body)
             elif path in ("/studio", "/studio/generate"):
                 self.handle_studio(body)
             elif path in ("/simulate", "/situation"):
@@ -3616,6 +3640,32 @@ class Handler(BaseHTTPRequestHandler):
             return
         print(f"[playbook] matched={matched} how={how} desc={description[:60]}", flush=True)
         self._send(200, {"status": "ok", "matched_key": matched, "matched_by": how, "playbook": pb})
+
+    def handle_consult(self, body):
+        """AI-native consulting brain: structured intake -> customised engagement
+        (playbook grounding + live open-source search + memory recall + Groq synthesis,
+        with deterministic fallback). Learns from every engagement."""
+        if not BRAIN:
+            self._send(200, {"error": "live_brain module not loaded"})
+            return
+        intake = {
+            "mode": (body.get("mode") or "existing").strip(),
+            "business_type": (body.get("business_type") or "").strip(),
+            "description": (body.get("description") or body.get("idea") or "").strip(),
+            "specific_question": (body.get("specific_question") or "").strip(),
+            "top_challenges": (body.get("top_challenges") or "").strip(),
+            "goals": (body.get("goals") or "").strip(),
+            "stage": (body.get("stage") or "").strip(),
+            "turnover_cr": body.get("turnover_cr") or "",
+            "target_raise_cr": body.get("target_raise_cr") or "",
+            "employees": body.get("employees") or "",
+            "city_tier": (body.get("city_tier") or "").strip(),
+        }
+        if not intake["description"]:
+            self._send(200, {"error": "Please describe your business."})
+            return
+        print(f"[consult] mode={intake['mode']} type={intake['business_type']} desc={intake['description'][:60]}", flush=True)
+        self._send(200, BRAIN.consult(intake))
 
     def handle_agent_journey(self, body):
         """Run the full end-to-end engagement (all relevant agents) for a mode + business."""

@@ -1,0 +1,4 @@
+# Runtime learning log (the evolving brain). Mount a Railway volume at BRAIN_DATA_DIR to persist.
+brain_data/
+__pycache__/
+*.pyc

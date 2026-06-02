@@ -76,7 +76,7 @@ _MATCH_KEYWORDS = {
     "restaurants_cloud_kitchens":  ["restaurant", "cloud kitchen", "cafe", "catering", "tiffin", "qsr", "food outlet", "dine"],
     "healthcare_clinics":          ["clinic", "hospital", "diagnostic", "lab", "telemedicine", "nabh", "healthcare", "doctor"],
     "real_estate":                 ["real estate", "property", "brokerage", "rental management", "rera", "co-working", "facility management"],
-    "saas_startups":               ["saas", "software", "platform", "app", "api", "arr", "mvp", "ai startup", "tech startup", "subscription software"],
+    "saas_startups":               ["saas startup", "saas platform", "b2b saas", "ai saas", "software startup", "software product", "saas", "software", "platform", "arr", "mvp", "ai startup", "tech startup", "subscription software"],
     "professional_services":       ["agency", "consult", "it services", "staffing", "marketing", "bpo", "kpo", "professional service"],
     "legal_firms":                 ["law firm", "legal", "advocate", "litigation", "attorney", "counsel"],
     "ca_firms":                    ["ca firm", "chartered accountant", "audit firm", "tax consultant", "accounting firm", "bookkeeping"],
