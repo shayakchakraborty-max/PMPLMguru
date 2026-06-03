@@ -3648,20 +3648,16 @@ class Handler(BaseHTTPRequestHandler):
         if not BRAIN:
             self._send(200, {"error": "live_brain module not loaded"})
             return
-        intake = {
-            "mode": (body.get("mode") or "existing").strip(),
-            "business_type": (body.get("business_type") or "").strip(),
-            "description": (body.get("description") or body.get("idea") or "").strip(),
-            "specific_question": (body.get("specific_question") or "").strip(),
-            "top_challenges": (body.get("top_challenges") or "").strip(),
-            "goals": (body.get("goals") or "").strip(),
-            "stage": (body.get("stage") or "").strip(),
-            "turnover_cr": body.get("turnover_cr") or "",
-            "target_raise_cr": body.get("target_raise_cr") or "",
-            "employees": body.get("employees") or "",
-            "city_tier": (body.get("city_tier") or "").strip(),
-        }
-        if not intake["description"]:
+        # Forward the full DD intake generically (all known field keys + sector KPI answers).
+        field_keys = getattr(BRAIN, "_FIELD_KEYS", ["description", "business_type"])
+        intake = {k: (body.get(k) if body.get(k) is not None else "") for k in field_keys}
+        intake["mode"] = (body.get("mode") or "existing").strip()
+        if not intake.get("description"):
+            intake["description"] = (body.get("idea") or "").strip()
+        for k, v in body.items():  # sector-specific kpi__* capture fields
+            if k.startswith("kpi__") and v not in (None, ""):
+                intake[k] = v
+        if not intake.get("description"):
             self._send(200, {"error": "Please describe your business."})
             return
         print(f"[consult] mode={intake['mode']} type={intake['business_type']} desc={intake['description'][:60]}", flush=True)

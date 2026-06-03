@@ -52,31 +52,84 @@ except Exception:  # pragma: no cover
 # ============================================================
 # 1. INTAKE FORM — what we capture to personalise the engagement
 # ============================================================
-# Drives the frontend form. `mode` decides which fields show.
-INTAKE_FIELDS = [
-    {"key": "description",      "label": "Describe your business",            "type": "textarea", "ph": "e.g. 8-store grocery retail chain in Pune buying from FMCG distributors", "modes": ["startup", "existing"], "required": True},
-    {"key": "business_type",    "label": "Sector (auto-detected, editable)",  "type": "playbook", "ph": "", "modes": ["startup", "existing"]},
-    {"key": "specific_question","label": "Your #1 question right now",         "type": "textarea", "ph": "e.g. How do I cut working-capital lock without losing sales?", "modes": ["startup", "existing"]},
-    {"key": "top_challenges",   "label": "Top challenges (one per line)",      "type": "textarea", "ph": "thin margins\nstockouts\nstaff churn", "modes": ["startup", "existing"]},
-    {"key": "goals",            "label": "Goal for next 6-12 months",          "type": "text",     "ph": "e.g. double revenue, raise seed, open 3 stores", "modes": ["startup", "existing"]},
-    {"key": "stage",            "label": "Stage",                              "type": "select",   "options_startup": ["idea", "pre-seed", "seed", "series-a", "early-revenue"], "options_existing": ["just-started", "growing", "established", "scaling", "turnaround"], "modes": ["startup", "existing"]},
-    {"key": "turnover_cr",      "label": "Annual turnover (₹ cr)",             "type": "number",   "ph": "8", "modes": ["existing"]},
-    {"key": "target_raise_cr",  "label": "Target raise (₹ cr)",                "type": "number",   "ph": "2", "modes": ["startup"]},
-    {"key": "employees",        "label": "Team size",                          "type": "number",   "ph": "24", "modes": ["startup", "existing"]},
-    {"key": "city_tier",        "label": "Primary market",                     "type": "select",   "options": ["Metro", "Tier-1", "Tier-2", "Tier-3", "Pan-India", "Export"], "modes": ["startup", "existing"]},
+# Drives the multi-step frontend form. `group` = wizard step; `modes` = visibility.
+# This is the end-to-end due-diligence intake — the inputs a real consultant would
+# ask for before diagnosing, organised so the form feels like a guided DD interview.
+INTAKE_GROUPS = [
+    {"key": "profile",    "label": "Business Profile",   "icon": "🏢", "blurb": "Who you are and what you do."},
+    {"key": "financial",  "label": "Financial DD",       "icon": "💰", "blurb": "Revenue, margins, cash and collections."},
+    {"key": "operations", "label": "Operations DD",      "icon": "⚙️", "blurb": "Systems, SOPs, inventory and workflow maturity."},
+    {"key": "chain",      "label": "Supply Chain & Sales","icon": "🔗", "blurb": "Vendors, procurement, customers and concentration."},
+    {"key": "compliance", "label": "Compliance DD",      "icon": "🏛️", "blurb": "GST, returns and licences."},
+    {"key": "focus",      "label": "Your Focus",         "icon": "🎯", "blurb": "The questions and goals that matter most to you."},
 ]
+
+INTAKE_FIELDS = [
+    # --- Profile ---
+    {"key": "description",      "group": "profile", "label": "Describe your business",           "type": "textarea", "ph": "e.g. 8-store grocery retail chain in Pune buying from FMCG distributors", "modes": ["startup", "existing"], "required": True},
+    {"key": "business_type",    "group": "profile", "label": "Sector (auto-detected, editable)", "type": "playbook", "ph": "", "modes": ["startup", "existing"]},
+    {"key": "stage",            "group": "profile", "label": "Stage",                            "type": "select",   "options_startup": ["idea", "pre-seed", "seed", "series-a", "early-revenue"], "options_existing": ["just-started", "growing", "established", "scaling", "turnaround"], "modes": ["startup", "existing"]},
+    {"key": "city_tier",        "group": "profile", "label": "Primary market",                   "type": "select",   "options": ["Metro", "Tier-1", "Tier-2", "Tier-3", "Pan-India", "Export"], "modes": ["startup", "existing"]},
+    {"key": "employees",        "group": "profile", "label": "Team size",                        "type": "number",   "ph": "24", "modes": ["startup", "existing"]},
+    {"key": "years_operating",  "group": "profile", "label": "Years operating",                  "type": "number",   "ph": "6", "modes": ["existing"]},
+    # --- Financial DD ---
+    {"key": "turnover_cr",      "group": "financial", "label": "Annual turnover (₹ cr)",         "type": "number", "ph": "8",  "modes": ["existing"]},
+    {"key": "target_raise_cr",  "group": "financial", "label": "Target raise (₹ cr)",            "type": "number", "ph": "2",  "modes": ["startup"]},
+    {"key": "gross_margin_pct", "group": "financial", "label": "Gross margin (%)",               "type": "number", "ph": "18", "modes": ["startup", "existing"]},
+    {"key": "net_margin_pct",   "group": "financial", "label": "Net margin (%)",                 "type": "number", "ph": "6",  "modes": ["startup", "existing"]},
+    {"key": "receivables_cr",   "group": "financial", "label": "Receivables outstanding (₹ cr)", "type": "number", "ph": "2",  "modes": ["existing"]},
+    {"key": "dso_days",         "group": "financial", "label": "Collection period / DSO (days)", "type": "number", "ph": "75", "modes": ["existing"]},
+    {"key": "cash_runway_months","group": "financial","label": "Cash runway (months)",           "type": "number", "ph": "9",  "modes": ["startup", "existing"]},
+    # --- Operations DD ---
+    {"key": "systems_used",     "group": "operations", "label": "Systems you run on",            "type": "select", "options": ["Pen & paper", "Excel/Sheets", "WhatsApp + Excel", "Tally", "Tally + Excel", "An ERP", "Mixed"], "modes": ["startup", "existing"]},
+    {"key": "has_sops",         "group": "operations", "label": "Documented SOPs exist?",        "type": "select", "options": ["No", "A few", "Mostly", "Yes - followed"], "modes": ["startup", "existing"]},
+    {"key": "owner_dependency", "group": "operations", "label": "How owner-dependent are ops?",  "type": "select", "options": ["Totally - I do everything", "High", "Medium", "Low - team runs it"], "modes": ["startup", "existing"]},
+    {"key": "inventory_value_cr","group": "operations","label": "Inventory value (₹ cr)",        "type": "number", "ph": "3", "modes": ["existing"]},
+    {"key": "dead_stock_pct",   "group": "operations", "label": "Dead / slow stock (%)",         "type": "number", "ph": "12", "modes": ["existing"]},
+    # --- Supply Chain & Sales ---
+    {"key": "procurement_method","group": "chain", "label": "How you procure",                   "type": "select", "options": ["Single supplier", "Few suppliers", "Open market", "Imports", "Mixed"], "modes": ["startup", "existing"]},
+    {"key": "top_supplier_dep_pct","group": "chain","label": "Top supplier dependence (%)",      "type": "number", "ph": "40", "modes": ["existing"]},
+    {"key": "top_customer_dep_pct","group": "chain","label": "Top customer dependence (%)",      "type": "number", "ph": "25", "modes": ["startup", "existing"]},
+    {"key": "repeat_rate_pct",  "group": "chain", "label": "Repeat-customer rate (%)",           "type": "number", "ph": "45", "modes": ["startup", "existing"]},
+    {"key": "has_crm",          "group": "chain", "label": "Use a CRM / customer database?",     "type": "select", "options": ["No", "Spreadsheet", "WhatsApp only", "Yes - a CRM"], "modes": ["startup", "existing"]},
+    # --- Compliance DD ---
+    {"key": "gst_registered",   "group": "compliance", "label": "GST registered?",               "type": "select", "options": ["Yes", "No", "Not sure"], "modes": ["startup", "existing"]},
+    {"key": "returns_current",  "group": "compliance", "label": "GST/IT returns up to date?",    "type": "select", "options": ["Yes", "Mostly", "Behind", "Not sure"], "modes": ["existing"]},
+    {"key": "licences_current", "group": "compliance", "label": "Sector licences current?",      "type": "select", "options": ["Yes", "Some pending", "No", "Not sure"], "modes": ["startup", "existing"]},
+    # --- Focus ---
+    {"key": "specific_question","group": "focus", "label": "Your #1 question right now",         "type": "textarea", "ph": "e.g. How do I cut working-capital lock without losing sales?", "modes": ["startup", "existing"]},
+    {"key": "top_challenges",   "group": "focus", "label": "Top challenges (one per line)",      "type": "textarea", "ph": "thin margins\nstockouts\nstaff churn", "modes": ["startup", "existing"]},
+    {"key": "goals",            "group": "focus", "label": "Goal for next 6-12 months",          "type": "text",     "ph": "e.g. double revenue, raise seed, open 3 stores", "modes": ["startup", "existing"]},
+]
+
+_FIELD_KEYS = [f["key"] for f in INTAKE_FIELDS]
 
 
 def intake_meta():
-    """Form schema + sector list for the frontend."""
+    """Form schema (grouped, multi-step) + sector list for the frontend."""
     return {
         "fields": INTAKE_FIELDS,
+        "groups": INTAKE_GROUPS,
         "playbooks": PB.list_playbooks() if PB else [],
         "modes": [
             {"key": "startup", "label": "New / Startup", "icon": "🚀"},
             {"key": "existing", "label": "Existing Business", "icon": "🏢"},
         ],
     }
+
+
+# Human-readable labels for the extended DD signals (used in prompts + diagnosis).
+def _intake_summary_lines(intake):
+    lines = []
+    for f in INTAKE_FIELDS:
+        v = intake.get(f["key"])
+        if v not in (None, "", []):
+            lines.append(f"- {f['label']}: {v}")
+    # sector-specific KPI answers (kpi__*)
+    for k, v in intake.items():
+        if k.startswith("kpi__") and v not in (None, ""):
+            lines.append(f"- {k.replace('kpi__','KPI ').replace('_',' ')}: {v}")
+    return "\n".join(lines)
 
 
 # ============================================================
@@ -345,6 +398,22 @@ def _deterministic_engagement(intake, pb, recall):
         bn0 = bottlenecks[0]["bottleneck"] if bottlenecks else None
         if bn0:
             diag += f"In {sector}, these typically trace back to the sector's #1 bottleneck — {bn0}. "
+    # DD signals — make the diagnosis reference the actual numbers given.
+    flags = []
+    if _f(intake, "systems_used") in ("Pen & paper", "Excel/Sheets", "WhatsApp + Excel"):
+        flags.append(f"you run on {_f(intake,'systems_used')} (low data visibility — a maturity gap)")
+    if _f(intake, "dso_days") and str(_f(intake, "dso_days")).replace(".", "").isdigit() and float(_f(intake, "dso_days")) > 60:
+        flags.append(f"DSO is {_f(intake,'dso_days')} days (working-capital leak vs <60 healthy)")
+    if _f(intake, "dead_stock_pct") and str(_f(intake, "dead_stock_pct")).replace(".", "").isdigit() and float(_f(intake, "dead_stock_pct")) > 8:
+        flags.append(f"{_f(intake,'dead_stock_pct')}% dead/slow stock (cash trapped on the shelf)")
+    if _f(intake, "has_sops") in ("No", "A few"):
+        flags.append("thin SOPs (owner-dependency + inconsistent execution risk)")
+    if _f(intake, "top_customer_dep_pct") and str(_f(intake, "top_customer_dep_pct")).replace(".", "").isdigit() and float(_f(intake, "top_customer_dep_pct")) > 30:
+        flags.append(f"top customer is {_f(intake,'top_customer_dep_pct')}% of revenue (concentration risk)")
+    if _f(intake, "gst_registered") in ("No", "Not sure") or _f(intake, "returns_current") in ("Behind", "Not sure"):
+        flags.append("compliance hygiene needs attention")
+    if flags:
+        diag += "Due-diligence read: " + "; ".join(flags) + ". "
     if goal:
         diag += f"Goal in scope: {goal}."
 
@@ -459,17 +528,14 @@ def _llm_enhance(intake, pb, web, recall, base):
         "action_plan_90day (array of {phase, steps[]}), opportunities (array of strings)."
     )
     user = (
-        f"SECTOR: {sector}\nMODE: {intake.get('mode')}\n"
-        f"BUSINESS: {intake.get('description','')}\n"
-        f"KEY QUESTION: {intake.get('specific_question','')}\n"
-        f"CHALLENGES: {intake.get('top_challenges','')}\n"
-        f"GOAL: {intake.get('goals','')}\nSTAGE: {intake.get('stage','')}\n"
-        f"SIZE: turnover ₹{intake.get('turnover_cr','?')}cr / raise ₹{intake.get('target_raise_cr','?')}cr / "
-        f"{intake.get('employees','?')} people / market {intake.get('city_tier','?')}\n\n"
+        f"SECTOR: {sector}\nMODE: {intake.get('mode')}\n\n"
+        f"FULL DUE-DILIGENCE INTAKE (use every signal that is filled in; call out anything missing that you'd need):\n"
+        f"{_intake_summary_lines(intake)}\n\n"
         f"SECTOR GROUNDING (use, don't just repeat):\n{json.dumps(grounding, ensure_ascii=False)}\n\n"
         f"LIVE OPEN-SOURCE SEARCH RESULTS:\n{web_block}\n\n"
         f"WHAT THE BRAIN REMEMBERS FROM SIMILAR PAST ENGAGEMENTS:\n{recall_block}\n\n"
-        "Now produce the customised JSON engagement."
+        "Now produce the customised JSON engagement. Tie recommendations to the specific numbers the owner gave "
+        "(margins, DSO, dead stock, dependence %, systems, SOPs, compliance). Quantify the ₹ upside where you can."
     )
     try:
         res = LLM.augment(system, user, max_tokens=1600)

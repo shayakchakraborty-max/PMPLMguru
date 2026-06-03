@@ -18,6 +18,7 @@ library in msme_agents.CITATIONS — so every claim stays traceable.
 
 import json
 import os
+import re
 
 # Reuse the citation library + classifier from the agent layer. Optional so this
 # module still loads standalone (citations just won't resolve to full refs).
@@ -167,8 +168,101 @@ def list_playbooks():
     return cards
 
 
+# ============================================================
+# 5b. METHODOLOGY LIBRARY + BOTTLENECK->SOLUTION ENGINE
+# ============================================================
+# The consulting toolkit. Each bottleneck is matched to the methodology a real
+# operations/transformation consultant would reach for, plus a concrete solution
+# derived from its root cause and the sector's automation options.
+METHODOLOGIES = {
+    "lean":        {"name": "Lean", "icon": "🍃", "principle": "Eliminate the 8 wastes; maximise customer value per rupee spent.", "kw": ["manual", "process", "waste", "delay", "rework", "duplicate", "inefficien"]},
+    "six_sigma":   {"name": "Six Sigma (DMAIC)", "icon": "🎯", "principle": "Define-Measure-Analyse-Improve-Control to cut defects & variation.", "kw": ["quality", "defect", "error", "variation", "inconsistent", "mistake", "return"]},
+    "toc":         {"name": "Theory of Constraints", "icon": "⛓️", "principle": "Find the single binding constraint; subordinate everything to relieving it.", "kw": ["bottleneck", "capacity", "constraint", "wait", "queue", "idle", "dependency", "owner"]},
+    "five_whys":   {"name": "5 Whys / Fishbone", "icon": "🐟", "principle": "Trace a symptom to its true root cause before fixing anything.", "kw": ["root", "cause", "unclear", "confus", "no visibility", "tribal"]},
+    "kaizen":      {"name": "Kaizen", "icon": "🔧", "principle": "Continuous small improvements owned by the people doing the work.", "kw": ["sop", "standard", "training", "churn", "skill", "discipline"]},
+    "pdca":        {"name": "PDCA Cycle", "icon": "🔁", "principle": "Plan-Do-Check-Act: institutionalise a weekly improvement loop.", "kw": ["cadence", "review", "decision", "track", "monitor"]},
+    "vsm":         {"name": "Value-Stream Mapping", "icon": "🗺️", "principle": "Map every step end-to-end; expose non-value-adding handoffs.", "kw": ["workflow", "handoff", "flow", "fragment", "step", "visibility"]},
+    "jit_abc":     {"name": "JIT + ABC / EOQ", "icon": "📦", "principle": "Stock by velocity (A/B/C), reorder just-in-time, kill dead stock.", "kw": ["stock", "inventory", "dead", "expiry", "overstock", "understock", "fefo", "reorder"]},
+    "wc_cycle":    {"name": "Working-Capital Cycle", "icon": "💧", "principle": "Compress cash-to-cash: collect faster, pay smarter, hold less.", "kw": ["cash", "collection", "receivable", "dso", "payment", "credit", "working capital"]},
+    "unit_econ":   {"name": "Unit Economics", "icon": "🧮", "principle": "Prove contribution margin & payback per unit before scaling spend.", "kw": ["margin", "pricing", "cost", "profit", "cac", "ltv", "discount", "leak"]},
+    "raci":        {"name": "RACI + SOP", "icon": "📋", "principle": "Make ownership explicit; document the process so it survives the owner.", "kw": ["owner", "delegat", "accountab", "responsib", "manual", "people"]},
+    "scor":        {"name": "SCOR Supply-Chain", "icon": "🔗", "principle": "Plan-Source-Make-Deliver-Return: benchmark each supply-chain stage.", "kw": ["supplier", "vendor", "procure", "logistic", "supply", "freight", "lead time"]},
+}
+
+
+def _methods_for(text):
+    """Return up to 2 methodology keys whose keywords best match the text."""
+    t = (text or "").lower()
+    scored = [(sum(1 for k in m["kw"] if k in t), key) for key, m in METHODOLOGIES.items()]
+    scored = [(s, k) for s, k in scored if s > 0]
+    scored.sort(reverse=True)
+    return [k for _, k in scored[:2]] or ["five_whys"]
+
+
+def _best_automation(text, autos):
+    """Pick the automation opportunity most relevant to a bottleneck."""
+    t = set(re.findall(r"[a-z]{4,}", (text or "").lower()))
+    best, score = None, 0
+    for a in (autos or []):
+        words = set((a.get("opportunity", "") + " " + (a.get("agent") or "")).lower().split())
+        ov = len(t & words)
+        if ov > score:
+            score, best = ov, a
+    return best or (autos[0] if autos else None)
+
+
+def _bottleneck_solutions(p):
+    """Pair every operational bottleneck with a consulting solution + methodology."""
+    autos = p.get("ai_automation_opportunities", [])
+    out = []
+    for b in p.get("operational_bottlenecks", []):
+        ctx = f"{b.get('bottleneck','')} {b.get('symptom','')} {b.get('root_cause','')}"
+        method_keys = _methods_for(ctx)
+        auto = _best_automation(ctx, autos)
+        steps = [f"Attack the root cause — {b.get('root_cause','')}."]
+        if auto and auto.get("opportunity"):
+            steps.append(f"Deploy: {auto['opportunity']}" + (f" (agent: {auto.get('agent')})" if auto.get("agent") else "."))
+        steps.append(f"Apply {METHODOLOGIES[method_keys[0]]['name']}: {METHODOLOGIES[method_keys[0]]['principle']}")
+        out.append({
+            "bottleneck": b.get("bottleneck"),
+            "symptom": b.get("symptom"),
+            "impact": b.get("impact"),
+            "root_cause": b.get("root_cause"),
+            "solution_steps": steps,
+            "methodologies": [{"key": k, **METHODOLOGIES[k]} for k in method_keys],
+            "agent": (auto or {}).get("agent"),
+        })
+    return out
+
+
+def _applicable_methodologies(p):
+    """Union of methodologies relevant across the sector's bottlenecks + frameworks."""
+    keys, seen = [], set()
+    blob = " ".join(b.get("bottleneck", "") + " " + b.get("root_cause", "") for b in p.get("operational_bottlenecks", []))
+    blob += " " + " ".join(f.get("framework", "") + " " + f.get("use", "") for f in p.get("consulting_frameworks", []))
+    for k in _methods_for(blob) + [mk for b in p.get("operational_bottlenecks", []) for mk in _methods_for(b.get("root_cause", ""))]:
+        if k not in seen:
+            seen.add(k); keys.append(k)
+    return [{"key": k, **METHODOLOGIES[k]} for k in keys[:6]]
+
+
+# Sector-aware DUE-DILIGENCE capture fields, derived from the sector's KPIs so the
+# intake form asks exactly what THIS business type needs for a real diagnosis.
+def dd_fields_for(key):
+    p = PLAYBOOKS.get(key)
+    if not p:
+        return []
+    fields = []
+    for k in (p.get("kpi_structure") or [])[:6]:
+        fields.append({"key": "kpi__" + re.sub(r"[^a-z0-9]+", "_", k.get("kpi", "").lower()).strip("_")[:40],
+                       "label": f"Current {k.get('kpi')}", "hint": f"Healthy: {k.get('healthy')}",
+                       "type": "text", "kpi": k.get("kpi")})
+    return fields
+
+
 def get_playbook(key):
-    """Full playbook with citations + compliance resolved to traceable refs."""
+    """Full playbook with citations + compliance resolved, plus the consulting
+    overlays the report UI renders: bottleneck->solution pairs, methodologies, DD fields."""
     p = PLAYBOOKS.get(key)
     if not p:
         return None
@@ -177,6 +271,9 @@ def get_playbook(key):
     out["citations_resolved"] = _resolve_citations(p.get("citations"))
     out["compliance_resolved"] = _resolve_citations(p.get("compliance_keys"))
     out["sections"] = PLAYBOOK_SECTIONS
+    out["bottleneck_solutions"] = _bottleneck_solutions(p)
+    out["methodologies"] = _applicable_methodologies(p)
+    out["dd_fields"] = dd_fields_for(key)
     return out
 
 
