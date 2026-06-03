@@ -278,6 +278,68 @@ function EngagementReport({ e }) {
   );
 }
 
+/* ================= Workflow infographic ================= */
+const FLOW_PALETTE = [
+  { ring: "from-indigo-500 to-violet-500",  card: "bg-indigo-50 border-indigo-200 text-indigo-900",   arrow: "text-indigo-400" },
+  { ring: "from-sky-500 to-cyan-500",       card: "bg-sky-50 border-sky-200 text-sky-900",            arrow: "text-sky-400" },
+  { ring: "from-emerald-500 to-teal-500",   card: "bg-emerald-50 border-emerald-200 text-emerald-900", arrow: "text-emerald-400" },
+  { ring: "from-amber-500 to-orange-500",   card: "bg-amber-50 border-amber-200 text-amber-900",      arrow: "text-amber-400" },
+  { ring: "from-rose-500 to-pink-500",      card: "bg-rose-50 border-rose-200 text-rose-900",         arrow: "text-rose-400" },
+  { ring: "from-fuchsia-500 to-purple-500", card: "bg-fuchsia-50 border-fuchsia-200 text-fuchsia-900", arrow: "text-fuchsia-400" },
+  { ring: "from-teal-500 to-green-500",     card: "bg-teal-50 border-teal-200 text-teal-900",         arrow: "text-teal-400" },
+  { ring: "from-blue-500 to-indigo-500",    card: "bg-blue-50 border-blue-200 text-blue-900",         arrow: "text-blue-400" },
+];
+function stageIcon(label) {
+  const t = (label || "").toLowerCase();
+  const map = [
+    [["plan", "assort", "categor", "design", "develop", "r&d", "menu", "strateg", "forecast"], "🧭"],
+    [["procure", "purchas", "sourc", "vendor", "supplier", "inbound", "import", "raw", "indent"], "📥"],
+    [["manufactur", "produc", "make", "assembl", "process", "fabricat", "cook", "prep", "build"], "🏭"],
+    [["quality", "qc", "inspect", "compliance", "test", "grading", "audit"], "✅"],
+    [["store", "warehous", "stock", "invent", "putaway", "cold"], "🏬"],
+    [["replenish", "distribut", "dispatch", "deliver", "logist", "transport", "ship", "route", "last mile", "fulfil"], "🚚"],
+    [["sell", "sale", "pos", "checkout", "billing", "order", "retail", "counter", "booking"], "🛒"],
+    [["market", "demand", "lead", "acqui", "promot", "brand", "gtm", "outreach", "campaign"], "📣"],
+    [["customer", "crm", "loyal", "retention", "support", "service", "feedback", "onboard", "handover"], "🤝"],
+    [["collect", "payment", "receivable", "cash", "invoice", "reconcil", "settle"], "💰"],
+    [["return", "reverse", "expiry", "claim", "refund", "after"], "↩️"],
+  ];
+  for (const [kws, icon] of map) if (kws.some((k) => t.includes(k))) return icon;
+  return "🔹";
+}
+function WorkflowInfographic({ stages }) {
+  const s = stages || [];
+  return (
+    <div>
+      <div className="flex flex-wrap items-start gap-y-5">
+        {s.map((stage, i) => {
+          const c = FLOW_PALETTE[i % FLOW_PALETTE.length];
+          return (
+            <div key={i} className="flex items-start">
+              <div className="flex flex-col items-center w-[124px] sm:w-[140px]">
+                <div className={`h-16 w-16 rounded-2xl bg-gradient-to-br ${c.ring} text-white grid place-items-center shadow-md relative`}>
+                  <span className="text-2xl">{stageIcon(stage)}</span>
+                  <span className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white text-slate-700 text-[11px] font-extrabold grid place-items-center shadow border border-slate-200">{i + 1}</span>
+                </div>
+                <div className={`mt-2.5 rounded-xl border px-2.5 py-2 text-center text-[11px] font-semibold leading-snug ${c.card} w-full min-h-[52px] flex items-center justify-center`}>{stage}</div>
+              </div>
+              {i < s.length - 1 && (
+                <div className={`grid place-items-center h-16 px-0.5 sm:px-1 ${c.arrow}`} aria-hidden>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-2 mt-4 text-[11px] text-slate-400">
+        <span className="h-2 w-6 rounded-full bg-gradient-to-r from-indigo-400 via-emerald-400 to-rose-400" />
+        Value flows start → finish. Each stage is a control point where margin, time and quality are won or lost.
+      </div>
+    </div>
+  );
+}
+
 /* ================= Playbook encyclopedia ================= */
 function Encyclopedia({ pb, onClose }) {
   const t = pb.tier || 3; const st = TIER[t] || TIER[3];
@@ -306,18 +368,8 @@ function Encyclopedia({ pb, onClose }) {
       <div className="p-6 md:p-8 space-y-8">
         {/* End-to-end workflow */}
         <Section id="flow" icon="🔗" title="End-to-End Workflow" sub="How value flows through the business, stage by stage">
-          <div className="flex flex-wrap items-stretch gap-2">
-            {(pb.workflow_architecture?.value_chain || []).map((v, i, arr) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 min-w-[120px]">
-                  <div className="text-[10px] font-bold text-indigo-400">STEP {i + 1}</div>
-                  <div className="text-xs font-semibold text-indigo-800 leading-tight">{v}</div>
-                </div>
-                {i < arr.length - 1 && <span className="text-indigo-300 text-lg">→</span>}
-              </div>
-            ))}
-          </div>
-          <div className="grid md:grid-cols-2 gap-3 mt-5">
+          <WorkflowInfographic stages={pb.workflow_architecture?.value_chain} />
+          <div className="grid md:grid-cols-2 gap-3 mt-6">
             {(pb.workflow_architecture?.core_processes || []).map((p, i) => (<Card key={i}><div className="font-semibold text-slate-900 text-sm">{p.process}</div><div className="text-xs text-slate-500 mt-1">{p.description}</div></Card>))}
           </div>
         </Section>
