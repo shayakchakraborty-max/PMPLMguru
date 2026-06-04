@@ -346,6 +346,7 @@ function engagementMarkdown(e) {
   L.push(`## Executive Scorecard`);
   (sc.scores || []).forEach((s) => L.push(`- **${s.label}**: ${s.score}/100 (${s.band})${(s.drivers || []).slice(0, 2).map((d) => ` — ${d.effect === "+" ? "▲" : "▼"} ${d.note}`).join("")}`));
   L.push(`\n## Diagnosis\n${e.diagnosis || ""}`);
+  if (e.swot) { L.push(`\n## SWOT`); ["strengths", "weaknesses", "opportunities", "threats"].forEach((k) => { L.push(`**${k[0].toUpperCase() + k.slice(1)}**`); (e.swot[k] || []).forEach((x) => L.push(`- ${x}`)); }); }
   L.push(`\n## Recommendations`);
   (e.tailored_recommendations || []).forEach((r) => L.push(`- **${r.title}**${r.priority ? ` [${r.priority}]` : ""}${r.why ? ` — ${r.why}` : ""}${r.how ? ` _How:_ ${r.how}` : ""}`));
   if ((e.quick_wins || []).length) { L.push(`\n## Quick Wins`); e.quick_wins.forEach((w) => L.push(`- ${w}`)); }
@@ -406,6 +407,8 @@ function BoardPack({ e, onClose }) {
           </div>
           <p className="text-sm text-slate-700 leading-relaxed">{e.diagnosis}</p>
         </div>
+        {/* SWOT */}
+        {e.swot && <div className="bpage"><BH>SWOT Analysis</BH><Swot s={e.swot} /></div>}
         {/* Recommendations */}
         <div className="bpage">
           <BH>Recommendations</BH>
@@ -461,6 +464,29 @@ function BenchGauge({ g }) {
         <div className="absolute -top-0.5 h-3.5 w-[3px] bg-slate-900 rounded" style={{ left: `calc(${g.position_pct}% - 1.5px)` }} />
       </div>
       <div className="text-[10px] text-slate-400 mt-0.5">{g.note}</div>
+    </div>
+  );
+}
+
+/* ================= SWOT ================= */
+const SWOT_STYLE = {
+  strengths: { t: "Strengths", icon: "💪", box: "border-emerald-200 bg-emerald-50", dot: "text-emerald-600" },
+  weaknesses: { t: "Weaknesses", icon: "⚠️", box: "border-rose-200 bg-rose-50", dot: "text-rose-600" },
+  opportunities: { t: "Opportunities", icon: "🚀", box: "border-sky-200 bg-sky-50", dot: "text-sky-600" },
+  threats: { t: "Threats", icon: "🛡️", box: "border-amber-200 bg-amber-50", dot: "text-amber-600" },
+};
+function Swot({ s }) {
+  return (
+    <div className="grid sm:grid-cols-2 gap-3">
+      {["strengths", "weaknesses", "opportunities", "threats"].map((k) => { const st = SWOT_STYLE[k]; return (
+        <div key={k} className={`rounded-xl border p-3.5 ${st.box}`}>
+          <div className="font-bold text-slate-800 text-sm mb-1.5">{st.icon} {st.t}</div>
+          <ul className="space-y-1">
+            {(s[k] || []).map((x, i) => <li key={i} className="text-xs text-slate-700 flex gap-1.5"><span className={st.dot}>•</span>{x}</li>)}
+            {(s[k] || []).length === 0 && <li className="text-xs text-slate-400">—</li>}
+          </ul>
+        </div>
+      ); })}
     </div>
   );
 }
@@ -589,6 +615,7 @@ function EngagementReport({ e }) {
           </Section>
         )}
         <Section id="diag" icon="🩺" title="Diagnosis"><p className="text-sm text-slate-700 leading-relaxed">{e.diagnosis}</p></Section>
+        {e.swot && <Section id="swot" icon="🧭" title="SWOT Analysis" sub="Auto-synthesised from your scorecard, benchmarks, risks and sector playbook"><Swot s={e.swot} /></Section>}
         <Section id="recs" icon="🎯" title="Tailored Recommendations">
           <div className="space-y-2.5">{(e.tailored_recommendations || []).map((r, i) => (
             <Card key={i}><div className="flex items-center justify-between gap-2"><div className="font-semibold text-slate-900 text-sm">{r.title}</div>{r.priority && <Chip cls={SEV[r.priority]}>{r.priority}</Chip>}</div>

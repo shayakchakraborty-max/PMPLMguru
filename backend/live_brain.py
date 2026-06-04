@@ -1068,6 +1068,63 @@ def benchmark(intake, pb):
 
 
 # ============================================================
+# 5b3. SWOT — synthesised from the whole engagement
+# ============================================================
+def swot(intake, pb, sc, bm, base):
+    S, W, O, T = [], [], [], []
+    for s in (sc.get("scores") or []):
+        if s["band"] == "strong":
+            S.append(f"Strong {s['label'].lower()} ({s['score']}/100)")
+        elif s["band"] == "weak":
+            W.append(f"Weak {s['label'].lower()} ({s['score']}/100)")
+    for g in (bm or []):
+        if g["zone"] == "healthy":
+            S.append(f"{g['label']} {g['value']}{g['unit']} — ahead of sector")
+        elif g["zone"] == "critical":
+            W.append(f"{g['label']} {g['value']}{g['unit']} — below sector")
+    if intake.get("systems_used") in ("Tally", "Tally + Excel", "An ERP"):
+        S.append("System-based operations with data visibility")
+    if intake.get("has_sops") in ("Mostly", "Yes - followed"):
+        S.append("Documented SOPs / process discipline")
+    if intake.get("systems_used") in ("Pen & paper", "Excel/Sheets", "WhatsApp + Excel"):
+        W.append(f"Low system maturity ({intake.get('systems_used')})")
+    if intake.get("owner_dependency") in ("Totally - I do everything", "High"):
+        W.append("High owner-dependency / weak delegation")
+    if intake.get("has_sops") in ("No", "A few"):
+        W.append("Thin SOPs — inconsistent-execution risk")
+
+    O.extend((base.get("opportunities") or [])[:4])
+    if pb:
+        for a in (pb.get("ai_automation_opportunities") or []):
+            if a.get("impact") == "High" and a.get("opportunity"):
+                O.append(f"Automate: {a['opportunity']}")
+    if intake.get("city_tier") in ("Tier-2", "Tier-3", "Metro"):
+        O.append("Geographic / channel expansion headroom")
+
+    for r in (base.get("risks") or [])[:3]:
+        if r.get("risk"):
+            T.append(r["risk"])
+    cust = _numf(intake.get("top_customer_dep_pct"))
+    if cust and cust > 40:
+        T.append(f"Customer concentration ({cust:.0f}% from one buyer)")
+    supp = _numf(intake.get("top_supplier_dep_pct"))
+    if supp and supp > 45:
+        T.append(f"Supplier concentration ({supp:.0f}%)")
+    if intake.get("gst_registered") in ("No", "Not sure") or intake.get("returns_current") in ("Behind", "Not sure"):
+        T.append("Compliance exposure (GST / returns)")
+
+    def cap(lst, n=5):
+        seen, out = set(), []
+        for x in lst:
+            if x and x not in seen:
+                seen.add(x); out.append(x)
+            if len(out) >= n:
+                break
+        return out
+    return {"strengths": cap(S), "weaknesses": cap(W), "opportunities": cap(O), "threats": cap(T)}
+
+
+# ============================================================
 # 5c. AI PMO — turn an engagement into a PM workspace
 # ============================================================
 # Converts the 90-day plan + recommendations + KPIs into an execution workspace:
@@ -1177,6 +1234,9 @@ def consult(intake):
                 base[k] = v
         engine = f"groq:{enhanced.get('_provider','llm')}"
 
+    sc_data = dd_scores(intake, pb)
+    bm_data = benchmark(intake, pb)
+    swot_data = swot(intake, pb, sc_data, bm_data, base)
     envelope = {
         "engagement_id": hashlib.sha1((description + str(time.time())).encode()).hexdigest()[:12],
         "mode": mode,
@@ -1185,8 +1245,9 @@ def consult(intake):
         "matched_by": how,
         "engine": engine,
         "playbook_key": matched_key,
-        "scorecard": dd_scores(intake, pb),
-        "benchmark": benchmark(intake, pb),
+        "scorecard": sc_data,
+        "benchmark": bm_data,
+        "swot": swot_data,
         **base,
         "sources": web,
         "citations": (pb.get("citations_resolved") if pb else []) or [],
