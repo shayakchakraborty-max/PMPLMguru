@@ -44,10 +44,13 @@ export default function CommandCenter() {
   const [q, setQ] = useState("");
   const [pb, setPb] = useState(null);
   const [pbLoading, setPbLoading] = useState(false);
+  const [pendingDemo, setPendingDemo] = useState(null);
 
   useEffect(() => {
     fetch("/api/consult").then((r) => r.json()).then((d) => { if (d.error) setErr(d.error); else setMeta(d); }).catch((e) => setErr(String(e)));
   }, []);
+
+  function runAsEngagement(key) { setPb(null); setTab("engagement"); setPendingDemo(key); window.scrollTo({ top: 0, behavior: "smooth" }); }
 
   async function openPlaybook(key) {
     setPbLoading(true); setPb(null);
@@ -85,12 +88,12 @@ export default function CommandCenter() {
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6">
         {err && <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">{err}</div>}
 
-        {tab === "engagement" && <Wizard meta={meta} sectors={sectors} setErr={setErr} openPlaybook={openPlaybook} pb={pb} pbLoading={pbLoading} clearPb={() => setPb(null)} />}
+        {tab === "engagement" && <Wizard meta={meta} sectors={sectors} setErr={setErr} pendingDemo={pendingDemo} onConsumedDemo={() => setPendingDemo(null)} />}
 
         {tab === "library" && (
           <>
             {pbLoading && <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-400 animate-pulse mb-6">Loading playbook…</div>}
-            {pb && <div className="mb-8"><Encyclopedia pb={pb} onClose={() => setPb(null)} /></div>}
+            {pb && <div className="mb-8"><Encyclopedia pb={pb} onClose={() => setPb(null)} onRun={() => runAsEngagement(pb.key)} /></div>}
             {!pb && (
               <>
                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter sectors…" className="mb-5 w-full sm:w-72 rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
@@ -120,7 +123,7 @@ export default function CommandCenter() {
 }
 
 /* ================= Multi-step DD wizard ================= */
-function Wizard({ meta, sectors, setErr, openPlaybook }) {
+function Wizard({ meta, sectors, setErr, pendingDemo, onConsumedDemo }) {
   const [mode, setMode] = useState("existing");
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({});
@@ -163,6 +166,12 @@ function Wizard({ meta, sectors, setErr, openPlaybook }) {
     setMode(d.intake.mode); setForm({ ...d.intake }); setStep(0); setEngagement(null);
     if (andRun) run({ ...d.intake }, d.intake.mode);
   }
+
+  // "Run as engagement" from the Playbook Library lands here.
+  useEffect(() => {
+    if (pendingDemo && demos.length) { loadDemo(pendingDemo, true); onConsumedDemo && onConsumedDemo(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingDemo, demos.length]);
 
   if (engagement) return <div><button onClick={() => setEngagement(null)} className="mb-4 text-sm text-indigo-600 hover:underline">← New engagement</button><EngagementReport e={engagement} /></div>;
 
@@ -380,7 +389,7 @@ function WorkflowInfographic({ stages }) {
 }
 
 /* ================= Playbook encyclopedia ================= */
-function Encyclopedia({ pb, onClose }) {
+function Encyclopedia({ pb, onClose, onRun }) {
   const t = pb.tier || 3; const st = TIER[t] || TIER[3];
   const Col = ({ title, items, dot }) => (
     <div><div className="text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">{title}</div><ul className="space-y-1.5">{(items || []).map((it, i) => <li key={i} className="text-xs text-slate-700 flex gap-1.5"><span className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />{it}</li>)}</ul></div>
@@ -393,7 +402,11 @@ function Encyclopedia({ pb, onClose }) {
             <div className="h-14 w-14 rounded-2xl bg-white/15 grid place-items-center text-3xl">{pb.icon}</div>
             <div><div className="text-xs text-white/80">{pb.tier_label}</div><h2 className="text-2xl md:text-3xl font-extrabold">{pb.name}</h2><p className="text-white/90 text-sm mt-1 max-w-3xl">{pb.one_liner}</p></div>
           </div>
-          <div className="flex gap-2 shrink-0"><button onClick={() => window.print()} className="rounded-lg bg-white/15 hover:bg-white/25 text-xs px-3 py-1.5">Print / PDF</button><button onClick={onClose} className="rounded-lg bg-white/15 hover:bg-white/25 text-xs px-3 py-1.5">← All sectors</button></div>
+          <div className="flex gap-2 shrink-0">
+            {onRun && <button onClick={onRun} className="rounded-lg bg-white text-indigo-700 font-semibold text-xs px-3 py-1.5 hover:bg-indigo-50">▶ Run as engagement</button>}
+            <button onClick={() => window.print()} className="rounded-lg bg-white/15 hover:bg-white/25 text-xs px-3 py-1.5">Print / PDF</button>
+            <button onClick={onClose} className="rounded-lg bg-white/15 hover:bg-white/25 text-xs px-3 py-1.5">← All sectors</button>
+          </div>
         </div>
       </div>
 
