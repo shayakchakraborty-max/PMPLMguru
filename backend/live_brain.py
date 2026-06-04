@@ -630,15 +630,21 @@ def save_engagement(intake, envelope):
     recs = envelope.get("tailored_recommendations") or []
     key_findings = [r.get("title") for r in recs[:3] if r.get("title")]
     rid = envelope.get("engagement_id") or hashlib.sha1((desc + str(time.time())).encode()).hexdigest()[:12]
+    sc = envelope.get("scorecard") or {}
     record = {
         "id": rid,
         "ts": int(time.time()),
         "business_type": envelope.get("business_type"),
+        "sector_name": envelope.get("sector_name"),
         "mode": intake.get("mode"),
         "summary": (envelope.get("diagnosis") or "")[:240],
         "key_findings": key_findings,
         "tokens": sorted(list(_tokens(desc) | _tokens(intake.get("top_challenges", "")) | _tokens(intake.get("goals", ""))))[:40],
         "engine": envelope.get("engine"),
+        "grade": sc.get("grade"),
+        "overall": sc.get("overall"),
+        "scores": {s["key"]: s["score"] for s in (sc.get("scores") or [])},
+        "weaknesses": [w for w in (envelope.get("swot", {}) or {}).get("weaknesses", [])][:3],
     }
     try:
         with open(_LOG_PATH, "a", encoding="utf-8") as f:
@@ -662,6 +668,59 @@ def brain_stats():
         "recent": [{"business_type": e.get("business_type"), "mode": e.get("mode"),
                     "summary": e.get("summary", "")[:140], "engine": e.get("engine")} for e in recent],
         "data_dir": _DATA_DIR,
+        "persisted": os.path.exists(_LOG_PATH),
+    }
+
+
+_DASH_DIMS = [
+    ("investment_readiness", "Investment Readiness", "💸"),
+    ("risk_resilience", "Risk & Resilience", "🛡️"),
+    ("transformation", "Transformation", "🔄"),
+    ("digital_maturity", "Digital Maturity", "📶"),
+    ("growth", "Growth Potential", "🚀"),
+]
+
+
+def dashboard():
+    """Founder portfolio analytics across all saved engagements."""
+    log = _read_log()
+    n = len(log)
+    graded = [e for e in log if e.get("grade")]
+    grade_dist = {g: 0 for g in ("A", "B", "C", "D")}
+    for e in graded:
+        grade_dist[e["grade"]] = grade_dist.get(e["grade"], 0) + 1
+    by_sector = {}
+    for e in log:
+        key = e.get("sector_name") or e.get("business_type") or "Unknown"
+        by_sector[key] = by_sector.get(key, 0) + 1
+    by_mode = {}
+    for e in log:
+        by_mode[e.get("mode") or "existing"] = by_mode.get(e.get("mode") or "existing", 0) + 1
+    dims = []
+    for k, label, icon in _DASH_DIMS:
+        vals = [e["scores"].get(k) for e in log if isinstance(e.get("scores"), dict) and e["scores"].get(k) is not None]
+        dims.append({"key": k, "label": label, "icon": icon,
+                     "avg": round(sum(vals) / len(vals)) if vals else None,
+                     "min": min(vals) if vals else None, "max": max(vals) if vals else None})
+    overalls = [e["overall"] for e in graded if e.get("overall") is not None]
+    weak_counts = {}
+    for e in log:
+        for w in (e.get("weaknesses") or []):
+            weak_counts[w] = weak_counts.get(w, 0) + 1
+    top_weaknesses = sorted(weak_counts.items(), key=lambda x: x[1], reverse=True)[:6]
+    recent = sorted(log, key=lambda e: e.get("ts", 0), reverse=True)[:12]
+    return {
+        "total": n,
+        "graded": len(graded),
+        "avg_overall": round(sum(overalls) / len(overalls)) if overalls else None,
+        "grade_distribution": grade_dist,
+        "by_sector": dict(sorted(by_sector.items(), key=lambda x: x[1], reverse=True)),
+        "by_mode": by_mode,
+        "dimensions": dims,
+        "top_weaknesses": [{"weakness": w, "count": c} for w, c in top_weaknesses],
+        "recent": [{"sector": e.get("sector_name") or e.get("business_type"), "mode": e.get("mode"),
+                    "grade": e.get("grade"), "overall": e.get("overall"),
+                    "summary": (e.get("summary") or "")[:120], "engine": e.get("engine")} for e in recent],
         "persisted": os.path.exists(_LOG_PATH),
     }
 

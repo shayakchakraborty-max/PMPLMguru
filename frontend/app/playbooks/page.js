@@ -45,10 +45,14 @@ export default function CommandCenter() {
   const [pb, setPb] = useState(null);
   const [pbLoading, setPbLoading] = useState(false);
   const [pendingDemo, setPendingDemo] = useState(null);
+  const [dash, setDash] = useState(null);
 
   useEffect(() => {
     fetch("/api/consult").then((r) => r.json()).then((d) => { if (d.error) setErr(d.error); else setMeta(d); }).catch((e) => setErr(String(e)));
   }, []);
+
+  function loadDash() { setDash(null); fetch("/api/dashboard").then((r) => r.json()).then((d) => setDash(d)).catch((e) => setErr(String(e))); }
+  useEffect(() => { if (tab === "dashboard" && !dash) loadDash(); /* eslint-disable-next-line */ }, [tab]);
 
   function runAsEngagement(key) { setPb(null); setTab("engagement"); setPendingDemo(key); window.scrollTo({ top: 0, behavior: "smooth" }); }
 
@@ -81,6 +85,7 @@ export default function CommandCenter() {
           <div className="flex gap-2 mt-4">
             <button onClick={() => { setTab("engagement"); setPb(null); }} className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${tab === "engagement" ? "bg-indigo-600 text-white shadow" : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300"}`}>🧠 New Engagement</button>
             <button onClick={() => setTab("library")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${tab === "library" ? "bg-indigo-600 text-white shadow" : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300"}`}>📚 Playbook Library</button>
+            <button onClick={() => setTab("dashboard")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${tab === "dashboard" ? "bg-indigo-600 text-white shadow" : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300"}`}>📊 Founder Dashboard</button>
           </div>
         </div>
       </header>
@@ -117,7 +122,97 @@ export default function CommandCenter() {
             )}
           </>
         )}
+
+        {tab === "dashboard" && <FounderDashboard dash={dash} onRefresh={loadDash} />}
       </main>
+    </div>
+  );
+}
+
+/* ================= Founder Dashboard ================= */
+const GRADE_TXT = { A: "text-emerald-600", B: "text-sky-600", C: "text-amber-600", D: "text-rose-600" };
+const GRADE_BG = { A: "bg-emerald-100 text-emerald-700", B: "bg-sky-100 text-sky-700", C: "bg-amber-100 text-amber-700", D: "bg-rose-100 text-rose-700" };
+function bandColor(v) { return v >= 70 ? "bg-emerald-500" : v >= 45 ? "bg-amber-500" : "bg-rose-500"; }
+function FounderDashboard({ dash, onRefresh }) {
+  if (!dash) return <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-400 animate-pulse">Loading portfolio…</div>;
+  if (dash.error) return <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">{dash.error}</div>;
+  if (!dash.total) return (
+    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">
+      <div className="text-4xl mb-2">📊</div>
+      No engagements saved yet. Run a few from <b>New Engagement</b> (or the demo scenarios) and your portfolio analytics will appear here.
+      <div className="mt-3"><button onClick={onRefresh} className="text-indigo-600 text-sm hover:underline">↻ Refresh</button></div>
+    </div>
+  );
+  const sectors = Object.entries(dash.by_sector || {});
+  const maxSector = Math.max(1, ...sectors.map(([, c]) => c));
+  const maxGrade = Math.max(1, ...Object.values(dash.grade_distribution || {}));
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-500">Portfolio analytics across every saved engagement — the brain's accumulated view.</p>
+        <button onClick={onRefresh} className="text-xs text-indigo-600 hover:underline">↻ Refresh</button>
+      </div>
+      {/* tiles */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="text-xs text-slate-500">Engagements</div><div className="text-3xl font-black text-slate-900">{dash.total}</div></div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="text-xs text-slate-500">Avg overall</div><div className="text-3xl font-black text-slate-900">{dash.avg_overall ?? "—"}<span className="text-base text-slate-400">/100</span></div></div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="text-xs text-slate-500">Sectors covered</div><div className="text-3xl font-black text-slate-900">{sectors.length}</div></div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="text-xs text-slate-500">Persisted</div><div className="text-lg font-bold mt-1">{dash.persisted ? <span className="text-emerald-600">✓ on disk</span> : <span className="text-amber-600">ephemeral</span>}</div></div>
+      </div>
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* grade distribution */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h3 className="text-sm font-bold text-slate-900 mb-3">DD grade distribution</h3>
+          <div className="flex items-end gap-4 h-32">
+            {["A", "B", "C", "D"].map((g) => { const c = (dash.grade_distribution || {})[g] || 0; return (
+              <div key={g} className="flex-1 flex flex-col items-center justify-end">
+                <div className="text-xs font-bold text-slate-700">{c}</div>
+                <div className={`w-full rounded-t ${GRADE_BG[g].split(" ")[0]}`} style={{ height: `${(c / maxGrade) * 100}%`, minHeight: c ? "6px" : "0" }} />
+                <div className={`text-sm font-black mt-1 ${GRADE_TXT[g]}`}>{g}</div>
+              </div>
+            ); })}
+          </div>
+        </div>
+        {/* dimension averages */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h3 className="text-sm font-bold text-slate-900 mb-3">Average DD scores</h3>
+          <div className="space-y-2">
+            {(dash.dimensions || []).map((d) => (
+              <div key={d.key}>
+                <div className="flex justify-between text-xs"><span className="text-slate-600">{d.icon} {d.label}</span><span className="font-semibold text-slate-800">{d.avg ?? "—"}</span></div>
+                <div className="h-2 rounded-full bg-slate-100 mt-0.5"><div className={`h-full rounded-full ${d.avg != null ? bandColor(d.avg) : ""}`} style={{ width: `${d.avg || 0}%` }} /></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* by sector */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h3 className="text-sm font-bold text-slate-900 mb-3">Engagements by sector</h3>
+          <div className="space-y-1.5">{sectors.map(([s, c]) => (
+            <div key={s} className="flex items-center gap-2 text-xs"><span className="w-40 truncate text-slate-600">{s}</span><div className="flex-1 h-3 bg-slate-100 rounded"><div className="h-full bg-indigo-400 rounded" style={{ width: `${(c / maxSector) * 100}%` }} /></div><span className="w-6 text-right font-semibold text-slate-700">{c}</span></div>
+          ))}</div>
+        </div>
+        {/* recurring weaknesses */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h3 className="text-sm font-bold text-slate-900 mb-3">Recurring weaknesses across the portfolio</h3>
+          <div className="space-y-1.5">{(dash.top_weaknesses || []).map((w, i) => (
+            <div key={i} className="flex items-center justify-between text-xs"><span className="text-slate-700">⚠️ {w.weakness}</span><span className="px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700">{w.count}×</span></div>
+          ))}{(dash.top_weaknesses || []).length === 0 && <div className="text-xs text-slate-400">—</div>}</div>
+        </div>
+      </div>
+      {/* recent */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <h3 className="text-sm font-bold text-slate-900 mb-3">Recent engagements</h3>
+        <div className="space-y-2">{(dash.recent || []).map((e, i) => (
+          <div key={i} className="flex items-center gap-3 text-xs border-b border-slate-100 pb-2">
+            <span className={`shrink-0 h-7 w-7 grid place-items-center rounded-lg font-black ${GRADE_BG[e.grade] || "bg-slate-100 text-slate-500"}`}>{e.grade || "?"}</span>
+            <div className="min-w-0 flex-1"><div className="font-semibold text-slate-800 truncate">{e.sector} <span className="text-slate-400 font-normal">· {e.mode}</span></div><div className="text-slate-500 truncate">{e.summary}</div></div>
+            <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">{(e.engine || "").startsWith("groq") ? "LLM" : "det"}</span>
+          </div>
+        ))}</div>
+      </div>
     </div>
   );
 }

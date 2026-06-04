@@ -3502,6 +3502,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "live_brain module not loaded"})
                 return
             self._send(200, BRAIN.brain_stats())
+        elif path == "/dashboard":
+            if not BRAIN:
+                self._send(200, {"error": "live_brain module not loaded"})
+                return
+            self._send(200, BRAIN.dashboard())
         else:
             self._send(404, {"error": "not found", "path": path})
 
