@@ -446,6 +446,25 @@ function BoardPack({ e, onClose }) {
   );
 }
 
+/* ================= Industry benchmark gauge ================= */
+function BenchGauge({ g }) {
+  const lower = g.direction === "lower_better";
+  const colors = lower ? ["bg-emerald-400", "bg-amber-400", "bg-rose-400"] : ["bg-rose-400", "bg-amber-400", "bg-emerald-400"];
+  const zc = { healthy: "bg-emerald-100 text-emerald-700", watch: "bg-amber-100 text-amber-700", critical: "bg-rose-100 text-rose-700" }[g.zone] || "";
+  return (
+    <div>
+      <div className="flex justify-between items-center text-xs"><span className="font-semibold text-slate-700">{g.label}</span><span className={`px-1.5 py-0.5 rounded-full ${zc}`}>{g.value}{g.unit} · {g.zone}</span></div>
+      <div className="relative h-2.5 rounded-full overflow-hidden mt-1 flex">
+        <div className={colors[0]} style={{ width: `${g.segments[0]}%` }} />
+        <div className={colors[1]} style={{ width: `${g.segments[1]}%` }} />
+        <div className={colors[2]} style={{ width: `${g.segments[2]}%` }} />
+        <div className="absolute -top-0.5 h-3.5 w-[3px] bg-slate-900 rounded" style={{ left: `calc(${g.position_pct}% - 1.5px)` }} />
+      </div>
+      <div className="text-[10px] text-slate-400 mt-0.5">{g.note}</div>
+    </div>
+  );
+}
+
 /* ================= AI PMO workspace ================= */
 const OWNER_COLOR = {
   "CFO / Finance": "bg-emerald-100 text-emerald-700", "COO / Operations": "bg-blue-100 text-blue-700",
@@ -564,6 +583,11 @@ function EngagementReport({ e }) {
       </div>
       <div className="p-6 md:p-8 space-y-7">
         {e.scorecard && <Scorecard sc={e.scorecard} />}
+        {(e.benchmark || []).length > 0 && (
+          <Section id="bench" icon="📐" title="Benchmark vs Industry" sub="Your numbers against sector / India-MSME bands — green healthy, amber watch, red critical">
+            <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4">{e.benchmark.map((g, i) => <BenchGauge key={i} g={g} />)}</div>
+          </Section>
+        )}
         <Section id="diag" icon="🩺" title="Diagnosis"><p className="text-sm text-slate-700 leading-relaxed">{e.diagnosis}</p></Section>
         <Section id="recs" icon="🎯" title="Tailored Recommendations">
           <div className="space-y-2.5">{(e.tailored_recommendations || []).map((r, i) => (

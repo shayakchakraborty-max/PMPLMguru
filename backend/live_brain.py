@@ -1015,6 +1015,59 @@ def dd_scores(intake, pb):
 
 
 # ============================================================
+# 5b2. INDUSTRY BENCHMARKING — where each metric sits vs sector
+# ============================================================
+def _zone(value, t1, t2, direction):
+    if direction == "higher_better":
+        return "healthy" if value >= t2 else ("watch" if value >= t1 else "critical")
+    return "healthy" if value <= t1 else ("watch" if value <= t2 else "critical")
+
+
+def _gauge(label, value, unit, t1, t2, amin, amax, direction, note=""):
+    span = (amax - amin) or 1
+    v = max(amin, min(amax, value))
+    seg = [round((t1 - amin) / span * 100, 1), round((t2 - t1) / span * 100, 1), round((amax - t2) / span * 100, 1)]
+    return {"label": label, "value": value, "unit": unit, "direction": direction,
+            "position_pct": round((v - amin) / span * 100, 1), "segments": seg,
+            "zone": _zone(value, t1, t2, direction), "note": note}
+
+
+def benchmark(intake, pb):
+    """Plot the owner's actual numbers against sector / India-MSME benchmark bands."""
+    out = []
+    prof = pb.get("profitability_analysis", {}) if pb else {}
+    glo, ghi = _numf(_low_pct(prof.get("typical_gross_margin"))), _numf(_high_pct(prof.get("typical_gross_margin")))
+    nlo, nhi = _numf(_low_pct(prof.get("typical_net_margin"))), _numf(_high_pct(prof.get("typical_net_margin")))
+    g = _numf(intake.get("gross_margin_pct"))
+    if g is not None and glo is not None:
+        hi = ghi or glo + 10
+        out.append(_gauge("Gross margin", g, "%", glo, (glo + hi) / 2, 0, hi * 1.3, "higher_better", f"Sector ~{glo:.0f}-{hi:.0f}%"))
+    n = _numf(intake.get("net_margin_pct"))
+    if n is not None and nlo is not None:
+        hi = nhi or nlo + 5
+        out.append(_gauge("Net margin", n, "%", nlo, hi, -5, hi * 1.5, "higher_better", f"Sector ~{nlo:.0f}-{hi:.0f}%"))
+    dso = _numf(intake.get("dso_days"))
+    if dso is not None:
+        out.append(_gauge("Collection period (DSO)", dso, " days", 45, 75, 0, 120, "lower_better", "Healthy < 45-60 days"))
+    dead = _numf(intake.get("dead_stock_pct"))
+    if dead is not None:
+        out.append(_gauge("Dead / slow stock", dead, "%", 8, 15, 0, 30, "lower_better", "Healthy < 8%"))
+    runway = _numf(intake.get("cash_runway_months"))
+    if runway is not None:
+        out.append(_gauge("Cash runway", runway, " mo", 6, 12, 0, 24, "higher_better", "Comfortable > 12 months"))
+    cust = _numf(intake.get("top_customer_dep_pct"))
+    if cust is not None:
+        out.append(_gauge("Top-customer concentration", cust, "%", 20, 40, 0, 70, "lower_better", "Risk > 30-40%"))
+    supp = _numf(intake.get("top_supplier_dep_pct"))
+    if supp is not None:
+        out.append(_gauge("Top-supplier concentration", supp, "%", 25, 45, 0, 80, "lower_better", "Risk > 35-45%"))
+    rep = _numf(intake.get("repeat_rate_pct"))
+    if rep is not None:
+        out.append(_gauge("Repeat-customer rate", rep, "%", 30, 45, 0, 80, "higher_better", "Strong > 45%"))
+    return out
+
+
+# ============================================================
 # 5c. AI PMO — turn an engagement into a PM workspace
 # ============================================================
 # Converts the 90-day plan + recommendations + KPIs into an execution workspace:
@@ -1133,6 +1186,7 @@ def consult(intake):
         "engine": engine,
         "playbook_key": matched_key,
         "scorecard": dd_scores(intake, pb),
+        "benchmark": benchmark(intake, pb),
         **base,
         "sources": web,
         "citations": (pb.get("citations_resolved") if pb else []) or [],
