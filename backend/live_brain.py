@@ -111,6 +111,7 @@ def intake_meta():
         "fields": INTAKE_FIELDS,
         "groups": INTAKE_GROUPS,
         "playbooks": PB.list_playbooks() if PB else [],
+        "demos": demo_samples(),
         "modes": [
             {"key": "startup", "label": "New / Startup", "icon": "🚀"},
             {"key": "existing", "label": "Existing Business", "icon": "🏢"},
@@ -130,6 +131,245 @@ def _intake_summary_lines(intake):
         if k.startswith("kpi__") and v not in (None, ""):
             lines.append(f"- {k.replace('kpi__','KPI ').replace('_',' ')}: {v}")
     return "\n".join(lines)
+
+
+# ============================================================
+# 1b. DEMO SCENARIOS — one live engagement per sector (for instant demos)
+# ============================================================
+# Each is a believable Indian-MSME situation with a real consulting trigger.
+# The narrative + numbers are consistent so the brain's diagnosis lands hard.
+_BIG = {"wholesale_distribution", "fmcg_distribution", "export_import", "electronics_distribution",
+        "logistics_warehousing", "manufacturing_msme", "construction_infra_suppliers", "real_estate"}
+_SMALL = {"local_service_msme", "repair_service", "beauty_wellness", "stationery_chains", "automotive_workshops",
+          "ca_firms", "legal_firms", "travel_agencies", "event_businesses", "furniture_businesses",
+          "hardware_stores", "restaurants_cloud_kitchens", "professional_services", "healthcare_clinics", "printing_packaging"}
+_INVENTORY = {"retail_chains", "wholesale_distribution", "fmcg_distribution", "pharma_retail_distribution",
+              "manufacturing_msme", "agro_trading", "electronics_distribution", "textile_businesses",
+              "hardware_stores", "furniture_businesses", "stationery_chains", "d2c_brands", "printing_packaging"}
+_CASH = {"retail_chains", "restaurants_cloud_kitchens", "beauty_wellness", "d2c_brands", "local_service_msme",
+         "stationery_chains", "travel_agencies", "automotive_workshops"}
+
+_SCEN = {
+    "retail_chains": {"turnover_cr": 14, "gross_margin_pct": 14, "dead_stock_pct": 13, "dso_days": "",
+        "description": "Sharma Mart runs 9 grocery stores across Pune & PCMC (~₹14 cr/yr). Footfall is steady but gross margin slipped to 14% after a quick-commerce player opened nearby, and 2 of the 9 stores are now loss-making.",
+        "specific_question": "Should I shut the 2 weak stores or fix them, and how do I defend margins against quick-commerce?",
+        "top_challenges": "2 of 9 stores loss-making\nmargin erosion from quick-commerce\nstockouts on fast-movers + dead stock on slow ones",
+        "goals": "Open 3 more stores — but only after the core chain is healthy and margins recover."},
+    "wholesale_distribution": {"turnover_cr": 32, "dso_days": 78, "receivables_cr": 4.5, "top_customer_dep_pct": 22,
+        "description": "An FMCG sub-distributor in Nagpur (~₹32 cr/yr) servicing 1,800 outlets. Receivables have ballooned to ₹4.5 cr (DSO ~78 days) and the principal company keeps raising targets while margins stay thin.",
+        "specific_question": "How do I bring DSO down and clear dead stock without losing retailer goodwill?",
+        "top_challenges": "receivables stretched to ₹4.5 cr / 78-day DSO\nprincipal pushing targets on thin margins\nslow-moving SKUs blocking working capital",
+        "goals": "Free up ₹1.5 cr of working capital and hit the principal's target profitably."},
+    "pharma_retail_distribution": {"turnover_cr": 9, "dead_stock_pct": 9,
+        "description": "A 6-store pharmacy chain with a small distribution arm in Jaipur (~₹9 cr). Expiry & breakage write-offs hit ₹35 lakh last year and Schedule-H register upkeep is messy ahead of an FDA visit.",
+        "specific_question": "How do I stop expiry losses and get Schedule-H compliance audit-ready before the FDA inspection?",
+        "top_challenges": "₹35 lakh expiry & breakage write-offs\nmessy Schedule-H record-keeping\nweak FEFO rotation across stores",
+        "goals": "Halve expiry losses and pass the FDA inspection clean."},
+    "manufacturing_msme": {"turnover_cr": 18, "top_customer_dep_pct": 55, "dso_days": 72,
+        "description": "An auto-components machining unit in Pune (~₹18 cr) supplying 2 Tier-1 OEMs. On-time delivery is stuck at 82%, WIP is piling on the floor, and one OEM is 55% of sales.",
+        "specific_question": "How do I lift OTIF above 95% and reduce my dangerous single-customer concentration?",
+        "top_challenges": "OTIF only 82%\nWIP pile-up and long cycle time\none OEM = 55% of revenue",
+        "goals": "Reach 95% OTIF and bring the top customer below 35% of sales within a year."},
+    "fmcg_distribution": {"turnover_cr": 26, "dead_stock_pct": 18, "dso_days": 40,
+        "description": "A snacks & beverages distributor in Indore (~₹26 cr) covering 1,200 outlets. Salesman beat productivity is low, ~18% of SKUs are near-dead, and secondary-sales visibility is poor.",
+        "specific_question": "How do I raise beat productivity and clear slow stock while improving secondary-sales visibility?",
+        "top_challenges": "low beat productivity / lines per call\n18% near-dead SKUs\nno secondary-sales visibility",
+        "goals": "Lift productive calls 20% and cut dead stock to under 8%."},
+    "agro_trading": {"turnover_cr": 22, "dso_days": 35, "city_tier": "Export",
+        "description": "A turmeric & spice trader in Sangli (~₹22 cr) buying from mandis and selling domestic plus small exports. Commodity prices swing wildly and working capital is perpetually tight at harvest.",
+        "specific_question": "How do I manage price-swing risk and free up working capital — and is scaling APEDA exports worth it?",
+        "top_challenges": "volatile mandi prices squeeze margins\nworking capital locked at harvest\nquality/grading inconsistency for exports",
+        "goals": "Stabilise margins and build a profitable APEDA-registered export line."},
+    "export_import": {"turnover_cr": 15, "dso_days": 90, "city_tier": "Export", "procurement_method": "Few suppliers",
+        "description": "A merchant exporter of handloom textiles in Karur (~₹15 cr) shipping to EU/US buyers. Container costs and a 90-day buyer-credit cycle are choking cash, and RoDTEP/drawback claims are pending.",
+        "specific_question": "How do I fix the 90-day cash cycle and make sure I'm capturing every export incentive?",
+        "top_challenges": "90-day buyer credit chokes cash\nhigh, volatile freight costs\npending RoDTEP/duty-drawback claims",
+        "goals": "Cut the cash cycle by 30 days and recover all pending export incentives."},
+    "logistics_warehousing": {"turnover_cr": 20, "dso_days": 65,
+        "description": "A 40-truck fleet plus a 30,000 sq ft warehouse operator in Bhiwandi (~₹20 cr). Empty-return runs and detention charges are killing margins, and clients keep delaying payments.",
+        "specific_question": "How do I cut empty miles, improve fleet utilisation, and speed up client collections?",
+        "top_challenges": "high empty-return (deadhead) miles\ndetention & idle-truck costs\nclients delaying payment 60+ days",
+        "goals": "Raise fleet utilisation to 80%+ and cut DSO below 45 days."},
+    "d2c_brands": {"mode": "startup", "stage": "seed", "target_raise_cr": 5, "turnover_cr": 6, "gross_margin_pct": 55,
+        "description": "A D2C skincare brand on Shopify + Amazon (~₹6 cr revenue run-rate, Mumbai). Blended CAC crept to ₹720 with payback over 7 months and returns running at 18%, just as they plan to raise.",
+        "specific_question": "How do I get CAC payback under control and lift contribution margin before raising a round?",
+        "top_challenges": "blended CAC ₹720 / payback >7 months\n18% return rate\nthin contribution margin after marketplace fees",
+        "goals": "Raise ₹5 cr — with CAC payback under 4 months and clean unit economics."},
+    "construction_infra_suppliers": {"turnover_cr": 30, "dso_days": 120, "receivables_cr": 9,
+        "description": "A civil contractor and RMC supplier in Lucknow (~₹30 cr) on government and private projects. Cash is stuck in retention money and unbilled work, and two projects are running over budget.",
+        "specific_question": "How do I unlock retention money and stop the cost overruns on running projects?",
+        "top_challenges": "₹9 cr stuck in retention + unbilled work\ntwo projects over budget\nweak project cost tracking",
+        "goals": "Release ₹3 cr of stuck cash and bring projects back to budgeted margin."},
+    "restaurants_cloud_kitchens": {"mode": "existing", "turnover_cr": 4, "gross_margin_pct": 60,
+        "description": "A 4-brand cloud kitchen in Bengaluru (~₹4 cr) running on Swiggy & Zomato. Aggregator commissions plus packaging eat ~35% of every order, and one of the four brands is bleeding money.",
+        "specific_question": "Which brands should I kill or scale, and how do I reduce dependence on the aggregators?",
+        "top_challenges": "35% lost to aggregator commission + packaging\none brand loss-making\nno direct-ordering channel",
+        "goals": "Make every brand contribution-positive and build a 20% direct-order channel."},
+    "healthcare_clinics": {"turnover_cr": 7, "dso_days": 55,
+        "description": "A 2-branch diagnostic lab and polyclinic in Surat (~₹7 cr). Report turnaround complaints are rising, NABH accreditation is pending, and insurer/TPA payments are delayed.",
+        "specific_question": "How do I get NABH-ready and speed up insurer/TPA collections without hurting patient experience?",
+        "top_challenges": "rising report turnaround-time complaints\nNABH accreditation pending\ndelayed TPA/insurer payments",
+        "goals": "Achieve NABH accreditation and cut TPA collection time in half."},
+    "real_estate": {"turnover_cr": 35, "dso_days": 90,
+        "description": "A residential developer and brokerage in Nagpur (~₹35 cr). One project's flats are slow to sell, RERA timelines are tight, and channel-partner payouts are opaque.",
+        "specific_question": "How do I accelerate the slow-moving inventory and stay RERA-compliant on project cashflow?",
+        "top_challenges": "slow-moving unsold inventory\ntight RERA timelines & escrow rules\nopaque channel-partner payouts",
+        "goals": "Sell down the slow project and keep every project RERA-compliant."},
+    "saas_startups": {"mode": "startup", "stage": "seed", "target_raise_cr": 12, "turnover_cr": "", "gross_margin_pct": 78, "cash_runway_months": 8,
+        "description": "A seed-funded B2B SaaS for logistics in Bengaluru, ~₹2.4 cr ARR. Net revenue retention is ~92%, burn multiple ~2.3, and runway is down to 8 months as they prep a Series A.",
+        "specific_question": "How do I push NRR above 110% and get the burn multiple under 1.5 to be Series-A ready?",
+        "top_challenges": "NRR ~92% (net churn)\nburn multiple ~2.3\n8-month runway before Series A",
+        "goals": "Hit Series-A metrics: NRR >110%, burn multiple <1.5, 18-month runway."},
+    "professional_services": {"turnover_cr": 6, "top_customer_dep_pct": 50, "dso_days": 60,
+        "description": "A 25-person digital marketing agency in Gurugram (~₹6 cr). Billable utilisation is ~60%, two clients are 50% of revenue, and scope-creep keeps eroding project margins.",
+        "specific_question": "How do I raise utilisation and cut client concentration without a revenue dip?",
+        "top_challenges": "billable utilisation only ~60%\ntwo clients = 50% of revenue\nscope-creep eroding margins",
+        "goals": "Lift utilisation to 75% and get the top-2 clients under 35% of revenue."},
+    "legal_firms": {"turnover_cr": 5, "dso_days": 95,
+        "description": "A 12-lawyer commercial law firm in Delhi (~₹5 cr). Realisation on billed hours is low, receivables stretch past 90 days, and juniors are under-utilised.",
+        "specific_question": "How do I improve realisation and collections without straining client relationships?",
+        "top_challenges": "low realisation on billed hours\nreceivables 90+ days\nunder-utilised juniors",
+        "goals": "Improve realisation 15% and bring collections under 60 days."},
+    "ca_firms": {"turnover_cr": 4, "dso_days": 50,
+        "description": "A CA firm in Ahmedabad (~₹4 cr, 30 staff) heavy on compliance work. There's a brutal seasonal crunch, a low advisory mix, and write-offs on fixed-fee jobs.",
+        "specific_question": "How do I shift toward higher-margin advisory and smooth the seasonal workload?",
+        "top_challenges": "seasonal compliance crunch\nlow advisory (high-margin) mix\nwrite-offs on fixed-fee work",
+        "goals": "Grow advisory to 30% of revenue and reduce season overtime."},
+    "education_institutes": {"turnover_cr": 8,
+        "description": "A 3-centre test-prep coaching chain in Patna (~₹8 cr). Enrolment is dipping as edtech competes on price, and teacher attrition is high.",
+        "specific_question": "How do I defend enrolment against edtech and retain my star faculty?",
+        "top_challenges": "enrolment dipping vs edtech\nhigh teacher attrition\nweak digital/hybrid offering",
+        "goals": "Stabilise enrolment and launch a hybrid model that lifts margins."},
+    "textile_businesses": {"turnover_cr": 16, "gross_margin_pct": 12, "dso_days": 75,
+        "description": "A power-loom and garment unit in Tiruppur (~₹16 cr) doing mostly job-work plus a small own-label line. Job-work margins are thin, receivables are stretched, and power costs are climbing.",
+        "specific_question": "How do I shift toward own-label margins and manage the working-capital strain?",
+        "top_challenges": "thin job-work margins\nstretched receivables\nrising power/input costs",
+        "goals": "Grow own-label to 40% of output and stabilise working capital."},
+    "electronics_distribution": {"turnover_cr": 28, "dead_stock_pct": 15, "dso_days": 45,
+        "description": "A mobile & accessories distributor in Hyderabad (~₹28 cr). Price erosion is brutal, inventory obsolescence is high, and a few retailers have started defaulting.",
+        "specific_question": "How do I protect margin against price erosion and control retailer credit risk?",
+        "top_challenges": "rapid price erosion on handsets\nhigh inventory obsolescence\nretailer credit defaults",
+        "goals": "Protect gross margin and cut bad-debt while holding market share."},
+    "automotive_workshops": {"turnover_cr": 3.5, "repeat_rate_pct": 35,
+        "description": "A multi-brand car-service garage in Coimbatore (~₹3.5 cr, 6 bays). Weekday bay utilisation is low, spare-parts pilferage is suspected, and the repeat-customer rate is weak.",
+        "specific_question": "How do I raise bay utilisation and turn one-time jobs into repeat customers?",
+        "top_challenges": "low weekday bay utilisation\nsuspected spare-parts pilferage\nweak repeat/AMC business",
+        "goals": "Lift utilisation to 70% and double the repeat-customer rate."},
+    "printing_packaging": {"turnover_cr": 9, "dso_days": 70,
+        "description": "An offset and corrugated-box printer in Faridabad (~₹9 cr) serving FMCG clients. Make-ready waste is high, machines see unplanned downtime, and client payments lag.",
+        "specific_question": "How do I cut make-ready waste and downtime while improving cash collection?",
+        "top_challenges": "high make-ready waste\nunplanned machine downtime\nclient payments delayed 70 days",
+        "goals": "Cut waste & downtime 25% and bring DSO under 45 days."},
+    "beauty_wellness": {"turnover_cr": 3, "repeat_rate_pct": 40,
+        "description": "A 3-salon and spa chain in Pune (~₹3 cr). Stylist churn is high (and they take clients with them), retail-product attach is low, and weekday footfall is thin.",
+        "specific_question": "How do I retain stylists, lift revenue per chair, and grow product attach?",
+        "top_challenges": "high stylist churn taking clients\nlow product-retail attach\nthin weekday footfall",
+        "goals": "Cut stylist churn and lift revenue-per-chair 25%."},
+    "furniture_businesses": {"turnover_cr": 7, "dso_days": 75,
+        "description": "A modular-furniture maker with a showroom in Jodhpur (~₹7 cr) selling B2C plus project orders. Lead times are long, WIP is high, and project receivables are stuck.",
+        "specific_question": "How do I shorten lead times and unlock the cash trapped in project receivables?",
+        "top_challenges": "long make-to-order lead times\nhigh WIP on the floor\nstuck project receivables",
+        "goals": "Halve lead time and release project cash faster."},
+    "hardware_stores": {"turnover_cr": 6, "dead_stock_pct": 15, "dso_days": 50,
+        "description": "A 2-branch hardware, paint & sanitaryware store in Bhopal (~₹6 cr) with 4,000+ SKUs. Dead stock is ~15% and credit extended to contractors keeps stretching.",
+        "specific_question": "How do I clear dead stock across 4,000 SKUs and control contractor credit?",
+        "top_challenges": "~15% dead stock across a huge SKU range\nstretched contractor credit\nno SKU-level velocity view",
+        "goals": "Cut dead stock to 7% and tighten contractor credit terms."},
+    "stationery_chains": {"turnover_cr": 4,
+        "description": "A 4-store stationery & books chain in Kochi (~₹4 cr). Revenue spikes in school season then dips into an off-season cash crunch, and online players undercut on price.",
+        "specific_question": "How do I smooth the seasonal cashflow and compete with online discounters?",
+        "top_challenges": "sharp school-season seasonality\noff-season cash crunch\nonline price competition",
+        "goals": "Smooth cashflow across the year and defend the core assortment."},
+    "repair_service": {"turnover_cr": 2.5, "repeat_rate_pct": 40,
+        "description": "An appliance repair and AMC service business in Chennai (~₹2.5 cr). Technician scheduling is chaotic, first-time-fix rate is low, and AMC renewals are leaking.",
+        "specific_question": "How do I raise first-time-fix rate and stop AMC renewals from leaking?",
+        "top_challenges": "chaotic technician scheduling\nlow first-time-fix rate\nleaking AMC renewals",
+        "goals": "Lift first-time-fix to 85% and renew 80% of AMCs."},
+    "event_businesses": {"turnover_cr": 5,
+        "description": "A wedding and corporate-events company in Jaipur (~₹5 cr). Vendor advances tie up cash, demand is highly seasonal, and per-event margins are unpredictable.",
+        "specific_question": "How do I stabilise cashflow and protect margin on each event?",
+        "top_challenges": "vendor advances lock up cash\nhighly seasonal demand\nunpredictable per-event margins",
+        "goals": "Stabilise cashflow and standardise event-level margin tracking."},
+    "travel_agencies": {"turnover_cr": 6, "gross_margin_pct": 8,
+        "description": "A travel agency and tour operator in Kochi (~₹6 cr) on domestic and outbound packages. Margins are thin, supplier advances are heavy, and post-season refund/credit-shells are a mess.",
+        "specific_question": "How do I improve margins and recover the supplier refunds and credit-shells stuck post-season?",
+        "top_challenges": "thin package margins\nheavy supplier advances\nstuck refunds/credit-shells",
+        "goals": "Lift margin via corporate/MICE mix and recover stuck supplier credits."},
+    "local_service_msme": {"turnover_cr": 1.2, "systems_used": "WhatsApp + Excel", "owner_dependency": "Totally - I do everything",
+        "description": "A neighbourhood laundry and dry-clean with 2 outlets in Pune (~₹1.2 cr). Everything is cash/UPI with thin records, the owner does everything, and revenue leakage is suspected.",
+        "specific_question": "How do I formalise the business, stop the revenue leakage, and free up my own time?",
+        "top_challenges": "cash/UPI with no real records\nsuspected revenue leakage\ntotal owner dependency",
+        "goals": "Formalise, plug leakage, and run with a trained No.2."},
+}
+
+
+def _low_pct(s):
+    m = re.findall(r"\d+", s or "")
+    return m[0] if m else ""
+
+
+def demo_sample(key):
+    """Build a complete, scenario-driven demo intake for one sector."""
+    pb = PB.get_playbook(key) if PB else None
+    if not pb:
+        return None
+    sc = _SCEN.get(key, {})
+    mode = sc.get("mode", "existing")
+    tier = pb.get("tier", 2)
+    prof = pb.get("profitability_analysis", {})
+    turnover = sc.get("turnover_cr", "" if mode == "startup" else (30 if key in _BIG else (3 if key in _SMALL else 12)))
+    dso = sc.get("dso_days", "" if (key in _CASH or mode == "startup") else 80)
+    rec = sc.get("receivables_cr", "")
+    if rec == "" and str(turnover).replace(".", "").isdigit() and str(dso).isdigit() and int(dso) > 0:
+        rec = round(float(turnover) * float(dso) / 365.0, 1)
+    inv = sc.get("inventory_value_cr", "")
+    if inv == "" and key in _INVENTORY and str(turnover).replace(".", "").isdigit():
+        inv = round(float(turnover) * 0.18, 1)
+    return {
+        "mode": mode,
+        "business_type": key,
+        "description": sc.get("description", pb.get("one_liner", "")[:240]),
+        "stage": sc.get("stage", "seed" if mode == "startup" else "growing"),
+        "city_tier": sc.get("city_tier", "Pan-India" if key in _BIG else f"Tier-{min(max(tier, 1), 3)}"),
+        "employees": sc.get("employees", 12 if mode == "startup" else (80 if key in _BIG else (8 if key in _SMALL else 30))),
+        "years_operating": "" if mode == "startup" else sc.get("years_operating", 7),
+        "turnover_cr": turnover,
+        "target_raise_cr": sc.get("target_raise_cr", 3) if mode == "startup" else "",
+        "gross_margin_pct": sc.get("gross_margin_pct", _low_pct(prof.get("typical_gross_margin"))),
+        "net_margin_pct": sc.get("net_margin_pct", _low_pct(prof.get("typical_net_margin"))),
+        "receivables_cr": rec,
+        "dso_days": dso,
+        "cash_runway_months": sc.get("cash_runway_months", 7 if mode == "startup" else ""),
+        "systems_used": sc.get("systems_used", "Mixed" if mode == "startup" else ("WhatsApp + Excel" if key in _SMALL else ("Tally + Excel" if key in _BIG else "Tally"))),
+        "has_sops": sc.get("has_sops", "A few"),
+        "owner_dependency": sc.get("owner_dependency", "High"),
+        "inventory_value_cr": inv,
+        "dead_stock_pct": sc.get("dead_stock_pct", "12" if key in _INVENTORY else ""),
+        "procurement_method": sc.get("procurement_method", "Imports" if key == "export_import" else ("Open market" if key == "agro_trading" else "Few suppliers")),
+        "top_supplier_dep_pct": sc.get("top_supplier_dep_pct", "45" if key in _INVENTORY else ""),
+        "top_customer_dep_pct": sc.get("top_customer_dep_pct", "30"),
+        "repeat_rate_pct": sc.get("repeat_rate_pct", "45" if (key in _CASH or key in _SMALL) else ""),
+        "has_crm": sc.get("has_crm", "Spreadsheet"),
+        "gst_registered": "Yes",
+        "returns_current": sc.get("returns_current", "Mostly"),
+        "licences_current": sc.get("licences_current", "Some pending"),
+        "specific_question": sc.get("specific_question", "How do I improve profitability and cashflow while scaling?"),
+        "top_challenges": sc.get("top_challenges", "\n".join([b.get("bottleneck", "") for b in pb.get("operational_bottlenecks", [])][:3])),
+        "goals": sc.get("goals", "Improve profitability and cash, and scale sustainably over the next 12 months."),
+    }
+
+
+def demo_samples():
+    """All sector demos as cards the frontend can list + load (with the full intake)."""
+    if not PB:
+        return []
+    out = []
+    for c in PB.list_playbooks():
+        intake = demo_sample(c["key"])
+        if intake:
+            out.append({"key": c["key"], "name": c["name"], "icon": c["icon"], "tier": c["tier"],
+                        "mode": intake["mode"], "scenario": intake["description"], "intake": intake})
+    return out
 
 
 # ============================================================

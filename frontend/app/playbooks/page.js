@@ -130,6 +130,7 @@ function Wizard({ meta, sectors, setErr, openPlaybook }) {
 
   const groups = meta?.groups || [];
   const allFields = meta?.fields || [];
+  const demos = meta?.demos || [];
   const setF = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
   // sector KPI fields when a sector is explicitly chosen
@@ -143,21 +144,58 @@ function Wizard({ meta, sectors, setErr, openPlaybook }) {
   const stepFields = useMemo(() => allFields.filter((f) => f.group === groups[step]?.key && (f.modes || []).includes(mode)), [allFields, groups, step, mode]);
   const onFinancial = groups[step]?.key === "operations"; // attach sector KPIs to operations step
 
-  async function run() {
-    if (!form.description?.trim()) { setErr("Please describe your business in step 1."); setStep(0); return; }
+  async function run(overrideForm, overrideMode) {
+    const useForm = overrideForm || form;
+    const useMode = overrideMode || mode;
+    if (!useForm.description?.trim()) { setErr("Please describe your business in step 1."); setStep(0); return; }
     setErr(""); setRunning(true); setEngagement(null);
     try {
-      const r = await fetch("/api/consult", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, ...form }) });
+      const r = await fetch("/api/consult", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: useMode, ...useForm }) });
       const d = await r.json();
       if (d.error) setErr(d.error); else { setEngagement(d); window.scrollTo({ top: 0, behavior: "smooth" }); }
     } catch (e) { setErr(String(e)); }
     setRunning(false);
   }
 
+  function loadDemo(key, andRun) {
+    const d = demos.find((x) => x.key === key);
+    if (!d) return;
+    setMode(d.intake.mode); setForm({ ...d.intake }); setStep(0); setEngagement(null);
+    if (andRun) run({ ...d.intake }, d.intake.mode);
+  }
+
   if (engagement) return <div><button onClick={() => setEngagement(null)} className="mb-4 text-sm text-indigo-600 hover:underline">← New engagement</button><EngagementReport e={engagement} /></div>;
 
   const last = step === groups.length - 1;
   return (
+    <>
+    {/* Demo scenario bar */}
+    {demos.length > 0 && (
+      <div className="mb-5 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-violet-50 p-4">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          <div className="shrink-0">
+            <div className="text-xs font-bold text-indigo-700 uppercase tracking-wide">✨ Try a live demo scenario</div>
+            <div className="text-xs text-slate-500">Pick a real Indian-MSME situation — the brain fills the form and runs a full engagement.</div>
+          </div>
+          <div className="flex-1 flex flex-col sm:flex-row gap-2">
+            <select id="demopick" defaultValue="" onChange={(e) => e.target.value && loadDemo(e.target.value, false)}
+              className="flex-1 rounded-xl bg-white border border-indigo-200 px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+              <option value="">Choose a scenario…</option>
+              {[1, 2, 3].map((t) => (
+                <optgroup key={t} label={`Tier ${t}`}>
+                  {demos.filter((d) => d.tier === t).map((d) => <option key={d.key} value={d.key}>{d.icon} {d.name}</option>)}
+                </optgroup>
+              ))}
+            </select>
+            <button onClick={() => { const v = document.getElementById("demopick").value; if (v) loadDemo(v, true); else setErr("Pick a scenario first."); }}
+              className="shrink-0 rounded-xl bg-indigo-600 text-white text-sm font-semibold px-4 py-2 hover:bg-indigo-700">Load &amp; run →</button>
+          </div>
+        </div>
+        {form.description && (
+          <div className="mt-3 text-xs text-slate-600 bg-white/70 rounded-xl border border-indigo-100 px-3 py-2"><b className="text-indigo-700">Scenario loaded:</b> {form.description}</div>
+        )}
+      </div>
+    )}
     <div className="grid lg:grid-cols-12 gap-6">
       {/* stepper */}
       <aside className="lg:col-span-3">
@@ -221,6 +259,7 @@ function Wizard({ meta, sectors, setErr, openPlaybook }) {
         {running && <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-400 animate-pulse">Searching open sources, recalling past engagements, synthesising your report…</div>}
       </div>
     </div>
+    </>
   );
 }
 
