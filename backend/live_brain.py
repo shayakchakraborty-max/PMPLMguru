@@ -1015,6 +1015,85 @@ def dd_scores(intake, pb):
 
 
 # ============================================================
+# 5c. AI PMO — turn an engagement into a PM workspace
+# ============================================================
+# Converts the 90-day plan + recommendations + KPIs into an execution workspace:
+# OKRs, six fortnightly sprints, tasks (owner / priority / dependencies), and
+# milestones. Deterministic; the "workflow second" layer of the OS.
+def _owner_for(text):
+    t = (text or "").lower()
+    if any(k in t for k in ("cash", "collection", "receivable", "dso", "margin", "gst", "tax", "finance", "working capital", "payment", "credit", "p&l", "pricing")):
+        return "CFO / Finance"
+    if any(k in t for k in ("sop", "process", "inventory", "stock", "supply", "procure", "ops", "operation", "quality", "cycle", "otif", "capacity", "warehouse", "fefo", "lead time", "downtime", "utilis")):
+        return "COO / Operations"
+    if any(k in t for k in ("sales", "customer", "crm", "growth", "market", "beat", "gtm", "retention", "lead", "brand", "channel", "footfall", "repeat")):
+        return "Sales / Growth"
+    if any(k in t for k in ("compliance", "licence", "license", "return", "filing", "schedule h", "rera", "fssai", "nabh", "audit")):
+        return "Compliance"
+    if any(k in t for k in ("product", "feature", "mvp", "roadmap", "release", "sprint", "nrr")):
+        return "Product"
+    if any(k in t for k in ("hire", "team", "payroll", "staff", "training", "attrition", "people")):
+        return "HR / People"
+    return "Founder / PMO"
+
+
+def build_pmo(eng):
+    """Engagement envelope -> PM workspace (OKRs, sprints, tasks, milestones)."""
+    eng = eng or {}
+    plan = eng.get("action_plan_90day") or []
+    recs = eng.get("tailored_recommendations") or []
+    kpis = eng.get("kpis") or []
+    sector = eng.get("sector_name") or "the business"
+    goal = eng.get("goals") or eng.get("goal") or ""
+
+    phases = (plan or [])[:3]
+    while len(phases) < 3:
+        phases.append({"phase": f"Phase {len(phases) + 1}", "steps": []})
+    windows = ["Weeks 1-2", "Weeks 3-4", "Weeks 5-6", "Weeks 7-8", "Weeks 9-10", "Weeks 11-12"]
+    sprints = [{"id": f"S{i+1}", "name": f"Sprint {i+1}", "window": w, "goal": phases[i // 2].get("phase", "")}
+               for i, w in enumerate(windows)]
+
+    tasks = []
+
+    def add_task(title, sprint_idx, priority, source, dep=None):
+        if not title:
+            return None
+        tid = f"T{len(tasks)+1}"
+        tasks.append({"id": tid, "title": title, "owner": _owner_for(title), "sprint": f"S{min(sprint_idx,5)+1}",
+                      "priority": priority, "effort": "M", "status": "todo", "source": source,
+                      "depends_on": [dep] if dep else []})
+        return tid
+
+    for p_i, p in enumerate(phases):
+        prev = None
+        for j, step in enumerate(p.get("steps") or []):
+            sidx = p_i * 2 + (j % 2)
+            prio = "High" if p_i == 0 else ("Medium" if p_i == 1 else "Normal")
+            prev = add_task(step, sidx, prio, "90-day plan", dep=prev)
+    for r in recs:
+        prio = r.get("priority", "Medium")
+        sidx = 0 if prio == "High" else (2 if prio == "Medium" else 4)
+        add_task(r.get("title", ""), sidx, prio, "recommendation")
+
+    krs = [{"kr": f"{k.get('kpi')} → {k.get('target')}", "owner": _owner_for(k.get("kpi", ""))} for k in kpis[:4]]
+    objectives = [
+        {"objective": goal or f"Execute the 90-day plan for {sector}",
+         "key_results": krs or [{"kr": "Complete all 90-day plan tasks", "owner": "Founder / PMO"}]},
+        {"objective": "Land the priority recommendations & retire top risks",
+         "key_results": [{"kr": f"Ship {min(len(recs), 5) or 3} priority recommendations", "owner": "Founder / PMO"},
+                         {"kr": "No High-severity risk left unmitigated", "owner": _owner_for("risk audit")}]},
+    ]
+    milestones = [
+        {"name": f"{phases[0].get('phase', 'Day 30')} — complete", "sprint": "S2"},
+        {"name": f"{phases[1].get('phase', 'Day 60')} — complete", "sprint": "S4"},
+        {"name": f"{phases[2].get('phase', 'Day 90')} — complete", "sprint": "S6"},
+    ]
+    owners = sorted(set(t["owner"] for t in tasks))
+    return {"objectives": objectives, "sprints": sprints, "tasks": tasks, "milestones": milestones,
+            "owners": owners, "summary": {"tasks": len(tasks), "sprints": len(sprints), "weeks": 13, "sector": sector}}
+
+
+# ============================================================
 # 6. ORCHESTRATOR
 # ============================================================
 def consult(intake):

@@ -3549,6 +3549,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_playbook(body)
             elif path in ("/consult", "/brain/consult"):
                 self.handle_consult(body)
+            elif path in ("/pmo", "/pmo/build"):
+                self.handle_pmo(body)
             elif path in ("/studio", "/studio/generate"):
                 self.handle_studio(body)
             elif path in ("/simulate", "/situation"):
@@ -3662,6 +3664,14 @@ class Handler(BaseHTTPRequestHandler):
             return
         print(f"[consult] mode={intake['mode']} type={intake['business_type']} desc={intake['description'][:60]}", flush=True)
         self._send(200, BRAIN.consult(intake))
+
+    def handle_pmo(self, body):
+        """Turn an engagement (or its plan/recs/kpis) into a PM workspace."""
+        if not BRAIN:
+            self._send(200, {"error": "live_brain module not loaded"})
+            return
+        eng = body.get("engagement") or body
+        self._send(200, BRAIN.build_pmo(eng))
 
     def handle_agent_journey(self, body):
         """Run the full end-to-end engagement (all relevant agents) for a mode + business."""

@@ -446,10 +446,99 @@ function BoardPack({ e, onClose }) {
   );
 }
 
+/* ================= AI PMO workspace ================= */
+const OWNER_COLOR = {
+  "CFO / Finance": "bg-emerald-100 text-emerald-700", "COO / Operations": "bg-blue-100 text-blue-700",
+  "Sales / Growth": "bg-violet-100 text-violet-700", "Compliance": "bg-amber-100 text-amber-700",
+  "Product": "bg-sky-100 text-sky-700", "HR / People": "bg-pink-100 text-pink-700", "Founder / PMO": "bg-slate-200 text-slate-700",
+};
+const PRIO_DOT = { High: "bg-rose-500", Medium: "bg-amber-500", Normal: "bg-slate-400" };
+const STATUS = { todo: { label: "To do", cls: "bg-slate-100 text-slate-500" }, doing: { label: "In progress", cls: "bg-sky-100 text-sky-700" }, done: { label: "Done", cls: "bg-emerald-100 text-emerald-700" } };
+function pmoMarkdown(pmo) {
+  const L = [`# PM Workspace — ${pmo.summary?.sector || ""}`, `_${pmo.summary?.tasks} tasks · ${pmo.summary?.sprints} sprints · ${pmo.summary?.weeks} weeks_\n`, `## OKRs`];
+  (pmo.objectives || []).forEach((o) => { L.push(`### ${o.objective}`); (o.key_results || []).forEach((k) => L.push(`- ${k.kr} _(${k.owner})_`)); });
+  (pmo.sprints || []).forEach((s) => { L.push(`\n## ${s.name} (${s.window}) — ${s.goal}`); (pmo.tasks || []).filter((t) => t.sprint === s.id).forEach((t) => L.push(`- [${t.priority}] ${t.title} — ${t.owner}${t.depends_on?.length ? ` (after ${t.depends_on.join(",")})` : ""}`)); });
+  return L.join("\n");
+}
+function PmoBoard({ pmo, sector, onClose }) {
+  const [status, setStatus] = useState({});
+  const st = (t) => status[t.id] || t.status || "todo";
+  const cycle = (t) => { const o = ["todo", "doing", "done"]; setStatus((s) => ({ ...s, [t.id]: o[(o.indexOf(st(t)) + 1) % 3] })); };
+  const done = (pmo.tasks || []).filter((t) => st(t) === "done").length;
+  const pct = pmo.tasks?.length ? Math.round((done / pmo.tasks.length) * 100) : 0;
+  const bySprint = (sid) => (pmo.tasks || []).filter((t) => t.sprint === sid);
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-50 overflow-auto text-slate-800">
+      <div className="sticky top-0 z-10 flex items-center justify-between bg-slate-900 text-white px-4 py-2">
+        <div className="text-sm font-semibold">🗂 PM Workspace — {sector}</div>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 text-xs"><div className="w-28 h-1.5 bg-white/20 rounded"><div className="h-full bg-emerald-400 rounded" style={{ width: `${pct}%` }} /></div>{pct}% done</div>
+          <button onClick={() => downloadText(`pm-workspace-${(sector || "msme").toLowerCase().replace(/\s+/g, "-")}.md`, pmoMarkdown(pmo))} className="rounded-lg bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs">⬇ Export .md</button>
+          <button onClick={onClose} className="rounded-lg bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs">✕ Close</button>
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
+        {/* OKRs */}
+        <div>
+          <h3 className="text-sm font-bold text-slate-900 mb-2">🎯 OKRs</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {(pmo.objectives || []).map((o, i) => (
+              <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="font-semibold text-slate-900 text-sm">{o.objective}</div>
+                <div className="mt-2 space-y-1">{(o.key_results || []).map((k, j) => (
+                  <div key={j} className="flex items-center justify-between text-xs"><span className="text-slate-600">◦ {k.kr}</span><span className={`px-1.5 py-0.5 rounded-full text-[10px] ${OWNER_COLOR[k.owner] || OWNER_COLOR["Founder / PMO"]}`}>{k.owner}</span></div>
+                ))}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Milestones */}
+        <div className="flex flex-wrap gap-2">
+          {(pmo.milestones || []).map((m, i) => <div key={i} className="rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs px-3 py-1">🚩 {m.name} <span className="text-indigo-400">({m.sprint})</span></div>)}
+        </div>
+        {/* Sprint board */}
+        <div>
+          <h3 className="text-sm font-bold text-slate-900 mb-2">🏃 Sprint Board <span className="font-normal text-slate-400">· click a task to advance its status</span></h3>
+          <div className="flex gap-3 overflow-x-auto pb-3">
+            {(pmo.sprints || []).map((s) => (
+              <div key={s.id} className="shrink-0 w-72 rounded-2xl border border-slate-200 bg-white">
+                <div className="px-3 py-2 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
+                  <div className="text-sm font-bold text-slate-900">{s.name} <span className="text-xs font-normal text-slate-400">· {s.window}</span></div>
+                  <div className="text-[11px] text-indigo-600 truncate">{s.goal}</div>
+                </div>
+                <div className="p-2 space-y-2 min-h-[60px]">
+                  {bySprint(s.id).map((t) => { const stt = STATUS[st(t)]; return (
+                    <button key={t.id} onClick={() => cycle(t)} className="w-full text-left rounded-xl border border-slate-200 bg-white p-2.5 hover:border-indigo-300 transition">
+                      <div className="flex items-start gap-1.5"><span className={`mt-1 h-2 w-2 rounded-full shrink-0 ${PRIO_DOT[t.priority] || PRIO_DOT.Normal}`} /><span className={`text-xs ${st(t) === "done" ? "line-through text-slate-400" : "text-slate-800"}`}>{t.title}</span></div>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${OWNER_COLOR[t.owner] || OWNER_COLOR["Founder / PMO"]}`}>{t.owner}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${stt.cls}`}>{stt.label}</span>
+                      </div>
+                      {t.depends_on?.length > 0 && <div className="text-[10px] text-slate-400 mt-1">↳ after {t.depends_on.join(", ")}</div>}
+                    </button>
+                  ); })}
+                  {bySprint(s.id).length === 0 && <div className="text-[11px] text-slate-300 text-center py-2">—</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ================= Engagement report ================= */
 function EngagementReport({ e }) {
   const live = (e.engine || "").startsWith("groq");
   const [board, setBoard] = useState(false);
+  const [pmo, setPmo] = useState(null);
+  const [loadingPmo, setLoadingPmo] = useState(false);
+  async function genPmo() {
+    setLoadingPmo(true);
+    try { const r = await fetch("/api/pmo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(e) }); const d = await r.json(); if (!d.error) setPmo(d); } catch { /* noop */ }
+    setLoadingPmo(false);
+  }
   return (
     <>
     <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -460,6 +549,7 @@ function EngagementReport({ e }) {
             <h2 className="text-2xl md:text-3xl font-extrabold mt-0.5">Consulting Report</h2>
           </div>
           <div className="flex gap-2 shrink-0">
+            <button onClick={genPmo} className="rounded-lg bg-white text-violet-700 font-semibold text-xs px-3 py-1.5 hover:bg-violet-50 disabled:opacity-60" disabled={loadingPmo}>{loadingPmo ? "Building…" : "🗂 PM workspace"}</button>
             <button onClick={() => setBoard(true)} className="rounded-lg bg-white text-indigo-700 font-semibold text-xs px-3 py-1.5 hover:bg-indigo-50">📑 Board pack</button>
             <button onClick={() => window.print()} className="rounded-lg bg-white/15 hover:bg-white/25 text-xs px-3 py-1.5">Print / PDF</button>
           </div>
@@ -493,6 +583,7 @@ function EngagementReport({ e }) {
       </div>
     </div>
     {board && <BoardPack e={e} onClose={() => setBoard(false)} />}
+    {pmo && <PmoBoard pmo={pmo} sector={e.sector_name} onClose={() => setPmo(null)} />}
     </>
   );
 }
