@@ -130,6 +130,7 @@ function Wizard({ meta, sectors, setErr, pendingDemo, onConsumedDemo }) {
   const [ddFields, setDdFields] = useState([]);
   const [running, setRunning] = useState(false);
   const [engagement, setEngagement] = useState(null);
+  const [selSector, setSelSector] = useState("");
 
   const groups = meta?.groups || [];
   const allFields = meta?.fields || [];
@@ -160,16 +161,20 @@ function Wizard({ meta, sectors, setErr, pendingDemo, onConsumedDemo }) {
     setRunning(false);
   }
 
-  function loadDemo(key, andRun) {
-    const d = demos.find((x) => x.key === key);
-    if (!d) return;
-    setMode(d.intake.mode); setForm({ ...d.intake }); setStep(0); setEngagement(null);
-    if (andRun) run({ ...d.intake }, d.intake.mode);
+  function loadIntake(intake, andRun) {
+    setMode(intake.mode); setForm({ ...intake }); setStep(0); setEngagement(null);
+    if (andRun) run({ ...intake }, intake.mode);
   }
+  const sectorScenarios = (key) => (demos.find((x) => x.key === key)?.scenarios) || [];
 
-  // "Run as engagement" from the Playbook Library lands here.
+  // "Run as engagement" from the Playbook Library lands here (uses the signature scenario).
   useEffect(() => {
-    if (pendingDemo && demos.length) { loadDemo(pendingDemo, true); onConsumedDemo && onConsumedDemo(); }
+    if (pendingDemo && demos.length) {
+      const sc = sectorScenarios(pendingDemo);
+      const sig = sc.find((s) => s.lens === "signature") || sc[0];
+      if (sig) { setSelSector(pendingDemo); loadIntake(sig.intake, true); }
+      onConsumedDemo && onConsumedDemo();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingDemo, demos.length]);
 
@@ -184,22 +189,30 @@ function Wizard({ meta, sectors, setErr, pendingDemo, onConsumedDemo }) {
         <div className="flex flex-col lg:flex-row lg:items-center gap-3">
           <div className="shrink-0">
             <div className="text-xs font-bold text-indigo-700 uppercase tracking-wide">✨ Try a live demo scenario</div>
-            <div className="text-xs text-slate-500">Pick a real Indian-MSME situation — the brain fills the form and runs a full engagement.</div>
+            <div className="text-xs text-slate-500">Pick a sector, then a situation — the brain fills the form and runs a full engagement.</div>
           </div>
-          <div className="flex-1 flex flex-col sm:flex-row gap-2">
-            <select id="demopick" defaultValue="" onChange={(e) => e.target.value && loadDemo(e.target.value, false)}
-              className="flex-1 rounded-xl bg-white border border-indigo-200 px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
-              <option value="">Choose a scenario…</option>
-              {[1, 2, 3].map((t) => (
-                <optgroup key={t} label={`Tier ${t}`}>
-                  {demos.filter((d) => d.tier === t).map((d) => <option key={d.key} value={d.key}>{d.icon} {d.name}</option>)}
-                </optgroup>
-              ))}
-            </select>
-            <button onClick={() => { const v = document.getElementById("demopick").value; if (v) loadDemo(v, true); else setErr("Pick a scenario first."); }}
-              className="shrink-0 rounded-xl bg-indigo-600 text-white text-sm font-semibold px-4 py-2 hover:bg-indigo-700">Load &amp; run →</button>
-          </div>
+          <select value={selSector} onChange={(e) => setSelSector(e.target.value)}
+            className="lg:flex-1 rounded-xl bg-white border border-indigo-200 px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+            <option value="">Choose a sector…</option>
+            {[1, 2, 3].map((t) => (
+              <optgroup key={t} label={`Tier ${t}`}>
+                {demos.filter((d) => d.tier === t).map((d) => <option key={d.key} value={d.key}>{d.icon} {d.name}</option>)}
+              </optgroup>
+            ))}
+          </select>
         </div>
+        {selSector && (
+          <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            {sectorScenarios(selSector).map((s) => (
+              <button key={s.lens} onClick={() => loadIntake(s.intake, true)}
+                className="rounded-xl border border-indigo-200 bg-white px-3 py-2 text-left hover:border-indigo-500 hover:shadow-sm transition">
+                <div className="text-xs font-bold text-indigo-700">{s.icon} {s.label}</div>
+                <div className="text-[10px] text-slate-400 uppercase tracking-wide">{s.mode === "startup" ? "Startup" : "Existing"}</div>
+                <div className="text-[11px] text-slate-500 line-clamp-3 mt-1">{s.scenario}</div>
+              </button>
+            ))}
+          </div>
+        )}
         {form.description && (
           <div className="mt-3 text-xs text-slate-600 bg-white/70 rounded-xl border border-indigo-100 px-3 py-2"><b className="text-indigo-700">Scenario loaded:</b> {form.description}</div>
         )}

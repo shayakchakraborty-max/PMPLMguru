@@ -112,6 +112,7 @@ def intake_meta():
         "groups": INTAKE_GROUPS,
         "playbooks": PB.list_playbooks() if PB else [],
         "demos": demo_samples(),
+        "lenses": LENSES,
         "modes": [
             {"key": "startup", "label": "New / Startup", "icon": "🚀"},
             {"key": "existing", "label": "Existing Business", "icon": "🏢"},
@@ -148,6 +149,14 @@ _INVENTORY = {"retail_chains", "wholesale_distribution", "fmcg_distribution", "p
               "hardware_stores", "furniture_businesses", "stationery_chains", "d2c_brands", "printing_packaging"}
 _CASH = {"retail_chains", "restaurants_cloud_kitchens", "beauty_wellness", "d2c_brands", "local_service_msme",
          "stationery_chains", "travel_agencies", "automotive_workshops"}
+
+# Scenario lenses — each sector can be demoed through a different consulting situation.
+LENSES = [
+    {"key": "signature",  "label": "Signature situation", "icon": "📌"},
+    {"key": "growth",     "label": "Growth & scale",      "icon": "📈"},
+    {"key": "turnaround", "label": "Turnaround",          "icon": "🆘"},
+    {"key": "fundraise",  "label": "Fundraise / capital", "icon": "💸"},
+]
 
 _SCEN = {
     "retail_chains": {"turnover_cr": 14, "gross_margin_pct": 14, "dead_stock_pct": 13, "dso_days": "",
@@ -308,8 +317,76 @@ def _low_pct(s):
     return m[0] if m else ""
 
 
-def demo_sample(key):
-    """Build a complete, scenario-driven demo intake for one sector."""
+def _high_pct(s):
+    m = re.findall(r"\d+", s or "")
+    return m[-1] if m else ""
+
+
+def _apply_lens(intake, key, pb, lens):
+    """Re-frame a signature intake as a growth / turnaround / fundraise situation."""
+    it = dict(intake)
+    name = pb.get("name", "the business")
+    prof = pb.get("profitability_analysis", {})
+    _gnums = [int(x) for x in re.findall(r"\d+", prof.get("typical_gross_margin") or "")]
+    gm_hi = str(max(_gnums)) if _gnums else ""              # healthy end (growth)
+    gm_lo = str(max((min(_gnums) if _gnums else 6) - 4, 2))  # squeezed end (turnaround)
+    size = f"~₹{it.get('turnover_cr')} cr" if it.get("turnover_cr") not in ("", None) else "early-stage"
+    bns = [b.get("bottleneck", "") for b in pb.get("operational_bottlenecks", [])]
+    top_bn = bns[0] if bns else ""
+    startup = it.get("mode") == "startup"
+    has_dso = it.get("dso_days") not in ("", None)
+    has_dead = it.get("dead_stock_pct") not in ("", None)
+
+    if lens == "growth":
+        it.update({
+            "stage": "seed" if startup else "scaling",
+            "gross_margin_pct": gm_hi or it.get("gross_margin_pct"),
+            "dso_days": (45 if has_dso else ""),
+            "dead_stock_pct": ("6" if has_dead else ""),
+            "has_sops": "Mostly", "owner_dependency": "Medium",
+            "systems_used": "Mixed" if startup else "Tally",
+            "description": f"{name} ({size}) is profitable and growing fast — the fundamentals work and the owner now wants to scale aggressively over the next 24 months without breaking operations or cash.",
+            "specific_question": "What is the fastest, safest way to double the business without margins or cash breaking?",
+            "goals": "Double revenue in 24 months — profitably, without an ops or cash blow-up.",
+            "top_challenges": "scaling without losing margin\nbuilding SOPs + a team to delegate to\nworking capital to fund the growth",
+        })
+        if startup:
+            it["target_raise_cr"] = it.get("target_raise_cr") or 8
+    elif lens == "turnaround":
+        it.update({
+            "stage": "early-revenue" if startup else "turnaround",
+            "gross_margin_pct": gm_lo,
+            "net_margin_pct": "-3",
+            "dso_days": (105 if has_dso else ""),
+            "dead_stock_pct": ("22" if has_dead else ""),
+            "cash_runway_months": 3, "has_sops": "No", "owner_dependency": "Totally - I do everything",
+            "systems_used": "Excel/Sheets", "returns_current": "Behind", "licences_current": "Some pending",
+            "description": f"{name} ({size}) is in distress — margins have collapsed, cash is tight, and {(top_bn[0].lower() + top_bn[1:]) if top_bn else 'operations are slipping'}. The owner needs a stabilisation plan, fast.",
+            "specific_question": "How do I stop the bleeding and get back to positive cash and profit within 90 days?",
+            "goals": "Return to positive cash and profit within two quarters.",
+        })
+    elif lens == "fundraise":
+        if startup:
+            it.update({
+                "target_raise_cr": it.get("target_raise_cr") or 5,
+                "description": f"{name} is preparing to raise its next round and needs to be diligence-ready — clean metrics, a tight story, and no red flags.",
+                "specific_question": "Am I investment-ready, what will diligence flag, and which metrics must I hit before I raise?",
+                "goals": "Close the round on good terms with a clean data room.",
+                "top_challenges": "metrics not yet at benchmark\nno investor data room\npositioning/story not tight",
+            })
+        else:
+            it.update({
+                "has_sops": "Mostly", "systems_used": "Tally + Excel",
+                "description": f"{name} ({size}) wants to raise growth capital / a working-capital line and needs to be credit- and investment-ready.",
+                "specific_question": "How do I become investment/credit-ready, and what will a lender or investor flag in diligence?",
+                "goals": "Raise growth capital / a working-capital line on good terms.",
+                "top_challenges": "books not investor-ready\nworking-capital cycle too long\nno clean MIS / data room",
+            })
+    return it
+
+
+def demo_sample(key, lens="signature"):
+    """Build a complete, scenario-driven demo intake for one sector + lens."""
     pb = PB.get_playbook(key) if PB else None
     if not pb:
         return None
@@ -325,7 +402,7 @@ def demo_sample(key):
     inv = sc.get("inventory_value_cr", "")
     if inv == "" and key in _INVENTORY and str(turnover).replace(".", "").isdigit():
         inv = round(float(turnover) * 0.18, 1)
-    return {
+    base = {
         "mode": mode,
         "business_type": key,
         "description": sc.get("description", pb.get("one_liner", "")[:240]),
@@ -357,18 +434,23 @@ def demo_sample(key):
         "top_challenges": sc.get("top_challenges", "\n".join([b.get("bottleneck", "") for b in pb.get("operational_bottlenecks", [])][:3])),
         "goals": sc.get("goals", "Improve profitability and cash, and scale sustainably over the next 12 months."),
     }
+    return base if lens == "signature" else _apply_lens(base, key, pb, lens)
 
 
 def demo_samples():
-    """All sector demos as cards the frontend can list + load (with the full intake)."""
+    """Every sector with its scenario lenses (signature / growth / turnaround / fundraise)."""
     if not PB:
         return []
     out = []
     for c in PB.list_playbooks():
-        intake = demo_sample(c["key"])
-        if intake:
-            out.append({"key": c["key"], "name": c["name"], "icon": c["icon"], "tier": c["tier"],
-                        "mode": intake["mode"], "scenario": intake["description"], "intake": intake})
+        scenarios = []
+        for L in LENSES:
+            intake = demo_sample(c["key"], L["key"])
+            if intake:
+                scenarios.append({"lens": L["key"], "label": L["label"], "icon": L["icon"],
+                                  "mode": intake["mode"], "scenario": intake["description"], "intake": intake})
+        if scenarios:
+            out.append({"key": c["key"], "name": c["name"], "icon": c["icon"], "tier": c["tier"], "scenarios": scenarios})
     return out
 
 
