@@ -357,6 +357,7 @@ function engagementMarkdown(e) {
   L.push(`\n## 90-Day Action Plan`);
   (e.action_plan_90day || []).forEach((p) => { L.push(`### ${p.phase}`); (p.steps || []).forEach((s) => L.push(`- ${s}`)); });
   if ((e.opportunities || []).length) { L.push(`\n## Growth Opportunities`); e.opportunities.forEach((o) => L.push(`- ${o}`)); }
+  if (e.roadmap) { L.push(`\n## 12-Month Transformation Roadmap`); L.push(`_North star: ${e.roadmap.north_star} · Grade ${e.roadmap.from_grade}→${e.roadmap.to_grade}_`); (e.roadmap.quarters || []).forEach((q) => { L.push(`### ${q.quarter} (${q.window}) — ${q.theme}`); (q.initiatives || []).forEach((x) => L.push(`- ${x}`)); }); }
   if ((e.sources || []).length) { L.push(`\n## Sources`); e.sources.forEach((s) => L.push(`- [${s.source}] ${s.title}${s.url ? ` — ${s.url}` : ""}`)); }
   if ((e.citations || []).length) { L.push(`\n## Statutory Citations`); e.citations.forEach((c) => L.push(`- (${c.tier}) ${c.title}${c.ref ? ` — ${c.ref}` : ""}`)); }
   return L.join("\n");
@@ -438,6 +439,8 @@ function BoardPack({ e, onClose }) {
           ))}
           {(e.opportunities || []).length > 0 && <div className="mt-3"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Growth opportunities</div><div className="text-sm text-slate-700">{e.opportunities.join(" · ")}</div></div>}
         </div>
+        {/* Transformation roadmap */}
+        {e.roadmap && <div className="bpage"><BH>12-Month Transformation Roadmap</BH><div className="text-xs text-slate-500 mb-2">North star: {e.roadmap.north_star} · Grade {e.roadmap.from_grade}→{e.roadmap.to_grade}</div>{(e.roadmap.quarters || []).map((q, i) => (<div key={i} className="mb-2"><div className="text-sm font-bold text-slate-900">{q.quarter} · {q.window} — {q.theme}</div><ul className="text-sm text-slate-700 list-disc list-inside">{(q.initiatives || []).map((x, j) => <li key={j}>{x}</li>)}</ul></div>))}</div>}
         {/* Appendix */}
         <div>
           <BH>Appendix — Sources &amp; Citations</BH>
@@ -487,6 +490,35 @@ function Swot({ s }) {
           </ul>
         </div>
       ); })}
+    </div>
+  );
+}
+
+/* ================= Transformation roadmap ================= */
+const Q_GRAD = ["from-rose-500 to-orange-500", "from-amber-500 to-yellow-500", "from-sky-500 to-cyan-500", "from-emerald-500 to-teal-500"];
+function Roadmap({ r }) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2 mb-3 text-xs">
+        <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-600">⭐ North star: <b className="text-slate-800">{r.north_star}</b></span>
+        <span className="px-2 py-1 rounded-full bg-indigo-50 text-indigo-700">DD grade {r.from_grade} → <b>{r.to_grade}</b></span>
+        <span className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700">Digital maturity {r.maturity_from} → <b>{r.maturity_to}</b></span>
+      </div>
+      <div className="grid md:grid-cols-4 gap-3">
+        {(r.quarters || []).map((q, i) => (
+          <div key={i} className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+            <div className={`bg-gradient-to-r ${Q_GRAD[i % 4]} text-white px-3 py-2`}>
+              <div className="text-[10px] uppercase tracking-wide opacity-90">{q.quarter} · {q.window}</div>
+              <div className="font-bold text-sm leading-tight">{q.theme}</div>
+            </div>
+            <div className="p-3">
+              <div className="text-[11px] text-slate-500 mb-2">{q.focus}</div>
+              <ul className="space-y-1">{(q.initiatives || []).map((x, j) => <li key={j} className="text-xs text-slate-700 flex gap-1.5"><span className="text-slate-300">•</span>{x}</li>)}</ul>
+              {(q.target || []).length > 0 && <div className="mt-2 pt-2 border-t border-slate-100 text-[11px] text-emerald-700">🎯 {q.target.join("; ")}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -627,6 +659,7 @@ function EngagementReport({ e }) {
           <Section id="kpis" icon="📊" title="KPIs to hit"><div className="space-y-2">{(e.kpis || []).map((k, i) => (<Card key={i}><div className="flex items-center justify-between gap-2"><div className="text-sm font-medium text-slate-800">{k.kpi}</div><span className="text-xs font-semibold text-emerald-700">{k.target}</span></div>{k.why && <div className="text-xs text-slate-500 mt-0.5">{k.why}</div>}</Card>))}</div></Section>
         </div>
         <Section id="plan" icon="🗓️" title="90-Day Action Plan"><div className="grid md:grid-cols-3 gap-3">{(e.action_plan_90day || []).map((p, i) => (<div key={i} className="rounded-xl border border-slate-200 bg-white p-4"><div className="font-semibold text-indigo-700 text-sm mb-1.5">{p.phase}</div><ul className="text-xs text-slate-600 space-y-1">{(p.steps || []).map((s, j) => <li key={j} className="flex gap-1.5"><span className="text-slate-300">•</span>{s}</li>)}</ul></div>))}</div></Section>
+        {e.roadmap && <Section id="roadmap" icon="🗺️" title="12-Month Transformation Roadmap" sub="Beyond the 90 days — quarterly themes toward the north star"><Roadmap r={e.roadmap} /></Section>}
         {(e.opportunities || []).length > 0 && <Section id="opps" icon="🚀" title="Growth Opportunities"><div className="flex flex-wrap gap-2">{e.opportunities.map((o, i) => <Chip key={i} cls="bg-indigo-50 text-indigo-700 border-indigo-200">{o}</Chip>)}</div></Section>}
         {(e.sources || []).length > 0 && <Section id="src" icon="🔎" title="Open-Source Research Used"><div className="space-y-1.5">{e.sources.map((s, i) => (<div key={i} className="text-xs text-slate-500"><span className="px-1.5 rounded bg-slate-100 text-slate-600 mr-1">{s.source}</span>{s.url ? <a href={s.url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">{s.title}</a> : <b className="text-slate-700">{s.title}</b>}{s.snippet && <span> — {s.snippet}</span>}</div>))}</div></Section>}
         {(e.citations || []).length > 0 && <Section id="cite" icon="🏛️" title="Statutory Citations"><div className="space-y-1">{e.citations.map((c, i) => (<div key={i} className="text-xs text-slate-500 flex items-start gap-2"><span className={`px-1.5 rounded ${CITE[c.tier] || ""}`}>{c.tier}</span><span><b className="text-slate-700">{c.title}</b>{c.ref ? ` — ${c.ref}` : ""}</span></div>))}</div></Section>}

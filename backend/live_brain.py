@@ -1125,6 +1125,60 @@ def swot(intake, pb, sc, bm, base):
 
 
 # ============================================================
+# 5b4. 12-MONTH TRANSFORMATION ROADMAP
+# ============================================================
+def transformation_roadmap(intake, pb, base, sc):
+    goal = intake.get("goals") or ""
+    recs = base.get("tailored_recommendations") or []
+    plan = base.get("action_plan_90day") or []
+    autos = (pb.get("ai_automation_opportunities") if pb else []) or []
+    growth = ((pb.get("growth_playbook") or {}).get("stages") if pb else []) or []
+    bsol = (pb.get("bottleneck_solutions") if pb else []) or []
+    dm = next((s["score"] for s in sc.get("scores", []) if s["key"] == "digital_maturity"), 50)
+    grade = sc.get("grade", "C")
+
+    q1 = [s for p in plan[:1] for s in (p.get("steps") or [])][:3] + [r["title"] for r in recs if r.get("priority") == "High"][:2]
+    q2 = [f"Fix: {b.get('bottleneck')}" for b in bsol[:2]] + [r["title"] for r in recs if r.get("priority") == "Medium"][:2]
+    q3 = [f"Automate: {a['opportunity']}" for a in autos if a.get("impact") in ("High", "Medium") and a.get("opportunity")][:3] + ((growth[0].get("plays") if growth else []) or [])[:1]
+    q4 = ((growth[1].get("plays") if len(growth) > 1 else []) or [])[:2]
+    if pb and pb.get("digital_maturity_model"):
+        lvl = min(5, max(1, dm // 20 + 1))
+        nm = next((m for m in pb["digital_maturity_model"] if m.get("level") == lvl), None)
+        if nm and nm.get("next_step"):
+            q4.append(nm["next_step"])
+
+    def fill(lst, fallback):
+        out, seen = [], set()
+        for x in lst:
+            if x and x not in seen:
+                seen.add(x); out.append(x)
+        return out[:4] or [fallback]
+
+    to_grade = "A" if grade in ("A", "B") else "B"
+    quarters = [
+        {"quarter": "Q1", "window": "Months 0-3", "theme": "Stabilise & measure",
+         "focus": "Stop the bleeding, get visibility, fix compliance",
+         "initiatives": fill(q1, "Stand up the founder dashboard + weekly review"),
+         "target": [f"Baseline the 5 DD scores (grade {grade}) and run a weekly cadence"]},
+        {"quarter": "Q2", "window": "Months 3-6", "theme": "Fix the binding constraints",
+         "focus": "Attack the top bottlenecks and the margin/cash leaks",
+         "initiatives": fill(q2, "Resolve the #1 operational bottleneck"),
+         "target": ["Move 2 weak scores up a band; recover working capital"]},
+        {"quarter": "Q3", "window": "Months 6-9", "theme": "Optimise & automate",
+         "focus": "Systematise and deploy AI agents on repetitive work",
+         "initiatives": fill(q3, "Automate one repetitive workflow end-to-end"),
+         "target": [f"Digital maturity {dm} → {min(100, dm + 15)}"]},
+        {"quarter": "Q4", "window": "Months 9-12", "theme": "Scale & transform",
+         "focus": "Pour fuel on what works; build for the next stage",
+         "initiatives": fill(q4, "Resource the proven growth bet"),
+         "target": [f"Lift overall DD grade toward {to_grade}"]},
+    ]
+    return {"north_star": goal or f"Transform into a more resilient, scalable {pb.get('name') if pb else 'business'}",
+            "from_grade": grade, "to_grade": to_grade, "maturity_from": dm, "maturity_to": min(100, dm + 25),
+            "quarters": quarters}
+
+
+# ============================================================
 # 5c. AI PMO — turn an engagement into a PM workspace
 # ============================================================
 # Converts the 90-day plan + recommendations + KPIs into an execution workspace:
@@ -1237,6 +1291,7 @@ def consult(intake):
     sc_data = dd_scores(intake, pb)
     bm_data = benchmark(intake, pb)
     swot_data = swot(intake, pb, sc_data, bm_data, base)
+    roadmap_data = transformation_roadmap(intake, pb, base, sc_data)
     envelope = {
         "engagement_id": hashlib.sha1((description + str(time.time())).encode()).hexdigest()[:12],
         "mode": mode,
@@ -1248,6 +1303,7 @@ def consult(intake):
         "scorecard": sc_data,
         "benchmark": bm_data,
         "swot": swot_data,
+        "roadmap": roadmap_data,
         **base,
         "sources": web,
         "citations": (pb.get("citations_resolved") if pb else []) or [],
