@@ -874,6 +874,147 @@ def _llm_enhance(intake, pb, web, recall, base):
 
 
 # ============================================================
+# 5b. AI DUE-DILIGENCE SCORECARD (institutional, explainable)
+# ============================================================
+# Five 0-100 scores (higher = healthier) computed deterministically from the DD
+# intake + sector benchmarks, each with the drivers that moved it. This is the
+# "business-health cockpit / risk heatmap" — trustworthy because it's explainable,
+# and it works with zero LLM keys.
+_SYS_SCORE = {"Pen & paper": 8, "Excel/Sheets": 28, "WhatsApp + Excel": 32, "Tally": 55,
+              "Tally + Excel": 62, "An ERP": 88, "Mixed": 45}
+_SOP_SCORE = {"No": 0, "A few": 6, "Mostly": 14, "Yes - followed": 20}
+_CRM_SCORE = {"No": 0, "WhatsApp only": 4, "Spreadsheet": 7, "Yes - a CRM": 16}
+_OWNER_SCORE = {"Totally - I do everything": 0, "High": 6, "Medium": 14, "Low - team runs it": 20}
+
+
+def _numf(v):
+    try:
+        return float(str(v).replace("%", "").replace(",", "").strip())
+    except Exception:
+        return None
+
+
+def _clamp(x):
+    return int(max(0, min(100, round(x))))
+
+
+def _band(s):
+    return "strong" if s >= 70 else ("moderate" if s >= 45 else "weak")
+
+
+def dd_scores(intake, pb):
+    """Return the 5-score DD scorecard + weighted overall grade, with drivers."""
+    g = _numf(intake.get("gross_margin_pct"))
+    n = _numf(intake.get("net_margin_pct"))
+    dso = _numf(intake.get("dso_days"))
+    dead = _numf(intake.get("dead_stock_pct"))
+    runway = _numf(intake.get("cash_runway_months"))
+    custdep = _numf(intake.get("top_customer_dep_pct"))
+    suppdep = _numf(intake.get("top_supplier_dep_pct"))
+    repeat = _numf(intake.get("repeat_rate_pct"))
+    sysn = _SYS_SCORE.get(intake.get("systems_used"), 35)
+    sop = _SOP_SCORE.get(intake.get("has_sops"), 6)
+    crm = _CRM_SCORE.get(intake.get("has_crm"), 5)
+    owner = _OWNER_SCORE.get(intake.get("owner_dependency"), 6)
+    gst_ok = intake.get("gst_registered") == "Yes"
+    returns_ok = intake.get("returns_current") in ("Yes", "Mostly")
+    lic_ok = intake.get("licences_current") == "Yes"
+    stage = (intake.get("stage") or "").lower()
+    city = (intake.get("city_tier") or "")
+    tier = pb.get("tier", 2) if pb else 2
+    prof = pb.get("profitability_analysis", {}) if pb else {}
+    gm_lo = _numf(_low_pct(prof.get("typical_gross_margin")))
+    gm_hi = _numf(_high_pct(prof.get("typical_gross_margin")))
+    gm_mid = ((gm_lo or 0) + (gm_hi or (gm_lo or 0) + 10)) / 2 if gm_lo is not None else None
+    growthy = stage in ("growth", "growing", "scaling", "seed", "series-a", "early-revenue")
+
+    def mk(base, factors):
+        """factors: list of (delta, '+'/'-', note). Returns (score, drivers sorted by impact)."""
+        s = base + sum(d for d, _, _ in factors)
+        drivers = [{"effect": e, "delta": int(d), "note": note} for d, e, note in factors if abs(d) >= 1]
+        drivers.sort(key=lambda x: abs(x["delta"]), reverse=True)
+        return _clamp(s), drivers[:4]
+
+    # --- Digital Maturity ---
+    dm, dm_dr = mk(0, [
+        (sysn, "+" if sysn >= 45 else "-", f"Runs on {intake.get('systems_used') or 'mixed tools'}"),
+        (sop, "+" if sop >= 10 else "-", f"SOPs: {intake.get('has_sops') or 'unclear'}"),
+        (crm, "+" if crm >= 7 else "-", f"Customer system: {intake.get('has_crm') or 'none'}"),
+        (5 if returns_ok else -4, "+" if returns_ok else "-", "Returns up to date" if returns_ok else "Returns behind/unsure"),
+    ])
+
+    # --- Risk & Resilience (higher = more resilient) ---
+    risk_f = []
+    if custdep is not None:
+        risk_f.append((-26 if custdep >= 50 else (-15 if custdep > 30 else (6 if custdep <= 20 else -4)),
+                       "-" if custdep > 30 else "+", f"Top customer = {custdep:.0f}% of revenue"))
+    if suppdep is not None:
+        risk_f.append((-12 if suppdep >= 50 else (-6 if suppdep > 35 else 4),
+                       "-" if suppdep > 35 else "+", f"Top supplier = {suppdep:.0f}% of purchases"))
+    risk_f.append((8 if gst_ok else -15, "+" if gst_ok else "-", "GST registered" if gst_ok else "GST not registered/unsure"))
+    risk_f.append((4 if returns_ok else -10, "+" if returns_ok else "-", "Filings current" if returns_ok else "Filings behind"))
+    risk_f.append((3 if lic_ok else -5, "+" if lic_ok else "-", "Licences current" if lic_ok else "Some licences pending"))
+    if runway is not None:
+        risk_f.append((6 if runway >= 12 else (-16 if runway < 3 else (-7 if runway < 6 else 0)),
+                       "+" if runway >= 12 else "-", f"Cash runway {runway:.0f} months"))
+    risk_f.append((owner - 10, "+" if owner >= 12 else "-", f"Owner-dependency: {intake.get('owner_dependency') or 'high'}"))
+    if dead is not None and dead > 10:
+        risk_f.append((-8, "-", f"{dead:.0f}% dead/slow stock"))
+    risk, risk_dr = mk(72, risk_f)
+
+    # --- Investment / Credit Readiness ---
+    inv_f = []
+    if g is not None and gm_mid is not None:
+        inv_f.append((14 if g >= gm_mid else (5 if (gm_lo is not None and g >= gm_lo) else -10),
+                      "+" if (gm_mid and g >= gm_lo) else "-", f"Gross margin {g:.0f}% vs sector ~{gm_lo:.0f}-{gm_hi:.0f}%" if gm_lo is not None else f"Gross margin {g:.0f}%"))
+    if n is not None:
+        inv_f.append((10 if n >= 8 else (-16 if n < 0 else 2), "+" if n >= 5 else "-", f"Net margin {n:.0f}%"))
+    if dso is not None:
+        inv_f.append((8 if dso <= 45 else (-12 if dso > 75 else 0), "+" if dso <= 45 else "-", f"DSO {dso:.0f} days"))
+    inv_f.append((10 if sysn >= 55 else -8, "+" if sysn >= 55 else "-", "Books on Tally/ERP" if sysn >= 55 else "Books not system-grade"))
+    inv_f.append((6 if returns_ok else -8, "+" if returns_ok else "-", "Compliance current" if returns_ok else "Compliance gaps"))
+    if custdep is not None and custdep > 40:
+        inv_f.append((-8, "-", f"Customer concentration {custdep:.0f}%"))
+    if runway is not None:
+        inv_f.append((6 if runway >= 12 else (-10 if runway < 3 else 0), "+" if runway >= 12 else "-", f"Runway {runway:.0f} mo"))
+    inv, inv_dr = mk(50, inv_f)
+
+    # --- Transformation Readiness (ability + appetite to change) ---
+    tr, tr_dr = mk(40, [
+        ((dm - 50) / 4.0, "+" if dm >= 50 else "-", f"Digital maturity {dm}/100"),
+        (sop, "+" if sop >= 10 else "-", "Process discipline" if sop >= 10 else "Few SOPs to build on"),
+        (owner, "+" if owner >= 12 else "-", "Team can execute change" if owner >= 12 else "Owner-bottlenecked"),
+        (10 if growthy else -2, "+" if growthy else "-", f"Stage: {stage or 'steady'}"),
+    ])
+
+    # --- Growth Potential ---
+    gr_f = [
+        (8 if growthy else 0, "+" if growthy else " ", f"Stage: {stage or 'steady'}"),
+        (8 if city in ("Pan-India", "Export") else (4 if city == "Metro" else 0), "+", f"Market: {city or 'local'}"),
+        (6 if tier == 1 else (3 if tier == 2 else 0), "+", "High-opportunity sector" if tier == 1 else "Solid sector"),
+    ]
+    if repeat is not None:
+        gr_f.append((8 if repeat >= 45 else (-4 if repeat < 25 else 0), "+" if repeat >= 45 else "-", f"Repeat rate {repeat:.0f}%"))
+    if n is not None:
+        gr_f.append((6 if n >= 6 else (-4 if n < 0 else 0), "+" if n >= 6 else "-", f"Profit to reinvest (net {n:.0f}%)"))
+    if custdep is not None and custdep > 40:
+        gr_f.append((-6, "-", "Concentration caps scalable growth"))
+    gr, gr_dr = mk(50, gr_f)
+
+    scores = [
+        {"key": "investment_readiness", "label": "Investment Readiness", "icon": "💸", "score": inv, "band": _band(inv), "drivers": inv_dr},
+        {"key": "risk_resilience", "label": "Risk & Resilience", "icon": "🛡️", "score": risk, "band": _band(risk), "drivers": risk_dr},
+        {"key": "transformation", "label": "Transformation Readiness", "icon": "🔄", "score": tr, "band": _band(tr), "drivers": tr_dr},
+        {"key": "digital_maturity", "label": "Digital Maturity", "icon": "📶", "score": dm, "band": _band(dm), "drivers": dm_dr},
+        {"key": "growth", "label": "Growth Potential", "icon": "🚀", "score": gr, "band": _band(gr), "drivers": gr_dr},
+    ]
+    weights = {"investment_readiness": 0.25, "risk_resilience": 0.22, "transformation": 0.15, "digital_maturity": 0.18, "growth": 0.20}
+    overall = _clamp(sum(s["score"] * weights[s["key"]] for s in scores))
+    grade = "A" if overall >= 75 else ("B" if overall >= 60 else ("C" if overall >= 45 else "D"))
+    return {"overall": overall, "grade": grade, "scores": scores}
+
+
+# ============================================================
 # 6. ORCHESTRATOR
 # ============================================================
 def consult(intake):
@@ -912,6 +1053,7 @@ def consult(intake):
         "matched_by": how,
         "engine": engine,
         "playbook_key": matched_key,
+        "scorecard": dd_scores(intake, pb),
         **base,
         "sources": web,
         "citations": (pb.get("citations_resolved") if pb else []) or [],

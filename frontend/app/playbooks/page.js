@@ -296,6 +296,47 @@ function Field({ f, mode, value, onChange, sectors, full }) {
   return <div className={full ? "sm:col-span-2" : ""}><label className="text-xs font-semibold text-slate-600">{f.label}{f.required && <span className="text-rose-500"> *</span>}</label>{input}</div>;
 }
 
+/* ================= DD Scorecard cockpit ================= */
+const BAND = {
+  strong:   { bar: "bg-emerald-500", chip: "bg-emerald-100 text-emerald-700" },
+  moderate: { bar: "bg-amber-500",   chip: "bg-amber-100 text-amber-700" },
+  weak:     { bar: "bg-rose-500",    chip: "bg-rose-100 text-rose-700" },
+};
+const GRADE_GRAD = { A: "from-emerald-500 to-teal-600", B: "from-sky-500 to-indigo-600", C: "from-amber-500 to-orange-600", D: "from-rose-500 to-pink-600" };
+function Scorecard({ sc }) {
+  return (
+    <Section id="scorecard" icon="📈" title="Due-Diligence Scorecard" sub="Institutional health scores from your inputs — higher is healthier">
+      <div className="flex flex-col lg:flex-row gap-5">
+        <div className="shrink-0 flex lg:flex-col items-center gap-3 lg:w-28">
+          <div className={`h-24 w-24 rounded-2xl bg-gradient-to-br ${GRADE_GRAD[sc.grade] || GRADE_GRAD.C} text-white grid place-items-center shadow-md`}>
+            <div className="text-center"><div className="text-4xl font-black leading-none">{sc.grade}</div><div className="text-xs mt-0.5">{sc.overall}/100</div></div>
+          </div>
+          <div className="text-[11px] text-slate-500 lg:text-center font-semibold uppercase tracking-wide">Overall DD grade</div>
+        </div>
+        <div className="flex-1 grid sm:grid-cols-2 gap-3">
+          {(sc.scores || []).map((s) => {
+            const b = BAND[s.band] || BAND.moderate;
+            return (
+              <div key={s.key} className="rounded-xl border border-slate-200 bg-white p-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-slate-800">{s.icon} {s.label}</div>
+                  <div className="text-sm font-bold text-slate-900">{s.score}<span className="text-slate-400 text-xs">/100</span></div>
+                </div>
+                <div className="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden"><div className={`h-full ${b.bar} transition-all`} style={{ width: `${s.score}%` }} /></div>
+                <div className="mt-2 space-y-0.5">
+                  {(s.drivers || []).slice(0, 2).map((d, i) => (
+                    <div key={i} className={`text-[11px] ${d.effect === "+" ? "text-emerald-700" : "text-rose-600"}`}>{d.effect === "+" ? "▲" : "▼"} {d.note}</div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 /* ================= Engagement report ================= */
 function EngagementReport({ e }) {
   const live = (e.engine || "").startsWith("groq");
@@ -318,6 +359,7 @@ function EngagementReport({ e }) {
         </div>
       </div>
       <div className="p-6 md:p-8 space-y-7">
+        {e.scorecard && <Scorecard sc={e.scorecard} />}
         <Section id="diag" icon="🩺" title="Diagnosis"><p className="text-sm text-slate-700 leading-relaxed">{e.diagnosis}</p></Section>
         <Section id="recs" icon="🎯" title="Tailored Recommendations">
           <div className="space-y-2.5">{(e.tailored_recommendations || []).map((r, i) => (
