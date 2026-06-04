@@ -337,10 +337,121 @@ function Scorecard({ sc }) {
   );
 }
 
+/* ================= Board Pack (CXO / print-to-PDF) ================= */
+function engagementMarkdown(e) {
+  const sc = e.scorecard || {};
+  const L = [];
+  L.push(`# Strategic Consulting Engagement — ${e.sector_name}`);
+  L.push(`_${e.mode === "startup" ? "Startup" : "Existing business"} · Overall DD grade **${sc.grade}** (${sc.overall}/100) · Private & confidential_\n`);
+  L.push(`## Executive Scorecard`);
+  (sc.scores || []).forEach((s) => L.push(`- **${s.label}**: ${s.score}/100 (${s.band})${(s.drivers || []).slice(0, 2).map((d) => ` — ${d.effect === "+" ? "▲" : "▼"} ${d.note}`).join("")}`));
+  L.push(`\n## Diagnosis\n${e.diagnosis || ""}`);
+  L.push(`\n## Recommendations`);
+  (e.tailored_recommendations || []).forEach((r) => L.push(`- **${r.title}**${r.priority ? ` [${r.priority}]` : ""}${r.why ? ` — ${r.why}` : ""}${r.how ? ` _How:_ ${r.how}` : ""}`));
+  if ((e.quick_wins || []).length) { L.push(`\n## Quick Wins`); e.quick_wins.forEach((w) => L.push(`- ${w}`)); }
+  L.push(`\n## Risks`);
+  (e.risks || []).forEach((r) => L.push(`- **${r.risk}** [${r.severity}]${r.control ? ` — ${r.control}` : ""}`));
+  L.push(`\n## KPIs to hit`);
+  (e.kpis || []).forEach((k) => L.push(`- **${k.kpi}** → ${k.target}${k.why ? ` (${k.why})` : ""}`));
+  L.push(`\n## 90-Day Action Plan`);
+  (e.action_plan_90day || []).forEach((p) => { L.push(`### ${p.phase}`); (p.steps || []).forEach((s) => L.push(`- ${s}`)); });
+  if ((e.opportunities || []).length) { L.push(`\n## Growth Opportunities`); e.opportunities.forEach((o) => L.push(`- ${o}`)); }
+  if ((e.sources || []).length) { L.push(`\n## Sources`); e.sources.forEach((s) => L.push(`- [${s.source}] ${s.title}${s.url ? ` — ${s.url}` : ""}`)); }
+  if ((e.citations || []).length) { L.push(`\n## Statutory Citations`); e.citations.forEach((c) => L.push(`- (${c.tier}) ${c.title}${c.ref ? ` — ${c.ref}` : ""}`)); }
+  return L.join("\n");
+}
+function downloadText(name, text) {
+  const blob = new Blob([text], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
+}
+const BH = ({ children }) => <h2 className="text-lg font-black text-slate-900 border-b-2 border-indigo-500 pb-1 mb-3">{children}</h2>;
+function BoardPack({ e, onClose }) {
+  const sc = e.scorecard || {};
+  return (
+    <div id="boardpack" className="fixed inset-0 z-50 bg-white overflow-auto text-slate-800">
+      <style>{`@media print{ body *{visibility:hidden!important} #boardpack,#boardpack *{visibility:visible!important} #boardpack{position:absolute!important;inset:0!important;overflow:visible!important} .no-print{display:none!important} .bpage{break-after:page} @page{margin:14mm;size:A4} }`}</style>
+      <div className="no-print sticky top-0 z-10 flex items-center justify-between bg-slate-900 text-white px-4 py-2">
+        <div className="text-sm font-semibold">📑 Board Pack</div>
+        <div className="flex gap-2">
+          <button onClick={() => window.print()} className="rounded-lg bg-indigo-500 hover:bg-indigo-400 px-3 py-1.5 text-xs font-semibold">🖨 Print / Save PDF</button>
+          <button onClick={() => downloadText(`engagement-${e.business_type || "msme"}.md`, engagementMarkdown(e))} className="rounded-lg bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs">⬇ Download .md</button>
+          <button onClick={onClose} className="rounded-lg bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs">✕ Close</button>
+        </div>
+      </div>
+      <div className="max-w-3xl mx-auto px-8 py-10">
+        {/* Cover */}
+        <div className="bpage min-h-[58vh] flex flex-col justify-center">
+          <div className="text-xs uppercase tracking-[0.25em] text-indigo-600 font-bold">Strategic Consulting Engagement</div>
+          <h1 className="text-4xl font-black text-slate-900 mt-2">{e.sector_name}</h1>
+          <p className="text-slate-500 mt-1">{e.mode === "startup" ? "Startup" : "Existing business"} · AI-native advisory engagement</p>
+          <div className="mt-8 flex items-center gap-4">
+            <div className={`h-20 w-20 rounded-2xl bg-gradient-to-br ${GRADE_GRAD[sc.grade] || GRADE_GRAD.C} text-white grid place-items-center`}>
+              <div className="text-center"><div className="text-3xl font-black leading-none">{sc.grade}</div><div className="text-[10px] mt-0.5">{sc.overall}/100</div></div>
+            </div>
+            <div className="text-sm text-slate-600">Overall due-diligence grade</div>
+          </div>
+          <div className="mt-10 text-[11px] text-slate-400 border-t border-slate-200 pt-3">Private &amp; confidential · Prepared by the AI Consulting Engine · For management use only</div>
+        </div>
+        {/* Executive summary */}
+        <div className="bpage">
+          <BH>Executive Summary</BH>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {(sc.scores || []).map((s) => { const b = BAND[s.band] || BAND.moderate; return (
+              <div key={s.key} className="border border-slate-200 rounded-lg p-2">
+                <div className="flex justify-between text-xs font-semibold text-slate-700"><span>{s.label}</span><span>{s.score}</span></div>
+                <div className="h-1.5 bg-slate-100 rounded mt-1"><div className={`${b.bar} h-full rounded`} style={{ width: `${s.score}%` }} /></div>
+              </div>); })}
+          </div>
+          <p className="text-sm text-slate-700 leading-relaxed">{e.diagnosis}</p>
+        </div>
+        {/* Recommendations */}
+        <div className="bpage">
+          <BH>Recommendations</BH>
+          <div className="space-y-2">
+            {(e.tailored_recommendations || []).map((r, i) => (
+              <div key={i} className="border-l-2 border-indigo-400 pl-3">
+                <div className="text-sm font-bold text-slate-900">{r.title}{r.priority ? ` · ${r.priority}` : ""}</div>
+                {r.why && <div className="text-xs text-slate-500">Why: {r.why}</div>}
+                {r.how && <div className="text-xs text-slate-600">How: {r.how}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Risks + KPIs */}
+        <div className="bpage">
+          <BH>Risks &amp; KPIs</BH>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div><div className="text-xs font-bold text-slate-500 uppercase mb-1">Risks</div>{(e.risks || []).map((r, i) => <div key={i} className="text-sm text-slate-700 mb-1">• <b>{r.risk}</b> <span className="text-rose-600">[{r.severity}]</span></div>)}</div>
+            <div><div className="text-xs font-bold text-slate-500 uppercase mb-1">KPIs</div>{(e.kpis || []).map((k, i) => <div key={i} className="text-sm text-slate-700 mb-1">• {k.kpi} → <b className="text-emerald-700">{k.target}</b></div>)}</div>
+          </div>
+        </div>
+        {/* 90-day plan */}
+        <div className="bpage">
+          <BH>90-Day Action Plan</BH>
+          {(e.action_plan_90day || []).map((p, i) => (
+            <div key={i} className="mb-3"><div className="text-sm font-bold text-indigo-700">{p.phase}</div><ul className="text-sm text-slate-700 list-disc list-inside">{(p.steps || []).map((s, j) => <li key={j}>{s}</li>)}</ul></div>
+          ))}
+          {(e.opportunities || []).length > 0 && <div className="mt-3"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Growth opportunities</div><div className="text-sm text-slate-700">{e.opportunities.join(" · ")}</div></div>}
+        </div>
+        {/* Appendix */}
+        <div>
+          <BH>Appendix — Sources &amp; Citations</BH>
+          {(e.sources || []).map((s, i) => <div key={i} className="text-xs text-slate-500 mb-0.5">[{s.source}] {s.title}</div>)}
+          <div className="mt-2">{(e.citations || []).map((c, i) => <div key={i} className="text-xs text-slate-500 mb-0.5">({c.tier}) <b className="text-slate-700">{c.title}</b>{c.ref ? ` — ${c.ref}` : ""}</div>)}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ================= Engagement report ================= */
 function EngagementReport({ e }) {
   const live = (e.engine || "").startsWith("groq");
+  const [board, setBoard] = useState(false);
   return (
+    <>
     <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <div className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-6 md:px-8 py-6">
         <div className="flex items-start justify-between gap-3">
@@ -348,7 +459,10 @@ function EngagementReport({ e }) {
             <div className="text-xs text-white/80 uppercase tracking-wide">{e.mode === "startup" ? "Startup engagement" : "Existing-business engagement"} · {e.sector_name}</div>
             <h2 className="text-2xl md:text-3xl font-extrabold mt-0.5">Consulting Report</h2>
           </div>
-          <button onClick={() => window.print()} className="rounded-lg bg-white/15 hover:bg-white/25 text-xs px-3 py-1.5 shrink-0">Print / PDF</button>
+          <div className="flex gap-2 shrink-0">
+            <button onClick={() => setBoard(true)} className="rounded-lg bg-white text-indigo-700 font-semibold text-xs px-3 py-1.5 hover:bg-indigo-50">📑 Board pack</button>
+            <button onClick={() => window.print()} className="rounded-lg bg-white/15 hover:bg-white/25 text-xs px-3 py-1.5">Print / PDF</button>
+          </div>
         </div>
         <div className="flex flex-wrap gap-1.5 mt-3">
           <Chip cls={live ? "bg-emerald-400/25 text-white border-emerald-200/40" : "bg-white/15 text-white border-white/25"}>{live ? "🟢 Live LLM synthesis" : "⚙️ Deterministic engine"}</Chip>
@@ -378,6 +492,8 @@ function EngagementReport({ e }) {
         {(e.recall?.notes || []).length > 0 && <Section id="mem" icon="🧠" title="What the brain remembered"><ul className="space-y-1">{e.recall.notes.map((n, i) => <li key={i} className="text-xs text-violet-700">• {n}</li>)}</ul></Section>}
       </div>
     </div>
+    {board && <BoardPack e={e} onClose={() => setBoard(false)} />}
+    </>
   );
 }
 
