@@ -477,6 +477,7 @@ function engagementMarkdown(e) {
   L.push(`_${e.mode === "startup" ? "Startup" : "Existing business"} · Overall DD grade **${sc.grade}** (${sc.overall}/100) · Private & confidential_\n`);
   L.push(`## Executive Scorecard`);
   (sc.scores || []).forEach((s) => L.push(`- **${s.label}**: ${s.score}/100 (${s.band})${(s.drivers || []).slice(0, 2).map((d) => ` — ${d.effect === "+" ? "▲" : "▼"} ${d.note}`).join("")}`));
+  if (e.value_at_stake && (e.value_at_stake.cash_release_label || e.value_at_stake.annual_uplift_label)) { L.push(`\n## Value at Stake`); L.push(`- Working capital unlockable: **${e.value_at_stake.cash_release_label || "—"}**`); L.push(`- Annual profit uplift: **${e.value_at_stake.annual_uplift_label || "—"}**`); (e.value_at_stake.levers || []).forEach((l) => L.push(`  - ${l.lever}: ${l.value_label} (${l.current} → ${l.target})`)); }
   L.push(`\n## Diagnosis\n${e.diagnosis || ""}`);
   if (e.swot) { L.push(`\n## SWOT`); ["strengths", "weaknesses", "opportunities", "threats"].forEach((k) => { L.push(`**${k[0].toUpperCase() + k.slice(1)}**`); (e.swot[k] || []).forEach((x) => L.push(`- ${x}`)); }); }
   L.push(`\n## Recommendations`);
@@ -538,6 +539,9 @@ function BoardPack({ e, onClose }) {
                 <div className="h-1.5 bg-slate-100 rounded mt-1"><div className={`${b.bar} h-full rounded`} style={{ width: `${s.score}%` }} /></div>
               </div>); })}
           </div>
+          {e.value_at_stake && (e.value_at_stake.cash_release_label || e.value_at_stake.annual_uplift_label) && (
+            <div className="mb-3 text-sm text-slate-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2"><b>💰 Value at stake:</b> {e.value_at_stake.cash_release_label || "—"} working capital unlockable + {e.value_at_stake.annual_uplift_label || "—"}/yr profit uplift</div>
+          )}
           <p className="text-sm text-slate-700 leading-relaxed">{e.diagnosis}</p>
         </div>
         {/* SWOT */}
@@ -581,6 +585,33 @@ function BoardPack({ e, onClose }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/* ================= Value at stake ================= */
+function ValueAtStake({ v }) {
+  if (!v || !(v.levers || []).length) return null;
+  return (
+    <Section id="vas" icon="💰" title="Value at Stake" sub="The ₹ upside of the obvious levers — computed from your own numbers">
+      <div className="grid sm:grid-cols-2 gap-3 mb-4">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><div className="text-xs text-emerald-600">Working capital unlockable (one-off)</div><div className="text-2xl font-extrabold text-emerald-700">{v.cash_release_label || "—"}</div></div>
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4"><div className="text-xs text-indigo-600">Annual profit uplift</div><div className="text-2xl font-extrabold text-indigo-700">{v.annual_uplift_label || "—"}</div></div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead><tr className="text-slate-400 text-left border-b border-slate-200"><th className="py-2 pr-3">Lever</th><th className="py-2 pr-3">Current</th><th className="py-2 pr-3">Target</th><th className="py-2 pr-3">Type</th><th className="py-2 text-right">₹ Impact</th></tr></thead>
+          <tbody>{v.levers.map((l, i) => (
+            <tr key={i} className="border-b border-slate-100">
+              <td className="py-2 pr-3"><div className="font-medium text-slate-800">{l.lever}</div><div className="text-[10px] text-slate-400">{l.basis}</div></td>
+              <td className="py-2 pr-3 text-rose-600">{l.current}</td>
+              <td className="py-2 pr-3 text-emerald-700">{l.target}</td>
+              <td className="py-2 pr-3 text-slate-500">{l.type}</td>
+              <td className="py-2 text-right font-bold text-slate-900">{l.value_label}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </Section>
   );
 }
 
@@ -773,6 +804,7 @@ function EngagementReport({ e }) {
       </div>
       <div className="p-6 md:p-8 space-y-7">
         {e.scorecard && <Scorecard sc={e.scorecard} />}
+        {e.value_at_stake && <ValueAtStake v={e.value_at_stake} />}
         {(e.benchmark || []).length > 0 && (
           <Section id="bench" icon="📐" title="Benchmark vs Industry" sub="Your numbers against sector / India-MSME bands — green healthy, amber watch, red critical">
             <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4">{e.benchmark.map((g, i) => <BenchGauge key={i} g={g} />)}</div>

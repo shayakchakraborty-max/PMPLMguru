@@ -1081,6 +1081,59 @@ def dd_scores(intake, pb):
 
 
 # ============================================================
+# 5b1. VALUE AT STAKE — the ₹ business case behind the advice
+# ============================================================
+def _inr(cr):
+    if cr is None:
+        return None
+    return f"₹{cr:.2f} cr" if cr >= 1 else f"₹{cr * 100:.1f} L"
+
+
+def value_at_stake(intake, pb):
+    """Quantify the ₹ upside of the obvious levers from the owner's own numbers."""
+    t = _numf(intake.get("turnover_cr"))
+    levers, cash_release, annual_uplift = [], 0.0, 0.0
+
+    dso = _numf(intake.get("dso_days"))
+    if t and dso and dso > 55:
+        freed = t * (dso - 55) / 365.0
+        levers.append({"lever": "Release working capital from receivables", "metric": "DSO",
+                       "current": f"{dso:.0f} days", "target": "55 days", "type": "one-off cash",
+                       "value_cr": round(freed, 2), "value_label": _inr(freed),
+                       "basis": f"₹{t:.0f} cr turnover × {dso - 55:.0f} fewer days ÷ 365"})
+        cash_release += freed
+
+    inv = _numf(intake.get("inventory_value_cr"))
+    dead = _numf(intake.get("dead_stock_pct"))
+    if dead and dead > 8:
+        base_inv = inv if inv else (t * 0.18 if t else None)
+        if base_inv:
+            freed = base_inv * (dead - 8) / 100.0
+            levers.append({"lever": "Liquidate excess dead / slow stock", "metric": "Dead stock",
+                           "current": f"{dead:.0f}%", "target": "8%", "type": "one-off cash",
+                           "value_cr": round(freed, 2), "value_label": _inr(freed),
+                           "basis": f"{'₹%.1f cr inventory' % base_inv if inv else 'est. inventory ~18%% of turnover'} × {dead - 8:.0f}% excess"})
+            cash_release += freed
+
+    g = _numf(intake.get("gross_margin_pct"))
+    prof = pb.get("profitability_analysis", {}) if pb else {}
+    gnums = [int(x) for x in re.findall(r"\d+", prof.get("typical_gross_margin") or "")]
+    if t and g is not None and gnums:
+        mid = (min(gnums) + max(gnums)) / 2
+        if g < mid:
+            uplift = t * (mid - g) / 100.0
+            levers.append({"lever": "Recover gross margin to sector median", "metric": "Gross margin",
+                           "current": f"{g:.0f}%", "target": f"{mid:.0f}%", "type": "annual profit",
+                           "value_cr": round(uplift, 2), "value_label": _inr(uplift),
+                           "basis": f"₹{t:.0f} cr × {mid - g:.0f}pp margin gap"})
+            annual_uplift += uplift
+
+    return {"levers": levers,
+            "cash_release_cr": round(cash_release, 2), "cash_release_label": _inr(cash_release) if cash_release else None,
+            "annual_uplift_cr": round(annual_uplift, 2), "annual_uplift_label": _inr(annual_uplift) if annual_uplift else None}
+
+
+# ============================================================
 # 5b2. INDUSTRY BENCHMARKING — where each metric sits vs sector
 # ============================================================
 def _zone(value, t1, t2, direction):
@@ -1358,6 +1411,7 @@ def consult(intake):
 
     sc_data = dd_scores(intake, pb)
     bm_data = benchmark(intake, pb)
+    vas_data = value_at_stake(intake, pb)
     swot_data = swot(intake, pb, sc_data, bm_data, base)
     roadmap_data = transformation_roadmap(intake, pb, base, sc_data)
     envelope = {
@@ -1369,6 +1423,7 @@ def consult(intake):
         "engine": engine,
         "playbook_key": matched_key,
         "scorecard": sc_data,
+        "value_at_stake": vas_data,
         "benchmark": bm_data,
         "swot": swot_data,
         "roadmap": roadmap_data,
