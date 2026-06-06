@@ -3568,6 +3568,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_consult(body)
             elif path in ("/pmo", "/pmo/build"):
                 self.handle_pmo(body)
+            elif path in ("/whatif", "/consult/simulate"):
+                self.handle_whatif(body)
             elif path in ("/docs/ingest",):
                 self.handle_docs_ingest(body)
             elif path in ("/docs/search",):
@@ -3705,6 +3707,13 @@ class Handler(BaseHTTPRequestHandler):
             return
         self._send(200, {"results": DOCS.search((body.get("query") or "").strip(), k=int(body.get("k") or 4),
                                                 workspace=body.get("workspace"))})
+
+    def handle_whatif(self, body):
+        """Recompute scorecard + value-at-stake + benchmark for tweaked numbers (live what-if)."""
+        if not BRAIN:
+            self._send(200, {"error": "live_brain module not loaded"})
+            return
+        self._send(200, BRAIN.simulate(body or {}))
 
     def handle_pmo(self, body):
         """Turn an engagement (or its plan/recs/kpis) into a PM workspace."""

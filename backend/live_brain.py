@@ -1377,6 +1377,25 @@ def build_pmo(eng):
 
 
 # ============================================================
+# 5d. WHAT-IF SIMULATOR — recompute the deterministic artifacts live
+# ============================================================
+def simulate(intake):
+    """Recompute scorecard + value-at-stake + benchmark for a (tweaked) intake.
+    Pure deterministic — no web, no LLM, no learning. Sub-millisecond."""
+    intake = intake or {}
+    key = (intake.get("business_type") or "").strip()
+    pb = None
+    if PB:
+        pb, _mk, _how = PB.resolve(business_type=key or None, key=key or None, description=intake.get("description"))
+    return {
+        "sector_name": pb.get("name") if pb else "General MSME",
+        "scorecard": dd_scores(intake, pb),
+        "value_at_stake": value_at_stake(intake, pb),
+        "benchmark": benchmark(intake, pb),
+    }
+
+
+# ============================================================
 # 6. ORCHESTRATOR
 # ============================================================
 def consult(intake):
@@ -1425,6 +1444,9 @@ def consult(intake):
         "scorecard": sc_data,
         "value_at_stake": vas_data,
         "benchmark": bm_data,
+        "inputs": {k: _numf(intake.get(k)) for k in
+                   ("turnover_cr", "gross_margin_pct", "net_margin_pct", "dso_days", "dead_stock_pct",
+                    "inventory_value_cr", "top_customer_dep_pct", "top_supplier_dep_pct", "cash_runway_months", "repeat_rate_pct")},
         "swot": swot_data,
         "roadmap": roadmap_data,
         **base,

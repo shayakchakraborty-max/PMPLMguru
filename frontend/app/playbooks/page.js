@@ -615,6 +615,55 @@ function ValueAtStake({ v }) {
   );
 }
 
+/* ================= What-If simulator ================= */
+function WhatIf({ e }) {
+  const seed = e.inputs || {};
+  const fields = [
+    { key: "dso_days", label: "Collection period (DSO)", min: 0, max: 120, unit: " days" },
+    { key: "gross_margin_pct", label: "Gross margin", min: 0, max: 50, unit: "%" },
+    { key: "dead_stock_pct", label: "Dead / slow stock", min: 0, max: 30, unit: "%" },
+    { key: "top_customer_dep_pct", label: "Top-customer concentration", min: 0, max: 80, unit: "%" },
+  ].filter((f) => seed[f.key] != null);
+  const [vals, setVals] = useState(() => ({ ...seed }));
+  const [sim, setSim] = useState(null);
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      try { const r = await fetch("/api/whatif", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ business_type: e.business_type, mode: e.mode, description: e.sector_name, ...vals }) }); const d = await r.json(); if (!d.error) setSim(d); } catch { /* noop */ }
+    }, 280);
+    return () => clearTimeout(t);
+  }, [vals]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!fields.length) return null;
+  const cur = sim?.scorecard || e.scorecard || {};
+  const vas = sim?.value_at_stake || e.value_at_stake || {};
+  const delta = (cur.overall || 0) - (e.scorecard?.overall || 0);
+  return (
+    <Section id="whatif" icon="🎛️" title="What-If Simulator" sub="Drag the levers — your DD grade and ₹ value-at-stake recompute live">
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          {fields.map((f) => (
+            <div key={f.key}>
+              <div className="flex justify-between text-xs mb-1"><span className="text-slate-600">{f.label}</span><span className="font-semibold text-slate-800">{Math.round(vals[f.key] ?? 0)}{f.unit}</span></div>
+              <input type="range" min={f.min} max={f.max} value={vals[f.key] ?? 0} onChange={(ev) => setVals((v) => ({ ...v, [f.key]: Number(ev.target.value) }))} className="w-full accent-indigo-600" />
+            </div>
+          ))}
+          <button onClick={() => { setVals({ ...seed }); }} className="text-xs text-indigo-600 hover:underline">↺ Reset to actuals</button>
+        </div>
+        <div className="space-y-3">
+          <div className={`rounded-2xl bg-gradient-to-br ${GRADE_GRAD[cur.grade] || GRADE_GRAD.C} text-white p-4 flex items-center justify-between`}>
+            <div><div className="text-xs text-white/80">Projected DD grade</div><div className="text-4xl font-black leading-none">{cur.grade}<span className="text-base font-semibold"> · {cur.overall}/100</span></div></div>
+            <div className={`text-sm font-bold px-2 py-1 rounded-lg ${delta > 0 ? "bg-white/20" : delta < 0 ? "bg-black/20" : "bg-white/10"}`}>{delta > 0 ? `▲ +${delta}` : delta < 0 ? `▼ ${delta}` : "±0"}</div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3"><div className="text-[11px] text-emerald-600">Still unlockable</div><div className="text-xl font-extrabold text-emerald-700">{vas.cash_release_label || "₹0"}</div></div>
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3"><div className="text-[11px] text-indigo-600">Annual uplift left</div><div className="text-xl font-extrabold text-indigo-700">{vas.annual_uplift_label || "₹0"}</div></div>
+          </div>
+          <p className="text-[11px] text-slate-400">As you close the gaps the grade rises and the ₹ value-at-stake shrinks — that's the money you capture by executing the plan.</p>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 /* ================= Industry benchmark gauge ================= */
 function BenchGauge({ g }) {
   const lower = g.direction === "lower_better";
@@ -805,6 +854,7 @@ function EngagementReport({ e }) {
       <div className="p-6 md:p-8 space-y-7">
         {e.scorecard && <Scorecard sc={e.scorecard} />}
         {e.value_at_stake && <ValueAtStake v={e.value_at_stake} />}
+        {e.inputs && <WhatIf e={e} />}
         {(e.benchmark || []).length > 0 && (
           <Section id="bench" icon="📐" title="Benchmark vs Industry" sub="Your numbers against sector / India-MSME bands — green healthy, amber watch, red critical">
             <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4">{e.benchmark.map((g, i) => <BenchGauge key={i} g={g} />)}</div>
