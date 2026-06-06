@@ -48,6 +48,11 @@ try:
 except Exception:  # pragma: no cover
     LLM = None
 
+try:
+    import doc_store as DOCS
+except Exception:  # pragma: no cover
+    DOCS = None
+
 
 # ============================================================
 # 1. INTAKE FORM — what we capture to personalise the engagement
@@ -886,7 +891,7 @@ def _extract_json(text):
         return None
 
 
-def _llm_enhance(intake, pb, web, recall, base):
+def _llm_enhance(intake, pb, web, recall, base, docs=None):
     """Ask Groq to produce a richer, business-specific engagement. Returns dict or None."""
     if not LLM or not LLM.available():
         return None
@@ -900,6 +905,7 @@ def _llm_enhance(intake, pb, web, recall, base):
     }
     web_block = "\n".join(f"- [{w.get('source')}] {w.get('title')}: {w.get('snippet')}" for w in web[:6]) or "(no live results)"
     recall_block = "\n".join(f"- {n}" for n in recall.get("notes", [])) or "(no prior memory)"
+    doc_block = "\n".join(f"- [{d.get('source')}] {d.get('snippet')}" for d in (docs or [])[:4]) or "(no documents provided)"
     system = (
         "You are a blended top-tier strategy + operations consultant and a veteran Indian MSME operator. "
         "Produce a SPECIFIC, customised consulting engagement for THIS business using its exact inputs. "
@@ -914,6 +920,7 @@ def _llm_enhance(intake, pb, web, recall, base):
         f"{_intake_summary_lines(intake)}\n\n"
         f"SECTOR GROUNDING (use, don't just repeat):\n{json.dumps(grounding, ensure_ascii=False)}\n\n"
         f"LIVE OPEN-SOURCE SEARCH RESULTS:\n{web_block}\n\n"
+        f"EXCERPTS FROM THE OWNER'S OWN DOCUMENTS (treat as ground truth; cite the source name when you use them):\n{doc_block}\n\n"
         f"WHAT THE BRAIN REMEMBERS FROM SIMILAR PAST ENGAGEMENTS:\n{recall_block}\n\n"
         "Now produce the customised JSON engagement. Tie recommendations to the specific numbers the owner gave "
         "(margins, DSO, dead stock, dependence %, systems, SOPs, compliance). Quantify the ₹ upside where you can."
@@ -1331,15 +1338,17 @@ def consult(intake):
         pb, matched_key, how = PB.resolve(business_type=key or None, key=key or None, description=description or None)
     sector_name = pb.get("name") if pb else "General MSME"
 
-    # Retrieval.
+    # Retrieval — playbook + live web + memory + the owner's own documents (RAG).
     search_q = f"{sector_name} India MSME {intake.get('specific_question') or intake.get('goals') or ''}".strip()
     web = web_search(search_q, max_results=6)
     recall = recall_similar(matched_key or key, description + " " + intake.get("top_challenges", ""))
+    doc_query = " ".join([intake.get("specific_question", ""), intake.get("top_challenges", ""), description]).strip()
+    doc_evidence = DOCS.search(doc_query, k=4, workspace=intake.get("workspace")) if DOCS else []
 
     # Base (deterministic, always personalised) then LLM enhancement merged on top.
     base = _deterministic_engagement(intake, pb, recall)
     engine = "deterministic"
-    enhanced = _llm_enhance(intake, pb, web, recall, base)
+    enhanced = _llm_enhance(intake, pb, web, recall, base, doc_evidence)
     if enhanced:
         for k in ("diagnosis", "tailored_recommendations", "quick_wins", "risks", "kpis", "action_plan_90day", "opportunities"):
             v = enhanced.get(k)
@@ -1365,6 +1374,7 @@ def consult(intake):
         "roadmap": roadmap_data,
         **base,
         "sources": web,
+        "doc_evidence": doc_evidence,
         "citations": (pb.get("citations_resolved") if pb else []) or [],
         "compliance": (pb.get("compliance_resolved") if pb else []) or [],
         "recall": recall,

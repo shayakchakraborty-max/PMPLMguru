@@ -47,6 +47,12 @@ except Exception as _e:
     print(f"[live_brain] not loaded: {_e}", flush=True)
 
 try:
+    import doc_store as DOCS
+except Exception as _e:
+    DOCS = None
+    print(f"[doc_store] not loaded: {_e}", flush=True)
+
+try:
     import sim_library as SIM
 except Exception as _e:
     SIM = None
@@ -3439,6 +3445,7 @@ class Handler(BaseHTTPRequestHandler):
                     "learning": BRAIN.brain_stats().get("total_engagements", 0),
                     "web_search": "keyless (DuckDuckGo + Wikipedia)",
                 } if BRAIN else "not loaded"),
+                "doc_rag": ({**DOCS.stats(), "endpoints": ["POST /docs/ingest", "GET /docs/list", "POST /docs/search"]} if DOCS else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3507,6 +3514,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "live_brain module not loaded"})
                 return
             self._send(200, BRAIN.dashboard())
+        elif path in ("/docs/list", "/docs", "/docs/stats"):
+            if not DOCS:
+                self._send(200, {"error": "doc_store module not loaded"})
+                return
+            self._send(200, {"documents": DOCS.list_docs(), "stats": DOCS.stats()})
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3556,6 +3568,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_consult(body)
             elif path in ("/pmo", "/pmo/build"):
                 self.handle_pmo(body)
+            elif path in ("/docs/ingest",):
+                self.handle_docs_ingest(body)
+            elif path in ("/docs/search",):
+                self.handle_docs_search(body)
             elif path in ("/studio", "/studio/generate"):
                 self.handle_studio(body)
             elif path in ("/simulate", "/situation"):
@@ -3669,6 +3685,26 @@ class Handler(BaseHTTPRequestHandler):
             return
         print(f"[consult] mode={intake['mode']} type={intake['business_type']} desc={intake['description'][:60]}", flush=True)
         self._send(200, BRAIN.consult(intake))
+
+    def handle_docs_ingest(self, body):
+        """Ingest a document (pasted text) into the RAG corpus."""
+        if not DOCS:
+            self._send(200, {"error": "doc_store module not loaded"})
+            return
+        name = (body.get("name") or "document").strip()
+        text = (body.get("text") or "").strip()
+        if not text:
+            self._send(200, {"error": "Please provide document 'text'."})
+            return
+        res = DOCS.ingest(name, text, workspace=(body.get("workspace") or "default"))
+        self._send(200, {**res, "documents": DOCS.list_docs()})
+
+    def handle_docs_search(self, body):
+        if not DOCS:
+            self._send(200, {"error": "doc_store module not loaded"})
+            return
+        self._send(200, {"results": DOCS.search((body.get("query") or "").strip(), k=int(body.get("k") or 4),
+                                                workspace=body.get("workspace"))})
 
     def handle_pmo(self, body):
         """Turn an engagement (or its plan/recs/kpis) into a PM workspace."""

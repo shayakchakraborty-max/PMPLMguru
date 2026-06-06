@@ -217,6 +217,42 @@ function FounderDashboard({ dash, onRefresh }) {
   );
 }
 
+/* ================= Documents (RAG on-ramp) ================= */
+function DocsPanel() {
+  const [docs, setDocs] = useState([]);
+  const [name, setName] = useState("");
+  const [text, setText] = useState("");
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const load = () => fetch("/api/docs").then((r) => r.json()).then((d) => setDocs(d.documents || [])).catch(() => {});
+  useEffect(() => { load(); }, []);
+  async function add() {
+    if (!text.trim()) return;
+    setBusy(true);
+    try { const r = await fetch("/api/docs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name || "document", text }) }); const d = await r.json(); if (d.documents) setDocs(d.documents); setText(""); setName(""); } catch { /* noop */ }
+    setBusy(false);
+  }
+  return (
+    <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4">
+      <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between">
+        <div className="text-left">
+          <div className="text-xs font-bold text-slate-700 uppercase tracking-wide">📎 Your documents <span className="font-normal text-slate-400">(optional — grounds the engagement on your data)</span></div>
+          <div className="text-xs text-slate-500">{docs.length ? `${docs.length} document(s) ingested — engagements will retrieve & cite them` : "Paste a P&L summary, policy or notes — the brain grounds answers on them"}</div>
+        </div>
+        <span className="text-slate-400 text-sm">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="mt-3 space-y-2">
+          {docs.length > 0 && <div className="flex flex-wrap gap-1.5">{docs.map((d, i) => <span key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">📄 {d.source} · {d.chunks}</span>)}</div>}
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Document name (e.g. FY24 P&L summary)" className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder="Paste document text…" className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+          <button onClick={add} disabled={busy} className="rounded-xl bg-slate-900 text-white text-sm font-semibold px-4 py-2 hover:bg-slate-800 disabled:opacity-50">{busy ? "Ingesting…" : "Add document"}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ================= Multi-step DD wizard ================= */
 function Wizard({ meta, sectors, setErr, pendingDemo, onConsumedDemo }) {
   const [mode, setMode] = useState("existing");
@@ -313,6 +349,7 @@ function Wizard({ meta, sectors, setErr, pendingDemo, onConsumedDemo }) {
         )}
       </div>
     )}
+    <DocsPanel />
     <div className="grid lg:grid-cols-12 gap-6">
       {/* stepper */}
       <aside className="lg:col-span-3">
@@ -756,6 +793,7 @@ function EngagementReport({ e }) {
         <Section id="plan" icon="🗓️" title="90-Day Action Plan"><div className="grid md:grid-cols-3 gap-3">{(e.action_plan_90day || []).map((p, i) => (<div key={i} className="rounded-xl border border-slate-200 bg-white p-4"><div className="font-semibold text-indigo-700 text-sm mb-1.5">{p.phase}</div><ul className="text-xs text-slate-600 space-y-1">{(p.steps || []).map((s, j) => <li key={j} className="flex gap-1.5"><span className="text-slate-300">•</span>{s}</li>)}</ul></div>))}</div></Section>
         {e.roadmap && <Section id="roadmap" icon="🗺️" title="12-Month Transformation Roadmap" sub="Beyond the 90 days — quarterly themes toward the north star"><Roadmap r={e.roadmap} /></Section>}
         {(e.opportunities || []).length > 0 && <Section id="opps" icon="🚀" title="Growth Opportunities"><div className="flex flex-wrap gap-2">{e.opportunities.map((o, i) => <Chip key={i} cls="bg-indigo-50 text-indigo-700 border-indigo-200">{o}</Chip>)}</div></Section>}
+        {(e.doc_evidence || []).length > 0 && <Section id="docs" icon="📎" title="Your Documents (evidence)" sub="Retrieved from the documents you ingested — used as ground truth"><div className="space-y-1.5">{e.doc_evidence.map((d, i) => (<div key={i} className="text-xs text-slate-600"><span className="px-1.5 rounded bg-violet-100 text-violet-700 mr-1">📄 {d.source}</span>{d.snippet}</div>))}</div></Section>}
         {(e.sources || []).length > 0 && <Section id="src" icon="🔎" title="Open-Source Research Used"><div className="space-y-1.5">{e.sources.map((s, i) => (<div key={i} className="text-xs text-slate-500"><span className="px-1.5 rounded bg-slate-100 text-slate-600 mr-1">{s.source}</span>{s.url ? <a href={s.url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">{s.title}</a> : <b className="text-slate-700">{s.title}</b>}{s.snippet && <span> — {s.snippet}</span>}</div>))}</div></Section>}
         {(e.citations || []).length > 0 && <Section id="cite" icon="🏛️" title="Statutory Citations"><div className="space-y-1">{e.citations.map((c, i) => (<div key={i} className="text-xs text-slate-500 flex items-start gap-2"><span className={`px-1.5 rounded ${CITE[c.tier] || ""}`}>{c.tier}</span><span><b className="text-slate-700">{c.title}</b>{c.ref ? ` — ${c.ref}` : ""}</span></div>))}</div></Section>}
         {(e.recall?.notes || []).length > 0 && <Section id="mem" icon="🧠" title="What the brain remembered"><ul className="space-y-1">{e.recall.notes.map((n, i) => <li key={i} className="text-xs text-violet-700">• {n}</li>)}</ul></Section>}
