@@ -72,6 +72,7 @@ export default function LandingPage() {
             Indian MSME Consulting <span className="text-indigo-600">· Powered by AI</span>
           </span>
           <div className="hidden sm:flex items-center gap-1 text-sm">
+            <a href="/ceo" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">CEO Office</a>
             <a href="#practices" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Practices</a>
             <a href="/advisor" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Advisors</a>
             <a href="#industries" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Industries</a>
@@ -97,11 +98,11 @@ export default function LandingPage() {
             A consulting firm that lives in your pocket.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-9">
-            <a href="/playbooks" className="px-7 py-4 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl font-black text-lg hover:opacity-90 transition shadow-lg shadow-indigo-900/40">
-              Start a consulting engagement →
+            <a href="/ceo" className="px-7 py-4 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl font-black text-lg hover:opacity-90 transition shadow-lg shadow-indigo-900/40">
+              Open my CEO Office →
             </a>
-            <a href="/advisor" className="px-7 py-4 bg-white/10 border border-white/20 rounded-xl font-bold text-lg hover:bg-white/20 transition">
-              Browse our advisors
+            <a href="/playbooks" className="px-7 py-4 bg-white/10 border border-white/20 rounded-xl font-bold text-lg hover:bg-white/20 transition">
+              Start a full engagement
             </a>
           </div>
           <p className="text-xs text-slate-400 mt-6">
