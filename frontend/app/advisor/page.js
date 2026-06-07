@@ -195,6 +195,21 @@ export default function AdvisorPage() {
 
   useEffect(() => { loadMeta(0); /* eslint-disable-next-line */ }, []);
 
+  // Deep-link: /advisor?agent=<key> pre-opens that consultant (used by the
+  // Practice Areas on the landing page). Runs once after meta loads.
+  const [deepLinked, setDeepLinked] = useState(false);
+  useEffect(() => {
+    if (!meta || deepLinked) return;
+    const want = new URLSearchParams(window.location.search).get("agent");
+    const a = want && (meta.agents || {})[want];
+    if (a) {
+      if (a.modes && !a.modes.includes(mode) && a.modes[0]) setMode(a.modes[0]);
+      openAgent(want, a);
+    }
+    setDeepLinked(true);
+    /* eslint-disable-next-line */
+  }, [meta]);
+
   const agents = meta?.agents || {};
   const taxonomy = meta?.business_taxonomy || {};
 
