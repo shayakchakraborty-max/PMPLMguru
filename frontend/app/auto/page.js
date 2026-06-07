@@ -74,6 +74,7 @@ export default function LandingPage() {
           <div className="hidden sm:flex items-center gap-1 text-sm">
             <a href="/ceo" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">CEO Office</a>
             <a href="#practices" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Practices</a>
+            <a href="/schemes" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Schemes</a>
             <a href="/advisor" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Advisors</a>
             <a href="#industries" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Industries</a>
             <a href="/playbooks" className="px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 font-semibold">Start engagement</a>
@@ -186,6 +187,20 @@ export default function LandingPage() {
             </span>
           ))}
         </div>
+      </section>
+
+      {/* Government Schemes banner */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-4">
+        <a href="/schemes" className="group block rounded-3xl border-2 border-slate-200 hover:border-emerald-400 bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-6 sm:p-8 shadow-sm hover:shadow-2xl transition">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <div className="text-xs font-semibold text-emerald-100 uppercase tracking-wide">Government Schemes</div>
+              <div className="text-xl sm:text-2xl font-black mt-1">Find the government money you're leaving on the table</div>
+              <p className="text-emerald-50 text-sm mt-1 max-w-2xl">CGTMSE · MUDRA · PMEGP · Startup India · RoDTEP · ZED · PMFME · state subsidies — matched & ranked to your sector, size and stage.</p>
+            </div>
+            <span className="shrink-0 px-6 py-3 bg-white text-emerald-700 rounded-xl font-black group-hover:opacity-90 transition">Match my schemes →</span>
+          </div>
+        </a>
       </section>
 
       {/* Industry clouds */}

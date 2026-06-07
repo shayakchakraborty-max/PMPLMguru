@@ -53,6 +53,12 @@ except Exception as _e:
     print(f"[doc_store] not loaded: {_e}", flush=True)
 
 try:
+    import gov_schemes as SCHEMES
+except Exception as _e:
+    SCHEMES = None
+    print(f"[gov_schemes] not loaded: {_e}", flush=True)
+
+try:
     import sim_library as SIM
 except Exception as _e:
     SIM = None
@@ -3446,6 +3452,8 @@ class Handler(BaseHTTPRequestHandler):
                     "web_search": "keyless (DuckDuckGo + Wikipedia)",
                 } if BRAIN else "not loaded"),
                 "doc_rag": ({**DOCS.stats(), "endpoints": ["POST /docs/ingest", "GET /docs/list", "POST /docs/search"]} if DOCS else "not loaded"),
+                "gov_schemes": ({"total": len(SCHEMES.SCHEMES), "categories": len(SCHEMES.CATEGORIES),
+                                 "endpoints": ["GET /schemes/meta", "GET /schemes/tests", "POST /schemes"]} if SCHEMES else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3519,6 +3527,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "doc_store module not loaded"})
                 return
             self._send(200, {"documents": DOCS.list_docs(), "stats": DOCS.stats()})
+        elif path == "/schemes/meta":
+            if not SCHEMES:
+                self._send(200, {"error": "gov_schemes module not loaded"})
+                return
+            self._send(200, SCHEMES.meta())
+        elif path == "/schemes/tests":
+            if not SCHEMES:
+                self._send(200, {"error": "gov_schemes module not loaded"})
+                return
+            self._send(200, SCHEMES.run_schemes_tests())
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3578,6 +3596,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_studio(body)
             elif path in ("/simulate", "/situation"):
                 self.handle_simulate(body)
+            elif path in ("/schemes", "/schemes/recommend"):
+                self.handle_schemes(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -3687,6 +3707,18 @@ class Handler(BaseHTTPRequestHandler):
             return
         print(f"[consult] mode={intake['mode']} type={intake['business_type']} desc={intake['description'][:60]}", flush=True)
         self._send(200, BRAIN.consult(intake))
+
+    def handle_schemes(self, body):
+        """Government Schemes module: profile / free-text -> personalised
+        government scheme recommendations (deterministic, no LLM needed)."""
+        if not SCHEMES:
+            self._send(200, {"error": "gov_schemes module not loaded"})
+            return
+        if not (body.get("description") or body.get("idea") or body.get("sector") or body.get("business_type")):
+            self._send(200, {"error": "Describe your business (or pass a sector) to match schemes."})
+            return
+        print(f"[schemes] desc={(body.get('description') or body.get('sector') or '')[:60]}", flush=True)
+        self._send(200, SCHEMES.recommend_schemes(body))
 
     def handle_docs_ingest(self, body):
         """Ingest a document (pasted text) into the RAG corpus."""
