@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "PMGuru — Idea to PM workspace",
-  description: "Turn any idea into a fully-planned project. PM Tool, PLM Report, or Interactive Prototype.",
+  title: "Indian MSME Consulting — Powered by AI",
+  description: "AI consulting & operating system for Indian MSMEs — diagnosis, due diligence, compliance, finance, growth and ERP, India-aware (₹ · GST · DPIIT · Udyam).",
 };
 
 export default function RootLayout({ children }) {

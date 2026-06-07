@@ -289,7 +289,7 @@ export default function AdvisorPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
           <div className="inline-flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold mb-5">
             <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-            PMGuru Advisor · {meta ? `${meta.live_count}/${meta.total_count}` : "20"} research-grade AI agents · India MSME
+            Indian MSME Consulting · Powered by AI · {meta ? `${meta.live_count}/${meta.total_count}` : "20"} research-grade AI agents · India MSME
           </div>
           <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
             An AI consulting team for<br className="hidden sm:block" />
@@ -442,7 +442,7 @@ export default function AdvisorPage() {
       </main>
 
       <footer className="text-center text-xs text-slate-400 py-10 px-4">
-        PMGuru Advisor · citation-backed, audit-ready outputs · works on mobile & desktop · template-driven (no LLM dependency)
+        Indian MSME Consulting · Powered by AI · citation-backed, audit-ready outputs · works on mobile & desktop · template-driven (no LLM dependency)
       </footer>
     </div>
   );

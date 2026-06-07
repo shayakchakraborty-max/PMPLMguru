@@ -9,7 +9,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900">
       <nav className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <span className="font-black tracking-tight">PMGuru</span>
+          <span className="font-black tracking-tight">Indian MSME Consulting <span className="text-indigo-600 font-bold">· Powered by AI</span></span>
           <div className="flex items-center gap-1 text-sm">
             <a href="/studio" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">New</a>
             <a href="/advisor" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Existing</a>

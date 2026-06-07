@@ -153,7 +153,7 @@ export default function StudioPage() {
             </a>
 
             <p className="text-[11px] text-slate-400 px-6 py-5 text-center border-t border-slate-100">
-              PMGuru · research-grade, India-aware, citation-backed · figures are planning estimates — verify statutory & financial items with a CA/CS before acting.
+              Indian MSME Consulting · Powered by AI · research-grade, India-aware, citation-backed · figures are planning estimates — verify statutory & financial items with a CA/CS before acting.
             </p>
           </div>
         )}
