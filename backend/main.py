@@ -3685,8 +3685,74 @@ class Handler(BaseHTTPRequestHandler):
             "description": (body.get("description") or body.get("idea") or "").strip(),
             "data": body.get("data") or {},
         }
-        print(f"[agents/run] agent={agent_key} desc={scenario['description'][:80]}", flush=True)
-        self._send(200, MSME.run_agent(agent_key, scenario))
+        deep = body.get("deep", True)  # research-grade brain on by default
+        print(f"[agents/run] agent={agent_key} deep={deep} desc={scenario['description'][:80]}", flush=True)
+        result = MSME.run_agent(agent_key, scenario)
+        if deep and result.get("status") == "ok":
+            try:
+                result = self._agent_brain(result, scenario)
+            except Exception as e:
+                print(f"[agents/run] brain enrich failed: {str(e)[:160]}", flush=True)
+        self._send(200, result)
+
+    def _agent_brain(self, result, scenario):
+        """Deeper agent 'brain': ground the deterministic envelope with RAG (owner
+        docs) + keyless web research, then synthesise a research-grade, business-
+        specific brief via a free LLM. Best-effort; the deterministic envelope is
+        never altered — we only ADD an `intelligence` block."""
+        import json as _json
+        desc = (scenario or {}).get("description", "")
+        agent_name = result.get("name", "consultant")
+        env = result.get("output", {}) or {}
+
+        web, docs = [], []
+        try:
+            if BRAIN:
+                web = BRAIN.web_search(f"{desc} {agent_name} India MSME".strip(), max_results=5) or []
+        except Exception:
+            pass
+        try:
+            if DOCS:
+                docs = DOCS.search(desc, k=4) or []
+        except Exception:
+            pass
+
+        # Compact the deterministic envelope for grounding (cap size).
+        ctx_keys = ["diagnosis", "summary", "executive_summary", "recommendations",
+                    "tailored_recommendations", "quick_wins", "risks", "kpis",
+                    "action_plan", "action_plan_90day", "findings", "opportunities"]
+        ctx = {k: env[k] for k in ctx_keys if k in env}
+        ctx_str = _json.dumps(ctx, default=str)[:3500]
+        web_str = "\n".join(f"- {w.get('title','')}: {(w.get('snippet') or '')[:200]}" for w in web[:5]) or "n/a"
+        doc_str = "\n".join(f"- {d.get('source','doc')}: {(d.get('snippet') or '')[:200]}" for d in docs[:4]) or "n/a"
+
+        engine, ai_brief = "deterministic", None
+        if LLM and LLM.available():
+            system = (
+                f"You are a senior {agent_name} at a top-tier consulting firm advising Indian MSMEs. "
+                "Turn the deterministic analysis into a sharper, research-grade, business-specific brief. "
+                "Be concrete and India-aware (₹, GST, Udyam, DPIIT). Do NOT contradict the ground-truth analysis. "
+                "Return STRICT JSON only with keys: "
+                '{"headline": str, "situation": str, "key_insights": [str], '
+                '"prioritized_actions": [{"action": str, "impact": str, "effort": str}], '
+                '"watch_outs": [str]}.'
+            )
+            user = (f"BUSINESS: {desc}\n\nGROUND-TRUTH ANALYSIS (do not contradict):\n{ctx_str}\n\n"
+                    f"WEB RESEARCH:\n{web_str}\n\nOWNER DOCUMENTS (RAG):\n{doc_str}\n\nReturn the JSON brief.")
+            out = LLM.augment(system, user, max_tokens=900)
+            if out.get("text"):
+                parsed = BRAIN._extract_json(out["text"]) if BRAIN else None
+                if isinstance(parsed, dict):
+                    ai_brief, engine = parsed, f"groq:{out.get('provider', 'llm')}"
+
+        result["intelligence"] = {
+            "engine": engine,
+            "grounded": bool(web or docs),
+            "ai_brief": ai_brief,
+            "sources": web[:5],
+            "doc_evidence": docs[:4],
+        }
+        return result
 
     def handle_playbook(self, body):
         """Return one full 13-part industry playbook by key, business_type, or a

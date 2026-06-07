@@ -495,6 +495,9 @@ function Report({ report, style }) {
       </div>
 
       <div className="p-5 sm:p-8 space-y-8">
+        {/* Deeper agent brain — research-grade, RAG + free-LLM grounded */}
+        {report.intelligence && <IntelligenceBlock intel={report.intelligence} />}
+
         {/* Context */}
         <Section icon="📌" title="Business context"><p className="text-slate-700 leading-relaxed">{o.business_context}</p></Section>
 
@@ -762,6 +765,75 @@ function Select({ label, value, onChange, options, disabled }) {
         className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white disabled:bg-slate-100 disabled:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400">
         {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>
+    </div>
+  );
+}
+
+function IntelligenceBlock({ intel }) {
+  const b = intel.ai_brief;
+  const ai = intel.engine?.startsWith("groq");
+  return (
+    <div className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-violet-50 p-5 sm:p-6">
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+        <h3 className="flex items-center gap-2 text-sm font-black text-indigo-900 uppercase tracking-wide">
+          🧠 AI Intelligence Brief
+        </h3>
+        <div className="flex items-center gap-1.5 text-[10px] font-bold">
+          <span className={`px-2 py-0.5 rounded-full ${ai ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-600"}`}>{ai ? "AI-synthesised" : "deterministic"}</span>
+          {intel.grounded && <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">RAG + web grounded</span>}
+        </div>
+      </div>
+
+      {b ? (
+        <div className="space-y-4">
+          {b.headline && <p className="text-lg font-black text-slate-900">{b.headline}</p>}
+          {b.situation && <p className="text-sm text-slate-700 leading-relaxed">{b.situation}</p>}
+          {b.key_insights?.length > 0 && (
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wide text-indigo-700 mb-1.5">Key insights</div>
+              <ul className="space-y-1">{b.key_insights.map((k, i) => <li key={i} className="text-sm flex gap-2"><span className="text-indigo-500">◆</span><span>{k}</span></li>)}</ul>
+            </div>
+          )}
+          {b.prioritized_actions?.length > 0 && (
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wide text-indigo-700 mb-1.5">Prioritised actions</div>
+              <div className="space-y-2">
+                {b.prioritized_actions.map((a, i) => (
+                  <div key={i} className="bg-white rounded-lg border border-slate-200 p-3">
+                    <div className="text-sm font-semibold">{a.action}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">Impact: {a.impact} · Effort: {a.effort}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {b.watch_outs?.length > 0 && (
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wide text-rose-600 mb-1.5">Watch-outs</div>
+              <ul className="space-y-1">{b.watch_outs.map((w, i) => <li key={i} className="text-sm flex gap-2"><span className="text-rose-500">⚠</span><span>{w}</span></li>)}</ul>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm text-slate-600">Grounded research attached below. (Add a free LLM key on the backend for an AI-synthesised narrative.)</p>
+      )}
+
+      {(intel.sources?.length > 0 || intel.doc_evidence?.length > 0) && (
+        <details className="mt-4 text-xs">
+          <summary className="cursor-pointer text-indigo-700 font-semibold">Evidence & sources ({(intel.sources?.length || 0) + (intel.doc_evidence?.length || 0)})</summary>
+          <div className="mt-2 space-y-1.5">
+            {intel.doc_evidence?.map((d, i) => (
+              <div key={`d${i}`} className="text-slate-600"><span className="font-bold text-emerald-700">[Your doc]</span> {d.source}: {d.snippet}</div>
+            ))}
+            {intel.sources?.map((s, i) => (
+              <div key={`s${i}`} className="text-slate-600">
+                <span className="font-bold text-indigo-700">[{s.source || "Web"}]</span>{" "}
+                {s.url ? <a href={s.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{s.title}</a> : s.title}: {s.snippet}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

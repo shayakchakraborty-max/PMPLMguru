@@ -204,6 +204,20 @@ export default function LandingPage() {
         </a>
       </section>
 
+      {/* ERP Copilot banner */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-4">
+        <a href="/erp-copilot" className="group block rounded-3xl border-2 border-slate-200 hover:border-violet-400 bg-gradient-to-r from-violet-700 to-fuchsia-700 text-white p-6 sm:p-8 shadow-sm hover:shadow-2xl transition">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <div className="text-xs font-semibold text-violet-100 uppercase tracking-wide">ERP Copilot · intelligence layer</div>
+              <div className="text-xl sm:text-2xl font-black mt-1">Your ERP, with a brain — not another ERP to migrate to</div>
+              <p className="text-violet-50 text-sm mt-1 max-w-2xl">An AI advisor across Finance, Sales, Operations & Projects. Keep your existing tools; add research-grade intelligence on top.</p>
+            </div>
+            <span className="shrink-0 px-6 py-3 bg-white text-violet-700 rounded-xl font-black group-hover:opacity-90 transition">Open ERP Copilot →</span>
+          </div>
+        </a>
+      </section>
+
       {/* Industry clouds */}
       <section id="industries" className="bg-slate-950 text-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-20">
