@@ -65,6 +65,12 @@ except Exception as _e:
     print(f"[monitor] not loaded: {_e}", flush=True)
 
 try:
+    import industry_experts as EXPERTS
+except Exception as _e:
+    EXPERTS = None
+    print(f"[industry_experts] not loaded: {_e}", flush=True)
+
+try:
     import sim_library as SIM
 except Exception as _e:
     SIM = None
@@ -3462,6 +3468,8 @@ class Handler(BaseHTTPRequestHandler):
                                  "endpoints": ["GET /schemes/meta", "GET /schemes/tests", "POST /schemes"]} if SCHEMES else "not loaded"),
                 "monitor": ({"metrics": len(MONITOR.METRICS),
                              "endpoints": ["POST /monitor", "GET /monitor/meta", "GET /monitor/tests"]} if MONITOR else "not loaded"),
+                "industry_experts": ({"total": len(EXPERTS.TOP_TYPES),
+                                      "endpoints": ["GET /experts/meta", "GET /experts/tests", "POST /experts"]} if EXPERTS else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3555,6 +3563,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "monitor module not loaded"})
                 return
             self._send(200, MONITOR.run_monitor_tests())
+        elif path == "/experts/meta":
+            if not EXPERTS:
+                self._send(200, {"error": "industry_experts module not loaded"})
+                return
+            self._send(200, EXPERTS.meta())
+        elif path == "/experts/tests":
+            if not EXPERTS:
+                self._send(200, {"error": "industry_experts module not loaded"})
+                return
+            self._send(200, EXPERTS.run_experts_tests())
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3618,6 +3636,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_schemes(body)
             elif path in ("/monitor", "/command-center"):
                 self.handle_monitor(body)
+            elif path in ("/experts", "/expert"):
+                self.handle_experts(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -3793,6 +3813,46 @@ class Handler(BaseHTTPRequestHandler):
             return
         print(f"[consult] mode={intake['mode']} type={intake['business_type']} desc={intake['description'][:60]}", flush=True)
         self._send(200, BRAIN.consult(intake))
+
+    def handle_experts(self, body):
+        """Industry Expert Agents: business type / free-text -> expert brief
+        (market size, export solutions, regulatory & financial compliance,
+        growth, risks, benchmarks). Optional deep market narrative (web + LLM)."""
+        if not EXPERTS:
+            self._send(200, {"error": "industry_experts module not loaded"})
+            return
+        brief = EXPERTS.expert_brief(body)
+        if body.get("deep", True):
+            try:
+                self._expert_market_intel(brief, body)
+            except Exception as e:
+                print(f"[experts] market intel failed: {str(e)[:160]}", flush=True)
+        print(f"[experts] type={brief.get('business_type')}", flush=True)
+        self._send(200, brief)
+
+    def _expert_market_intel(self, brief, body):
+        """Best-effort: ground the market-size view with live web research and a
+        free-LLM narrative. Adds brief['market_intelligence']; never raises hard."""
+        name = brief.get("name", "")
+        ms = brief.get("market_size", {})
+        web = []
+        try:
+            if BRAIN:
+                web = BRAIN.web_search(f"{name} India market size growth MSME export", max_results=5) or []
+        except Exception:
+            pass
+        engine, narrative = "deterministic", None
+        if LLM and LLM.available():
+            web_str = "\n".join(f"- {w.get('title','')}: {(w.get('snippet') or '')[:200]}" for w in web[:5]) or "n/a"
+            system = ("You are an industry analyst for Indian MSMEs. In 3-4 tight sentences, give a grounded, "
+                      "India-specific market-size & opportunity read for the business type. Be concrete, "
+                      "use ₹/$ where helpful, and avoid hype. Plain text only.")
+            user = (f"BUSINESS TYPE: {name}\nINDICATIVE BASE: {ms.get('india_size','')} (CAGR {ms.get('cagr','')})\n"
+                    f"DRIVERS: {', '.join(ms.get('drivers', []))}\nWEB RESEARCH:\n{web_str}\n\nWrite the market read.")
+            out = LLM.augment(system, user, max_tokens=350)
+            if out.get("text"):
+                narrative, engine = out["text"].strip(), f"groq:{out.get('provider', 'llm')}"
+        brief["market_intelligence"] = {"engine": engine, "narrative": narrative, "sources": web[:5]}
 
     def handle_monitor(self, body):
         """Monitoring / Business Command Center: KPI snapshot + profile ->
