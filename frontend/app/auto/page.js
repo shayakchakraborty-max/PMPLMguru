@@ -55,11 +55,11 @@ const INDUSTRIES = [
 ];
 
 const FLOW = [
-  ["🔍", "Diagnose", "9-dimension business health score"],
-  ["📑", "Due Diligence", "Consulting-grade DD report"],
-  ["🗺️", "Strategy & Roadmap", "SWOT + 12-month plan"],
-  ["✅", "Execute", "AI PMO: OKRs, sprints, tasks"],
-  ["📡", "Monitor", "Proactive ongoing recommendations"],
+  ["🔍", "Diagnose", "Business health score", "/ceo"],
+  ["📑", "Due Diligence", "Consulting-grade DD report", "/playbooks"],
+  ["🗺️", "Strategy & Roadmap", "SWOT + 12-month plan", "/playbooks"],
+  ["✅", "Execute", "AI PMO: OKRs, sprints, tasks", "/playbooks"],
+  ["📡", "Monitor", "Proactive ongoing alerts", "/monitor"],
 ];
 
 export default function LandingPage() {
@@ -75,6 +75,7 @@ export default function LandingPage() {
             <a href="/ceo" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">CEO Office</a>
             <a href="#practices" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Practices</a>
             <a href="/schemes" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Schemes</a>
+            <a href="/monitor" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Monitor</a>
             <a href="/advisor" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Advisors</a>
             <a href="#industries" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Industries</a>
             <a href="/playbooks" className="px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 font-semibold">Start engagement</a>
@@ -117,12 +118,12 @@ export default function LandingPage() {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xl p-5 sm:p-7">
           <div className="text-center text-xs font-bold uppercase tracking-wide text-slate-400 mb-5">How an engagement works</div>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-            {FLOW.map(([icon, title, sub], i) => (
-              <div key={title} className="text-center relative">
+            {FLOW.map(([icon, title, sub, href], i) => (
+              <a key={title} href={href} className="text-center relative group rounded-xl p-2 hover:bg-slate-50 transition">
                 <div className="text-3xl mb-2">{icon}</div>
-                <div className="font-black text-sm">{i + 1}. {title}</div>
+                <div className="font-black text-sm group-hover:text-indigo-600 transition">{i + 1}. {title}</div>
                 <div className="text-[11px] text-slate-500 mt-1 leading-snug">{sub}</div>
-              </div>
+              </a>
             ))}
           </div>
         </div>

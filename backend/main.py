@@ -59,6 +59,12 @@ except Exception as _e:
     print(f"[gov_schemes] not loaded: {_e}", flush=True)
 
 try:
+    import monitor as MONITOR
+except Exception as _e:
+    MONITOR = None
+    print(f"[monitor] not loaded: {_e}", flush=True)
+
+try:
     import sim_library as SIM
 except Exception as _e:
     SIM = None
@@ -3454,6 +3460,8 @@ class Handler(BaseHTTPRequestHandler):
                 "doc_rag": ({**DOCS.stats(), "endpoints": ["POST /docs/ingest", "GET /docs/list", "POST /docs/search"]} if DOCS else "not loaded"),
                 "gov_schemes": ({"total": len(SCHEMES.SCHEMES), "categories": len(SCHEMES.CATEGORIES),
                                  "endpoints": ["GET /schemes/meta", "GET /schemes/tests", "POST /schemes"]} if SCHEMES else "not loaded"),
+                "monitor": ({"metrics": len(MONITOR.METRICS),
+                             "endpoints": ["POST /monitor", "GET /monitor/meta", "GET /monitor/tests"]} if MONITOR else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3537,6 +3545,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "gov_schemes module not loaded"})
                 return
             self._send(200, SCHEMES.run_schemes_tests())
+        elif path == "/monitor/meta":
+            if not MONITOR:
+                self._send(200, {"error": "monitor module not loaded"})
+                return
+            self._send(200, MONITOR.meta())
+        elif path == "/monitor/tests":
+            if not MONITOR:
+                self._send(200, {"error": "monitor module not loaded"})
+                return
+            self._send(200, MONITOR.run_monitor_tests())
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3598,6 +3616,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_simulate(body)
             elif path in ("/schemes", "/schemes/recommend"):
                 self.handle_schemes(body)
+            elif path in ("/monitor", "/command-center"):
+                self.handle_monitor(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -3707,6 +3727,15 @@ class Handler(BaseHTTPRequestHandler):
             return
         print(f"[consult] mode={intake['mode']} type={intake['business_type']} desc={intake['description'][:60]}", flush=True)
         self._send(200, BRAIN.consult(intake))
+
+    def handle_monitor(self, body):
+        """Monitoring / Business Command Center: KPI snapshot + profile ->
+        trends, compliance countdown and proactive alerts (deterministic)."""
+        if not MONITOR:
+            self._send(200, {"error": "monitor module not loaded"})
+            return
+        print(f"[monitor] desc={(body.get('description') or '')[:50]} metrics={len(body.get('metrics') or {})}", flush=True)
+        self._send(200, MONITOR.command_center(body))
 
     def handle_schemes(self, body):
         """Government Schemes module: profile / free-text -> personalised
