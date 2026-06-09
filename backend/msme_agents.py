@@ -173,7 +173,10 @@ _INDUSTRY_KEYWORDS = {
     "food_bev":      ["restaurant", "cloud kitchen", "cafe", "bakery", "catering", "tiffin", "packaged food", "ice cream", "beverage", "dairy", "food company", "food processing", "fmcg food", "snack", "frozen food", "ready to eat"],
     "education":     ["coaching", "school", "edtech", "skill training", "test prep", "vocational"],
     "d2c":           ["d2c", "ecommerce", "e-commerce", "marketplace", "amazon", "flipkart", "shopify", "ad spend", "cac", "quick commerce"],
-    "tech_saas":     ["saas", "ai startup", "ai/saas", "software", "platform", "app", "api", "ml ", "machine learning", "deeptech", "fintech", "healthtech", "edtech", "legaltech", "b2b software", "tech startup", "cybersecurity"],
+    "tech_saas":     ["saas", "ai startup", "ai/saas", "software", "platform", "app dev", "mobile app", "rest api", "api integration", "ml model", "machine learning", "deeptech", "fintech", "healthtech", "edtech", "legaltech", "b2b software", "tech startup", "cybersecurity"],
+    "media_creative":["animation", "vfx", "gaming", "game studio", "film production", "music production", "publishing house", "influencer", "youtube", "podcast", "graphic design", "creative agency", "advertising agency", "ad film", "media production", "content studio"],
+    "tourism":       ["hotel", "resort", "homestay", "travel agency", "tour operator", "hospitality", "tourism", "banquet", "wedding planner", "event management"],
+    "real_estate":   ["property management", "real estate broker", "brokerage", "co-working", "coworking", "facility management", "rental management", "lease management", "property dealer"],
     "services":      ["service", "agency", "consult", "it services", "law firm", "ca firm", "staffing", "bpo", "kpo", "marketing"],
 }
 
@@ -190,6 +193,7 @@ _SIZE_HINTS = {
 def classify_business(description: str) -> dict:
     """Lightweight India-MSME classifier. Deterministic, no LLM."""
     d = (description or "").lower()
+    toks = set(d.replace("/", " ").replace(",", " ").split())  # for whole-word checks ("ai" must not match "retail")
     industry = "services"
     best = 0
     for ind, kws in _INDUSTRY_KEYWORDS.items():
@@ -201,9 +205,11 @@ def classify_business(description: str) -> dict:
         if any(k in d for k in kws):
             size = sz
             break
-    is_tech = industry == "tech_saas" or any(k in d for k in ("ai", "saas", "software", "platform"))
+    is_tech = industry == "tech_saas" or ("ai" in toks) or any(k in d for k in ("saas", "software", "platform"))
     is_import = "import" in d or "bill of entry" in d or "customs" in d
-    is_export = "export" in d or "iec" in d or industry == "agro_export"
+    # Export only when there's an explicit export signal — an agro/food business is NOT
+    # export-oriented just because it's agro (a domestic dairy/poultry farm must stay domestic).
+    is_export = any(t in d for t in ("export", " iec", "iec code", "apeda", "fieo", "dgft", "rodtep", "merchant export"))
     if is_import and is_export:
         trade_role = "import_export_hybrid"
     elif is_import:
@@ -282,15 +288,21 @@ COMPLIANCE_MAP = {
     "wholesale":     ["gst_portal", "eway"],
     "pharma":        ["drugs_act", "gst_portal"],
     "food_bev":      ["fssai", "gst_portal"],
-    "agro_export":   ["apeda", "dgft_iec", "fieo"],
+    # Agro/food businesses need FSSAI; the export bodies (APEDA/DGFT/FIEO) are added only
+    # when trade_role == "export" (via the "export" key below), so a DOMESTIC agro business
+    # is no longer mislabelled as export-regulated.
+    "agro_export":   ["fssai", "gst_portal"],
     "import":        ["customs", "dgft_iec", "bis"],
     "export":        ["dgft_iec", "fieo", "apeda"],
     "import_export_hybrid": ["customs", "dgft_iec", "fieo"],
     "logistics":     ["eway", "gst_portal"],
     "construction":  ["rera", "gst_portal"],
     "healthcare":    ["nabh", "drugs_act"],
-    "technology":    ["meity_ai", "startup_india"],
+    "technology":    ["meity_ai", "startup_india"],   # legacy alias
+    "tech_saas":     ["meity_ai", "startup_india"],   # the key classify_business actually emits
     "education":     ["gst_portal", "shops_act"],
+    "tourism":       ["fssai", "shops_act"],           # hospitality F&B + establishment
+    "real_estate":   ["rera", "gst_portal"],
 }
 
 # Government & trade-ecosystem bodies + enterprise systems to benchmark against.
@@ -2798,6 +2810,59 @@ def run_agent_tests() -> dict:
     }
 
 
+# One representative free-text per BUSINESS_TAXONOMY sector, with the industry the
+# classifier MUST resolve it to. Guards that every sector the platform advertises is
+# actually understood by the agents (correct industry -> correct compliance + playbook).
+_TAXONOMY_PROBES = {
+    "manufacturing":        ("auto parts manufacturing factory with BOM and WIP", "manufacturing"),
+    "retail":               ("apparel and footwear retail showroom chain", "retail"),
+    "wholesale":            ("FMCG wholesale distributor and super stockist", "wholesale"),
+    "distribution_models":  ("super stockist and C&F redistribution house", "wholesale"),
+    "import":               ("machinery and industrial equipment importer, customs clearance", "import_export"),
+    "export":               ("basmati rice and spices exporter, APEDA and IEC", "agro_export"),
+    "import_export_hybrid": ("merchant exporter and global trading company, cross-border", "import_export"),
+    "agro_rural":           ("dairy and poultry farm with cold storage, domestic supply", "agro_export"),
+    "food_bev":             ("cloud kitchen, bakery and packaged snacks", "food_bev"),
+    "logistics":            ("transport trucking and freight forwarding, last mile", "logistics"),
+    "construction":         ("civil contractor and real estate developer under RERA", "construction"),
+    "technology":           ("AI SaaS startup, B2B software platform", "tech_saas"),
+    "professional_services":("CA audit and tax firm with staffing", "services"),
+    "healthcare":           ("diagnostic lab and multi-speciality clinic", "healthcare"),
+    "education":            ("coaching centre and online test prep edtech", "education"),
+    "media_creative":       ("animation, VFX and gaming studio, YouTube media production", "media_creative"),
+    "tourism":              ("hotel resort and travel agency with banquet hospitality", "tourism"),
+    "real_estate":          ("property management, brokerage and co-working facility", "real_estate"),
+    "operating_models":     ("D2C subscription brand selling on a marketplace", "d2c"),
+}
+
+
+def run_taxonomy_coverage() -> dict:
+    """Every BUSINESS_TAXONOMY sector must classify to its expected industry AND resolve
+    to a real compliance set + (where one exists) a playbook. Proves the agents can
+    actually 'do the job' for every business type the taxonomy advertises."""
+    try:
+        import industry_playbooks as _PB
+    except Exception:
+        _PB = None
+    results, passed = [], 0
+    for sector, (txt, expect) in _TAXONOMY_PROBES.items():
+        cls = classify_business(txt)
+        comp = compliance_for(cls)
+        pk = None
+        if _PB:
+            pk = _PB.match_playbook(txt) or _PB._INDUSTRY_TO_PLAYBOOK.get(cls["industry"])
+        ok = (cls["industry"] == expect) and len(comp) >= 4 and bool(pk)
+        if ok:
+            passed += 1
+        results.append({"sector": sector, "industry": cls["industry"], "expected": expect,
+                        "trade_role": cls["trade_role"], "playbook": pk,
+                        "compliance": comp, "ok": ok})
+    return {"summary": {"total": len(results), "passed": passed,
+                        "deployment_ready": passed == len(results)},
+            "results": results}
+
+
 if __name__ == "__main__":
     import json as _json
     print(_json.dumps(run_agent_tests()["summary"], indent=2))
+    print(_json.dumps(run_taxonomy_coverage()["summary"], indent=2))

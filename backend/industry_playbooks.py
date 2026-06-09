@@ -67,7 +67,7 @@ _MATCH_KEYWORDS = {
     "retail_chains":               ["retail chain", "multi-branch", "supermarket", "hypermarket", "grocery", "kirana", "pos", "showroom", "store chain"],
     "wholesale_distribution":      ["wholesale", "distributor", "stockist", "c&f", "secondary sales", "redistribution", "super stockist"],
     "pharma_retail_distribution":  ["pharma", "chemist", "medical store", "medicine", "drug", "schedule h", "pharmacy", "surgical"],
-    "manufacturing_msme":          ["manufactur", "factory", "production", "bom", "wip", "machining", "assembly", "fabrication", "molding", "processing unit"],
+    "manufacturing_msme":          ["manufactur", "factory", "production line", "production unit", "bom", "wip", "machining", "assembly", "fabrication", "molding", "processing unit"],
     "fmcg_distribution":           ["fmcg", "beat", "super stockist", "consumer goods distribution"],
     "agro_trading":                ["agro", "mandi", "commodity", "spices", "rice", "grain", "pulses", "turmeric", "garlic", "makhana", "apeda", "agri trading"],
     "export_import":               ["import", "export", "merchant export", "iec", "customs", "bill of entry", "icegate", "sourcing", "cross-border"],
@@ -112,6 +112,9 @@ _INDUSTRY_TO_PLAYBOOK = {
     "d2c": "d2c_brands",
     "tech_saas": "saas_startups",
     "services": "professional_services",
+    "tourism": "travel_agencies",
+    "real_estate": "real_estate",
+    "media_creative": "professional_services",
 }
 
 
