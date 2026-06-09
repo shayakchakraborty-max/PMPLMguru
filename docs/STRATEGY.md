@@ -24,8 +24,8 @@ described below. The table is the honest mapping of vision → code as of 2026-0
 | RAG over owner documents | ⚠️ Partial | `backend/doc_store.py` — **keyless TF-IDF**, not Qdrant/pgvector + BGE rerank |
 | Tiered model router | ⚠️ Partial | `backend/llm_stack.py` — Groq→Gemini→HF free providers; not the 3-tier open-weight stack |
 | Multi-agent orchestration | ⚠️ Procedural | 20 agents in `msme_agents.py` + consult engine; **not** durable LangGraph/LlamaIndex graphs |
-| Process maps / value-stream maps | ❌ Not built | doc recommends PM4Py / bpmn.io |
-| Process mining from event logs | ❌ Not built | — |
+| Process maps / value-stream maps | ✅ Built (generation) | `backend/process_map.py` (`/process`), frontend `/process` — SCOR swimlanes + VSM in the exact format below |
+| Process mining from event logs | ❌ Not built | doc recommends PM4Py / bpmn.io — current VSM is sector-derived, not mined from logs |
 | Governance infra (DPDP tenant isolation, Presidio PII, NeMo guardrails, signed audit) | ❌ Not built | compliance *content* exists (`compliance_for`, `gov_schemes`); infra controls do not |
 | Embedded BI (Superset / Metabase) | ❌ Not built | dashboards are bespoke React, not embedded BI |
 | Observability / eval (Langfuse, Ragas, DeepEval) | ❌ Not built | — |
