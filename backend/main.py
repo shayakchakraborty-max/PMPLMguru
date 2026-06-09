@@ -77,6 +77,12 @@ except Exception as _e:
     print(f"[sim_library] not loaded: {_e}", flush=True)
 
 try:
+    import process_map as PROCESS
+except Exception as _e:
+    PROCESS = None
+    print(f"[process_map] not loaded: {_e}", flush=True)
+
+try:
     import llm_stack as LLM
 except Exception as _e:
     LLM = None
@@ -3470,6 +3476,9 @@ class Handler(BaseHTTPRequestHandler):
                              "endpoints": ["POST /monitor", "GET /monitor/meta", "GET /monitor/tests"]} if MONITOR else "not loaded"),
                 "industry_experts": ({"total": len(EXPERTS.TOP_TYPES),
                                       "endpoints": ["GET /experts/meta", "GET /experts/tests", "POST /experts"]} if EXPERTS else "not loaded"),
+                "process_map": ({"lanes": [l for l, _ in PROCESS._LANES],
+                                 "team_roles": 5,
+                                 "endpoints": ["POST /process", "GET /process/meta", "GET /process/tests"]} if PROCESS else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3573,6 +3582,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "industry_experts module not loaded"})
                 return
             self._send(200, EXPERTS.run_experts_tests())
+        elif path == "/process/meta":
+            if not PROCESS:
+                self._send(200, {"error": "process_map module not loaded"})
+                return
+            self._send(200, PROCESS.meta())
+        elif path == "/process/tests":
+            if not PROCESS:
+                self._send(200, {"error": "process_map module not loaded"})
+                return
+            self._send(200, PROCESS.run_process_tests())
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3638,6 +3657,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_monitor(body)
             elif path in ("/experts", "/expert"):
                 self.handle_experts(body)
+            elif path in ("/process", "/process-map", "/vsm"):
+                self.handle_process(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -3853,6 +3874,46 @@ class Handler(BaseHTTPRequestHandler):
             if out.get("text"):
                 narrative, engine = out["text"].strip(), f"groq:{out.get('provider', 'llm')}"
         brief["market_intelligence"] = {"engine": engine, "narrative": narrative, "sources": web[:5]}
+
+    def handle_process(self, body):
+        """Process & Value-Stream Copilot: business description / playbook key ->
+        engagement team (Partner..Consultants) + swimlane process map + value-stream
+        map (blueprint format) + bottleneck->AI action plan. Deterministic core;
+        an optional Groq 'partner_brief' narrative is layered on best-effort."""
+        if not PROCESS:
+            self._send(200, {"error": "process_map module not loaded"})
+            return
+        if not (body.get("description") or body.get("idea") or body.get("key") or body.get("business_type")):
+            self._send(200, {"error": "Describe your business (or pass a business type) to map the process."})
+            return
+        out = PROCESS.process_map(body)
+        if body.get("deep", True):
+            try:
+                self._process_partner_brief(out, body)
+            except Exception as e:
+                print(f"[process] partner brief failed: {str(e)[:160]}", flush=True)
+        print(f"[process] business={out.get('business','')[:40]} stages={len(out.get('process_map',{}).get('stages',[]))}", flush=True)
+        self._send(200, out)
+
+    def _process_partner_brief(self, out, body):
+        """Best-effort Groq narrative in the voice of the Engagement Partner. Grounds
+        on the deterministic map; adds out['partner_brief']; never raises hard."""
+        engine, brief = "deterministic", None
+        t = out.get("value_stream_map", {}).get("totals", {})
+        plan = out.get("action_plan", []) or []
+        if LLM and LLM.available():
+            bn_str = "\n".join(f"- {p.get('bottleneck')}: fix via {p.get('fix','')[:120]}" for p in plan[:4]) or "none"
+            system = ("You are the Engagement Partner of a top consulting firm briefing the MSME owner. "
+                      "In 3-4 tight sentences give the so-what: where cash/time is trapped, the single biggest "
+                      "lever, and the 90-day prize. Be concrete, India-aware (₹), no hype. Plain text only.")
+            user = (f"BUSINESS: {out.get('business','')}\n"
+                    f"LEAD TIME: {t.get('total_lead_time_days')} days at {t.get('process_cycle_efficiency_pct')}% "
+                    f"process-cycle efficiency; biggest waste = {t.get('top_waste')}.\n"
+                    f"BOTTLENECKS:\n{bn_str}\n\nWrite the partner brief.")
+            res = LLM.augment(system, user, max_tokens=320)
+            if res.get("text"):
+                brief, engine = res["text"].strip(), f"groq:{res.get('provider', 'llm')}"
+        out["partner_brief"] = {"engine": engine, "narrative": brief}
 
     def handle_monitor(self, body):
         """Monitoring / Business Command Center: KPI snapshot + profile ->
