@@ -5,6 +5,7 @@
    returns trend tiles, a statutory compliance countdown and proactive alerts. */
 
 import { useState } from "react";
+import { DEMO_BUSINESSES } from "../lib/demos";
 
 // Subset surfaced in the form (the backend accepts all METRICS).
 const FIELDS = [
@@ -18,18 +19,8 @@ const FIELDS = [
   { key: "rev_per_employee_lakh", label: "Revenue / Employee (₹L/yr)" },
 ];
 
-const DEMO = {
-  description: "kirana retail chain in Pune",
-  metrics: {
-    revenue: { current: 95, previous: 100 },
-    gross_margin_pct: { current: 18, previous: 21 },
-    net_margin_pct: { current: 3, previous: 5 },
-    dso_days: { current: 72, previous: 60 },
-    collection_rate_pct: { current: 82, previous: 90 },
-    cash_runway_months: { current: 2, previous: 4 },
-    dead_stock_pct: { current: 19, previous: 14 },
-  },
-};
+// One sample per business type (description + KPI metrics) for the demo version.
+const DEMOS = DEMO_BUSINESSES.map((d) => ({ key: d.key, icon: d.icon, label: d.label, description: d.description, metrics: d.metrics }));
 
 const SEV = { Critical: "bg-red-100 text-red-700 border-red-200", High: "bg-orange-100 text-orange-700 border-orange-200", Medium: "bg-amber-100 text-amber-700 border-amber-200", Low: "bg-slate-100 text-slate-600 border-slate-200" };
 const STATUS_DOT = { good: "bg-emerald-500", ok: "bg-slate-300", watch: "bg-amber-500", critical: "bg-rose-500" };
@@ -59,8 +50,8 @@ export default function MonitorPage() {
     finally { setLoading(false); }
   }
 
-  function loadDemo() {
-    setDesc(DEMO.description); setVals(DEMO.metrics); run(DEMO);
+  function loadDemo(d) {
+    setDesc(d.description); setVals(d.metrics); run({ description: d.description, metrics: d.metrics });
   }
 
   return (
@@ -104,15 +95,22 @@ export default function MonitorPage() {
                 </div>
               ))}
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center pt-1">
-              <button onClick={() => run()} disabled={loading}
-                className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl font-black hover:opacity-90 transition disabled:opacity-50">
-                {loading ? "Scanning…" : "Open command center →"}
-              </button>
-              <button onClick={loadDemo} disabled={loading}
-                className="px-4 py-3 bg-white/10 border border-white/15 rounded-xl hover:bg-white/20 transition font-semibold text-sm">▶ Load sample business</button>
-            </div>
+            <button onClick={() => run()} disabled={loading}
+              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl font-black hover:opacity-90 transition disabled:opacity-50">
+              {loading ? "Scanning…" : "Open command center →"}
+            </button>
             {err && <p className="text-rose-300 text-sm">{err}</p>}
+            <div className="pt-1">
+              <div className="text-[11px] uppercase tracking-wide text-slate-400 mb-2">Or load a sample business — every sector (pre-filled KPIs)</div>
+              <div className="flex flex-wrap gap-1.5">
+                {DEMOS.map((d) => (
+                  <button key={d.key} onClick={() => loadDemo(d)} disabled={loading}
+                    className="px-2.5 py-1.5 bg-white/10 border border-white/15 rounded-lg hover:bg-white/20 hover:border-indigo-400 transition text-xs font-semibold flex items-center gap-1">
+                    <span>{d.icon}</span>{d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </header>

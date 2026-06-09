@@ -6,14 +6,15 @@
    Priorities and AI Recommendations. Reuses the working consult brain. */
 
 import { useState } from "react";
+import { DEMO_BUSINESSES } from "../lib/demos";
 
 const STAGES = ["Discover", "Diagnose", "Analyze", "Recommend", "Roadmap", "Execute", "Monitor"];
 
-const DEMOS = [
-  { label: "Kirana retail chain", body: { description: "8-store grocery / kirana retail chain in Pune, GST registered, 22 staff", top_challenges: "stockouts\nthin margins\ndead stock", turnover_cr: "12", city_tier: "Tier-2" } },
-  { label: "Textile wholesaler", body: { description: "Textile wholesale & distribution business in Surat supplying retailers across Gujarat", top_challenges: "delayed receivables\nhigh working capital\ncustomer concentration", turnover_cr: "28", city_tier: "Tier-2" } },
-  { label: "Spice exporter", body: { description: "Agro spice processing and export house in Kochi shipping to UAE and EU buyers", top_challenges: "buyer concentration\nFX risk\nRoDTEP claims", turnover_cr: "45", city_tier: "Tier-2" } },
-];
+// One-click sample per business type — for the demo version.
+const DEMOS = DEMO_BUSINESSES.map((d) => ({
+  key: d.key, icon: d.icon, label: d.label,
+  body: { description: d.description, top_challenges: d.top_challenges, turnover_cr: d.turnover_cr, city_tier: d.city_tier },
+}));
 
 const SEV = { Critical: "bg-red-100 text-red-700 border-red-200", High: "bg-orange-100 text-orange-700 border-orange-200", Medium: "bg-amber-100 text-amber-700 border-amber-200", Low: "bg-slate-100 text-slate-600 border-slate-200" };
 const PRI = { High: "bg-rose-600", Medium: "bg-amber-500", Low: "bg-slate-400" };
@@ -80,19 +81,22 @@ export default function CeoOffice() {
               <input value={challenges} onChange={(e) => setChallenges(e.target.value)} placeholder="Top challenges"
                 className="col-span-2 sm:col-span-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:border-indigo-400" />
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
-              <button onClick={() => run()} disabled={loading}
-                className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl font-black hover:opacity-90 transition disabled:opacity-50">
-                {loading ? "Convening your team…" : "Open my CEO Office →"}
-              </button>
-              <div className="flex flex-wrap gap-1.5 text-xs">
+            <button onClick={() => run()} disabled={loading}
+              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl font-black hover:opacity-90 transition disabled:opacity-50">
+              {loading ? "Convening your team…" : "Open my CEO Office →"}
+            </button>
+            {err && <p className="text-rose-300 text-sm">{err}</p>}
+            <div className="pt-1">
+              <div className="text-[11px] uppercase tracking-wide text-slate-400 mb-2">Or try a sample business — every sector</div>
+              <div className="flex flex-wrap gap-1.5">
                 {DEMOS.map((d) => (
-                  <button key={d.label} onClick={() => run(d.body)} disabled={loading}
-                    className="px-3 py-2 bg-white/10 border border-white/15 rounded-lg hover:bg-white/20 transition font-semibold">▶ {d.label}</button>
+                  <button key={d.key} onClick={() => run(d.body)} disabled={loading}
+                    className="px-2.5 py-1.5 bg-white/10 border border-white/15 rounded-lg hover:bg-white/20 hover:border-indigo-400 transition text-xs font-semibold flex items-center gap-1">
+                    <span>{d.icon}</span>{d.label}
+                  </button>
                 ))}
               </div>
             </div>
-            {err && <p className="text-rose-300 text-sm">{err}</p>}
           </div>
         </div>
       </header>

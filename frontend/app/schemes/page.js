@@ -5,13 +5,15 @@
    scheme cards grouped by category. Deterministic backend, no LLM needed. */
 
 import { useState } from "react";
+import { DEMO_BUSINESSES } from "../lib/demos";
 
-const DEMOS = [
-  { label: "Kirana retailer", body: { description: "kirana grocery retail store in Pune", size: "micro" } },
-  { label: "DPIIT AI startup", body: { description: "DPIIT-recognised AI SaaS startup in Bengaluru", is_dpiit: true } },
-  { label: "Spice exporter", body: { description: "agro spice export house shipping to UAE & EU", is_export: true } },
-  { label: "Textile manufacturer", body: { description: "textile garment manufacturer in Surat", is_export: true } },
-];
+// Export-oriented sectors get is_export pre-set so the demo shows export schemes.
+const EXPORT_KEYS = new Set(["manufacturing", "food_processing", "agro_business", "pharma", "textile", "export_business", "automotive", "electronics"]);
+const SIZE_BY_TURNOVER = (cr) => (parseFloat(cr) <= 10 ? "micro" : parseFloat(cr) <= 50 ? "small" : "medium");
+const DEMOS = DEMO_BUSINESSES.map((d) => ({
+  key: d.key, icon: d.icon, label: d.label,
+  body: { description: d.description, size: SIZE_BY_TURNOVER(d.turnover_cr), is_export: EXPORT_KEYS.has(d.key) },
+}));
 
 const FIT = { High: "bg-emerald-100 text-emerald-700 border-emerald-200", Medium: "bg-amber-100 text-amber-700 border-amber-200", Explore: "bg-slate-100 text-slate-600 border-slate-200" };
 const CAT_ICON = { credit: "🏦", subsidy: "💸", equity: "📊", tax: "🧾", export: "🌏", quality: "🏅", market: "🛒", sector: "🏭", state: "📋" };
@@ -88,8 +90,9 @@ export default function SchemesPage() {
               </button>
               <div className="flex flex-wrap gap-1.5 text-xs">
                 {DEMOS.map((d) => (
-                  <button key={d.label} onClick={() => run(d.body)} disabled={loading}
-                    className="px-3 py-2 bg-white/10 border border-white/15 rounded-lg hover:bg-white/20 transition font-semibold">▶ {d.label}</button>
+                  <button key={d.key} onClick={() => run(d.body)} disabled={loading}
+                    className="px-2.5 py-1.5 bg-white/10 border border-white/15 rounded-lg hover:bg-white/20 hover:border-indigo-400 transition font-semibold flex items-center gap-1">
+                    <span>{d.icon}</span>{d.label}</button>
                 ))}
               </div>
             </div>
