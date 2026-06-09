@@ -18,6 +18,13 @@ India-aware (₹, GST/Udyam/DPIIT, funding incentives), citation-backed, and det
 - **PM Tool** (`/pm`) + **Consulting Pro** (`/consulting`) — due-diligence report,
   workspace, lifecycle plan, and a Big-3/Big-4 style business assessment.
 
+## Strategy & vision
+
+See **[docs/STRATEGY.md](docs/STRATEGY.md)** — the full platform blueprint (market & target
+segments, Big 3/4 positioning, target architecture & toolchain, agent operating model,
+deliverables, economics, pricing and governance), with an up-front **implementation-status table**
+mapping the blueprint to what is actually built in this repo today.
+
 ## Architecture
 
 - **Brain (backend)** — Python service in `backend/` (all agents, reports, blueprint,
