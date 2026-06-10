@@ -13,8 +13,10 @@ const CATEGORY_STYLE = {
   "Operations":           { grad: "from-blue-600 to-sky-600",      chip: "bg-blue-100 text-blue-700",      ring: "hover:border-blue-400" },
   "Risk & Diligence":     { grad: "from-rose-600 to-amber-600",    chip: "bg-rose-100 text-rose-700",      ring: "hover:border-rose-400" },
   "Workspace":            { grad: "from-violet-600 to-pink-600",   chip: "bg-violet-100 text-violet-700",  ring: "hover:border-violet-400" },
+  "Sustainability":       { grad: "from-green-600 to-lime-600",    chip: "bg-green-100 text-green-700",    ring: "hover:border-green-400" },
+  "Technology & Cyber":   { grad: "from-cyan-600 to-blue-700",     chip: "bg-cyan-100 text-cyan-700",      ring: "hover:border-cyan-400" },
 };
-const CATEGORY_ORDER = ["Strategy & Growth", "Finance & Compliance", "Operations", "Risk & Diligence", "Workspace"];
+const CATEGORY_ORDER = ["Strategy & Growth", "Finance & Compliance", "Operations", "Risk & Diligence", "Technology & Cyber", "Sustainability", "Workspace"];
 
 const SECTOR_LABELS = {
   manufacturing: "Manufacturing", retail: "Retail", wholesale: "Wholesale & Distribution",
@@ -119,6 +121,12 @@ const DEMO_SAMPLES = {
     { label: "Wholesaler cash crunch", agent: "cfo_finance", sector: "wholesale", subtype: "FMCG",
       description: "FMCG wholesaler with Rs.10 cr revenue and Rs.2 cr stuck in receivables, facing a cash crunch before the GST payment.",
       data: { revenue_cr: 10, receivables_cr: 2, cash_crunch: true } },
+    { label: "EU exporter ESG / CBAM", agent: "sustainability_esg", sector: "manufacturing", subtype: "Auto Parts",
+      description: "Steel auto-parts manufacturer exporting to the EU; buyers are asking for embedded-carbon (CBAM) data and a decarbonisation plan.",
+      data: {} },
+    { label: "D2C data protection (DPDP)", agent: "cyber_dpdp", sector: "retail", subtype: "E-commerce/D2C",
+      description: "D2C brand holding lakhs of customer records with no consent notice, no MFA and no breach plan, worried about DPDP.",
+      data: {} },
     { label: "Pharma inventory & expiry", agent: "inventory_agent", sector: "healthcare", subtype: "Pharmacies",
       description: "Pharma distributor with batch expiry risk, Rs.3 lakh dead stock and frequent stockouts.",
       data: { dead_stock_value: 3, stockouts: true } },

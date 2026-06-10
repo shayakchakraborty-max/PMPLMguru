@@ -3456,7 +3456,8 @@ class Handler(BaseHTTPRequestHandler):
                 "msme_agents": ({
                     "total": len(MSME.MSME_AGENTS),
                     "live": [k for k, a in MSME.MSME_AGENTS.items() if a.get("status") == "live"],
-                    "endpoints": ["GET /agents/meta", "GET /agents/tests", "GET /agents/coverage", "POST /agents/run"],
+                    "service_lines": getattr(MSME, "SERVICE_LINES", []),
+                    "endpoints": ["GET /agents/meta", "GET /agents/tests", "GET /agents/coverage", "GET /agents/service-lines", "POST /agents/run"],
                 } if MSME else "not loaded"),
                 "industry_playbooks": ({
                     "total": len(PLAYBOOKS.PLAYBOOKS),
@@ -3514,6 +3515,8 @@ class Handler(BaseHTTPRequestHandler):
                 "benchmarks": MSME.BENCHMARKS,
                 "business_taxonomy": getattr(MSME, "BUSINESS_TAXONOMY", {}),
                 "compliance_map": getattr(MSME, "COMPLIANCE_MAP", {}),
+                "service_lines": getattr(MSME, "SERVICE_LINES", []),
+                "service_line_coverage": (MSME.run_service_line_coverage()["results"] if hasattr(MSME, "run_service_line_coverage") else []),
                 "live_count": sum(1 for a in MSME.MSME_AGENTS.values() if a.get("status") == "live"),
                 "total_count": len(MSME.MSME_AGENTS),
             })
@@ -3527,6 +3530,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "taxonomy coverage not available"})
                 return
             self._send(200, MSME.run_taxonomy_coverage())
+        elif path == "/agents/service-lines":
+            if not MSME or not hasattr(MSME, "run_service_line_coverage"):
+                self._send(200, {"error": "service-line coverage not available"})
+                return
+            self._send(200, MSME.run_service_line_coverage())
         elif path == "/playbooks/meta":
             if not PLAYBOOKS:
                 self._send(200, {"error": "industry_playbooks module not loaded"})

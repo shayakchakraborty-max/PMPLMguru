@@ -137,6 +137,13 @@ CITATIONS = {
     "stamp_act":       {"title": "Indian Stamp Act, 1899 (State)", "ref": "Stamp duty on agreements; unstamped/under-stamped docs inadmissible as evidence", "authority": "State Govt", "url": "", "tier": "A"},
     "consumer_protection": {"title": "Consumer Protection Act, 2019", "ref": "Deficiency-in-service & product liability; warranty/repair obligations; e-commerce & unfair-trade rules; CCPA jurisdiction", "authority": "Dept of Consumer Affairs", "url": "https://consumeraffairs.nic.in", "tier": "A"},
     "ewaste":          {"title": "E-Waste (Management) Rules, 2022", "ref": "Extended Producer Responsibility (EPR) for electronics; authorised collection/recycling; CPCB EPR portal registration", "authority": "MoEFCC / CPCB", "url": "https://eprewastecpcb.in", "tier": "A"},
+    "dpdp":            {"title": "Digital Personal Data Protection Act, 2023 + DPDP Rules, 2025", "ref": "Consent notices, consent managers (Indian cos), purpose limitation, breach notification, Data Protection Board; obligations phased (Rule 4 +1yr, large block +18mo from 14 Nov 2025)", "authority": "MeitY", "url": "https://www.meity.gov.in/data-protection-framework", "tier": "A"},
+    "certin":          {"title": "CERT-In Directions, 2022 (70B)", "ref": "Mandatory cyber-incident reporting within 6 hours; enable and securely retain logs for a rolling 180 days within Indian jurisdiction; sync to NTP", "authority": "CERT-In / MeitY", "url": "https://www.cert-in.org.in", "tier": "A"},
+    "zed":             {"title": "MSME Sustainable (ZED) Certification", "ref": "Zero Defect Zero Effect — Bronze/Silver/Gold maturity; subsidised certification + handholding for MSMEs; quality + environment discipline", "authority": "M/o MSME / QCI", "url": "https://zed.msme.gov.in", "tier": "A"},
+    "bee_pat":         {"title": "Energy Conservation Act + BEE / PAT", "ref": "Bureau of Energy Efficiency norms, Perform-Achieve-Trade for energy-intensive units, energy audits, star-rating; Energy Conservation (Amendment) Act 2022 carbon-market enabling", "authority": "BEE / M/o Power", "url": "https://beeindia.gov.in", "tier": "A"},
+    "cbam":            {"title": "EU Carbon Border Adjustment Mechanism", "ref": "Embedded-emissions reporting (transitional from Oct 2023) then carbon levy from 2026 on iron/steel, aluminium, cement, fertiliser, etc — direct exposure for Indian exporters to the EU", "authority": "European Commission", "url": "https://taxation-customs.ec.europa.eu/carbon-border-adjustment-mechanism_en", "tier": "A"},
+    "brsr":            {"title": "SEBI BRSR / BRSR Core", "ref": "Business Responsibility & Sustainability Reporting; value-chain ESG disclosure cascades to MSME suppliers of listed companies (assured BRSR Core KPIs)", "authority": "SEBI", "url": "https://www.sebi.gov.in", "tier": "A"},
+    "epr_plastic":     {"title": "Plastic Waste Management Rules (EPR), 2016/2022", "ref": "Extended Producer Responsibility for plastic packaging; CPCB EPR registration, recycling/end-of-life targets, EPR credits", "authority": "MoEFCC / CPCB", "url": "https://eprplastic.cpcb.gov.in", "tier": "A"},
 }
 
 
@@ -582,6 +589,28 @@ MSME_AGENTS = {
         "notion_databases": ["investor_workspace", "dd_room", "kpi_db"],
         "kpis_improved": ["Investor readiness score", "Data-room completeness"],
         "example_scenario": "Founder raising seed needs a clean data room in 2 weeks.",
+    },
+    "sustainability_esg": {
+        "name": "Sustainability & ESG Agent", "icon": "🌱", "status": "planned",
+        "purpose": "ESG diagnostic, decarbonisation roadmap, ZED certification, energy/resource efficiency, EPR and export-driven carbon (EU CBAM / BRSR value-chain) readiness for an MSME.",
+        "business_types": ["manufacturing", "export", "logistics", "agro_export", "all"],
+        "inputs_required": ["Energy/fuel bills", "Process & waste data", "Export markets", "Customer ESG asks"],
+        "tools_connected": ["Carbon estimator", "ZED maturity map", "EPR tracker", "Benchmark library"],
+        "erp_modules": ["finance", "inventory", "compliance"],
+        "notion_databases": ["compliance_tracker", "risk_register", "kpi_db", "ai_reco_log"],
+        "kpis_improved": ["Energy intensity", "Emissions intensity", "Waste recycled %", "ZED level"],
+        "example_scenario": "Steel-parts exporter to the EU asked for embedded-carbon data (CBAM) and a decarbonisation plan by buyers.",
+    },
+    "cyber_dpdp": {
+        "name": "Cyber & Data Protection Agent", "icon": "🔐", "status": "planned",
+        "purpose": "Cybersecurity posture + India data-protection compliance (DPDP Act 2023, CERT-In) — consent & privacy, breach response, access controls, and a practical hardening plan for an MSME.",
+        "business_types": ["technology", "d2c", "healthcare", "services", "all"],
+        "inputs_required": ["Systems & data inventory", "Where personal data is stored", "Vendors/SaaS used", "Incident history"],
+        "tools_connected": ["Data-map builder", "DPDP gap checker", "Control library", "Breach playbook"],
+        "erp_modules": ["audit_logs", "approvals", "master_data"],
+        "notion_databases": ["compliance_tracker", "risk_register", "sop_repo", "decision_history"],
+        "kpis_improved": ["DPDP readiness %", "Critical vulns open", "MFA coverage %", "Backup/recovery RPO"],
+        "example_scenario": "D2C brand holds lakhs of customer records with no consent notice, MFA or breach plan; worried about DPDP.",
     },
 }
 
@@ -2385,6 +2414,196 @@ def gen_legal_contracts(scenario: dict, cls: dict) -> dict:
 
 
 # ============================================================
+# 13s. FLAGSHIP GENERATOR — SUSTAINABILITY & ESG AGENT
+# ============================================================
+def gen_sustainability_esg(scenario: dict, cls: dict) -> dict:
+    desc = scenario.get("description", "")
+    dl = desc.lower()
+    is_export_eu = cls["is_export"] or "cbam" in dl or "eu" in dl.split() or "europe" in dl
+    is_mfg = cls["industry"] == "manufacturing"
+    plastic = "plastic" in dl or "packaging" in dl
+    cbam_sectors = any(k in dl for k in ("steel", "aluminium", "aluminum", "cement", "fertil", "iron", "metal"))
+
+    risks = [
+        {"risk": "Buyer/value-chain ESG asks unmet → lost orders from large/listed customers (BRSR Core cascade)",
+         "severity": "High", "likelihood": "High",
+         "control": "Map customer ESG questionnaires; publish a basic ESG factsheet + emissions number.", "owner": "Founder/Sales", "cite": "brsr"},
+        {"risk": "Energy & material intensity above peers → margin leak as power/fuel costs rise",
+         "severity": "High", "likelihood": "Medium",
+         "control": "Energy audit + quick-win efficiency (lighting, motors, heat recovery, power factor).", "owner": "Plant/Ops", "cite": "bee_pat"},
+        {"risk": "EPR non-compliance on packaging/e-waste → CPCB penalties + blocked sales",
+         "severity": "Medium", "likelihood": "Medium",
+         "control": "Register on CPCB EPR portal; tie up authorised recyclers; track EPR targets.", "owner": "Compliance", "cite": ("epr_plastic" if plastic else "ewaste")},
+    ]
+    if is_export_eu:
+        risks.insert(0, {
+            "risk": "EU CBAM embedded-carbon reporting/levy exposure on exports (esp. metals/cement/fertiliser)",
+            "severity": "Critical" if cbam_sectors else "High", "likelihood": "High",
+            "control": "Compute product-level embedded emissions now; give buyers CBAM data; start decarbonisation to limit the 2026 levy.",
+            "owner": "Founder/Exports", "cite": "cbam"})
+
+    roadmap = [
+        {"horizon": "0-90 days", "moves": ["Baseline energy/fuel/water + waste from 12 months of bills", "Quick-win efficiency (lighting, motors, leaks, power factor)", "Register EPR if applicable"]},
+        {"horizon": "3-9 months", "moves": ["Apply for MSME ZED Bronze→Silver", "Solar/rooftop or PPA feasibility", "Supplier + packaging material substitution"]},
+        {"horizon": "9-18 months", "moves": ["Product-level carbon footprint for key SKUs", "Decarbonisation plan vs CBAM/buyer targets", "Publish ESG factsheet / start BRSR-Core-style KPIs"]},
+    ]
+
+    return {
+        "business_context": f"{cls['size'].title()} {cls['industry'].replace('_',' ')} business"
+                            + (" exporting to the EU — under direct CBAM / buyer-ESG pressure." if is_export_eu
+                               else " — building an ESG, energy-efficiency and ZED foundation before customers/lenders demand it."),
+        "assumptions": [
+            "ESG for an MSME is sold on cost-out + market access, not virtue — quantify both.",
+            "Scope 1 & 2 (own fuel + purchased power) are the practical starting boundary; Scope 3 only where buyers ask.",
+            "ZED certification and BEE energy efficiency are the cheapest credible, subsidised on-ramps.",
+        ],
+        "required_data": [
+            {"item": "12 months of electricity + fuel (diesel/gas) bills", "have": False, "why": "Energy baseline + Scope 1/2 emissions."},
+            {"item": "Production volume + key material inputs", "have": False, "why": "Intensity (per-unit) metrics + CBAM embedded carbon."},
+            {"item": "Customer ESG questionnaires / export markets", "have": False, "why": "Scope the BRSR/CBAM asks that actually bind you."},
+            {"item": "Waste & packaging streams (plastic/e-waste)", "have": False, "why": "EPR obligations + recycling targets."},
+        ],
+        "clarifying_questions": [
+            "Do you export to the EU, and in which product categories (metals/cement/fertiliser are CBAM-hit)?",
+            "Have any customers or lenders asked for emissions, ESG or BRSR data yet?",
+            "What's your monthly power + fuel spend, and do you have rooftop solar potential?",
+        ],
+        "analysis": {
+            "framework": "Materiality → baseline (energy/emissions/waste intensity) → quick-win efficiency → ZED/certification → market-access (CBAM/BRSR) roadmap.",
+            "drivers": ["Cost-out (energy/material/waste)", "Market access (EU CBAM, listed-buyer BRSR cascade)", "Subsidised certification (ZED)", "Lender/ESG-linked finance"],
+            "decarbonisation_levers": ["Energy efficiency (motors/heat/power factor)", "Rooftop solar / green power", "Material & packaging substitution", "Process electrification", "Logistics optimisation"],
+            "cbam_in_scope": bool(is_export_eu and cbam_sectors),
+            "quick_wins_inr": "Energy efficiency typically cuts 8-15% of the power bill within a year at low/zero capex.",
+        },
+        "risks": risks,
+        "recommendations": [
+            "Baseline energy, emissions and waste from 12 months of bills — you cannot manage or sell what you haven't measured.",
+            "Bank the energy-efficiency quick wins (lighting, motors, power factor, heat recovery) for an immediate ₹ cost-out.",
+            "Apply for MSME ZED certification (subsidised) as a credible, low-cost ESG proof point for buyers and lenders.",
+            ("Compute product-level embedded carbon now and hand buyers CBAM data — then decarbonise to limit the 2026 levy." if is_export_eu
+             else "Pre-empt the BRSR value-chain cascade: prepare a one-page ESG factsheet with your emissions number."),
+            ("Register on the CPCB EPR portal and tie up authorised recyclers for your packaging/e-waste." if (plastic or is_mfg) else "Assess EPR/waste obligations for your material streams."),
+        ],
+        "action_plan": [
+            {"step": "Collect 12 months energy/fuel/waste data; compute baseline + intensity", "owner": "Ops/Finance", "timeline": "Week 1-3", "system": "finance"},
+            {"step": "Implement energy quick-wins; track kWh + ₹ saved", "owner": "Plant/Ops", "timeline": "Month 1-3", "system": "inventory"},
+            {"step": "Apply for ZED certification; scope solar feasibility", "owner": "Founder", "timeline": "Month 2-4", "system": "compliance"},
+            {"step": "Build CBAM/BRSR data pack for key SKUs/buyers", "owner": "Founder/Exports", "timeline": "Month 3-9", "system": "compliance"},
+        ],
+        "erp_impact": [
+            {"module": "finance", "change": "Tag energy/fuel/water spend so intensity + savings are trackable per period."},
+            {"module": "inventory", "change": "Capture material & packaging usage and waste/recycling for EPR + footprint."},
+            {"module": "compliance", "change": "Add ZED, EPR and (if export) CBAM/BRSR obligations to the calendar with evidence."},
+        ],
+        "notion_update": [
+            {"database": "compliance_tracker", "entry": "ZED, EPR and CBAM/BRSR obligations with owners + due dates."},
+            {"database": "risk_register", "entries": [r["risk"] for r in risks]},
+            {"database": "kpi_db", "entry": "Energy intensity, emissions intensity, % waste recycled, ZED level."},
+        ],
+        "compliance_impact": "ESG is shifting from voluntary to binding for Indian MSMEs: EU CBAM imposes embedded-carbon reporting then a levy on exporters; SEBI BRSR cascades ESG disclosure from listed buyers down to suppliers; EPR rules (plastic/e-waste) and BEE energy norms carry penalties. ZED is the subsidised certification on-ramp.",
+        "kpis_to_monitor": [
+            {"kpi": "Energy intensity (kWh/unit)", "current": "TBD", "target": "-10% YoY", "source": "Energy baseline"},
+            {"kpi": "Emissions intensity (tCO2e/unit)", "current": "TBD", "target": "downward", "source": "Scope 1+2"},
+            {"kpi": "Waste recycled %", "current": "TBD", "target": "> 60%", "source": "EPR tracker"},
+            {"kpi": "ZED maturity level", "current": "None", "target": "Silver", "source": "ZED portal"},
+        ],
+        "citations": _cite(*(["zed", "bee_pat"] + (["cbam"] if is_export_eu else []) + (["epr_plastic"] if plastic else ["ewaste"]) + ["brsr"] + compliance_for(cls))),
+        "human_approval_points": ["Founder sign-off before publishing any emissions/ESG figures to customers or lenders."],
+    }
+
+
+# ============================================================
+# 13t. FLAGSHIP GENERATOR — CYBER & DATA PROTECTION AGENT
+# ============================================================
+def gen_cyber_dpdp(scenario: dict, cls: dict) -> dict:
+    desc = scenario.get("description", "")
+    dl = desc.lower()
+    heavy_pii = cls["industry"] in ("healthcare", "d2c", "tech_saas", "education") or any(
+        k in dl for k in ("customer data", "personal data", "patient", "kyc", "lakh", "records", "user data"))
+    has_breach = any(k in dl for k in ("breach", "hacked", "ransom", "leak", "phish"))
+
+    risks = [
+        {"risk": "No DPDP-compliant consent notice / lawful basis for collecting personal data",
+         "severity": "High", "likelihood": "High",
+         "control": "Publish a clear consent notice; capture & log consent; honour withdrawal + erasure.", "owner": "Founder/Compliance", "cite": "dpdp"},
+        {"risk": "No incident-response plan — CERT-In requires reporting within 6 hours",
+         "severity": "High", "likelihood": "Medium",
+         "control": "Write a breach playbook; enable 180-day logs in Indian jurisdiction; pre-draft CERT-In report.", "owner": "IT/Founder", "cite": "certin"},
+        {"risk": "Weak access control — shared logins, no MFA, ex-staff still have access",
+         "severity": "High", "likelihood": "High",
+         "control": "Unique accounts + MFA everywhere; least-privilege; off-boarding checklist.", "owner": "IT", "cite": "certin"},
+        {"risk": "No tested backups → ransomware / data loss is existential",
+         "severity": "Critical" if has_breach else "High", "likelihood": "Medium",
+         "control": "3-2-1 backups, encrypted, with a quarterly restore test (RPO/RTO defined).", "owner": "IT", "cite": "certin"},
+        {"risk": "Personal data shared with SaaS/vendors without data-processing agreements",
+         "severity": "Medium", "likelihood": "High",
+         "control": "Inventory processors; sign DPAs; verify their security + India data-residency posture.", "owner": "Compliance", "cite": "dpdp"},
+    ]
+
+    return {
+        "business_context": f"{cls['size'].title()} {cls['industry'].replace('_',' ')} business"
+                            + (" handling significant personal data — DPDP + cyber exposure is material." if heavy_pii
+                               else " — establishing baseline cyber hygiene and DPDP data-protection compliance.")
+                            + (" A recent incident makes this urgent." if has_breach else ""),
+        "assumptions": [
+            "Most MSME breaches are mundane: phishing, weak passwords, no MFA, unpatched systems, lost laptops.",
+            "DPDP Act 2023 (with 2025 Rules phasing in) makes consent, purpose-limitation and breach-handling legal duties, not nice-to-haves.",
+            "Controls are prioritised by risk-reduction-per-rupee, not by buying tools.",
+        ],
+        "required_data": [
+            {"item": "Inventory of systems, devices & SaaS apps", "have": False, "why": "Define the attack surface."},
+            {"item": "Where personal data is stored & who can access it", "have": False, "why": "DPDP data-map + access review."},
+            {"item": "Backup setup + last successful restore", "have": False, "why": "Ransomware resilience."},
+            {"item": "Incident history (phishing/breach/loss)", "have": False, "why": "Prioritise by realised risk."},
+        ],
+        "clarifying_questions": [
+            "What personal data do you collect (customers/employees), where is it stored, and is there a consent notice?",
+            "Is multi-factor authentication on email, banking and your core app — for everyone?",
+            "When did you last test-restore a backup, and who can access systems after staff leave?",
+        ],
+        "analysis": {
+            "framework": "Data-map → DPDP gap (consent, rights, breach, retention, processors) → cyber-hygiene baseline (CIS-style) → prioritised hardening.",
+            "dpdp_gaps": ["Consent notice & logging", "Data-principal rights (access/correction/erasure)", "Breach notification process", "Retention & deletion schedule", "Processor (vendor) agreements"],
+            "cyber_baseline": ["MFA everywhere", "Unique accounts + least privilege", "Patching cadence", "Endpoint protection", "Encrypted, tested backups", "Security-awareness training", "Logging (180-day, CERT-In)"],
+            "crown_jewels": ["Customer/employee personal data", "Financial & banking access", "Core business app + database", "Source code / model weights" if cls["is_tech"] else "Master data & price lists"],
+        },
+        "risks": risks,
+        "recommendations": [
+            "Map your personal data (what, where, who can access) — the foundation for both DPDP and security.",
+            "Turn on MFA everywhere (email, banking, core app) and kill shared logins — the single biggest risk cut.",
+            "Publish a DPDP consent notice, log consent, and define a retention/deletion schedule.",
+            "Write a one-page breach playbook with CERT-In's 6-hour reporting and enable 180-day logs in India.",
+            "Implement 3-2-1 encrypted backups and test a restore this quarter; sign DPAs with your SaaS vendors.",
+        ],
+        "action_plan": [
+            {"step": "Build data-map + system/app inventory", "owner": "Founder/IT", "timeline": "Week 1-2", "system": "master_data"},
+            {"step": "Enforce MFA + unique accounts + off-boarding", "owner": "IT", "timeline": "Week 1-3", "system": "approvals"},
+            {"step": "Publish consent notice; set retention; sign vendor DPAs", "owner": "Compliance", "timeline": "Week 2-5", "system": "audit_logs"},
+            {"step": "Backups + restore test; breach playbook + 180-day logging", "owner": "IT", "timeline": "Month 1-2", "system": "audit_logs"},
+        ],
+        "erp_impact": [
+            {"module": "audit_logs", "change": "Enable system + data-access logs, retained 180 days in Indian jurisdiction (CERT-In)."},
+            {"module": "approvals", "change": "Role-based access + MFA + maker-checker on sensitive/master-data changes."},
+            {"module": "master_data", "change": "Tag personal-data fields; enforce retention/erasure and access restrictions."},
+        ],
+        "notion_update": [
+            {"database": "compliance_tracker", "entry": "DPDP & CERT-In obligations (consent, breach, logs) with owners + dates."},
+            {"database": "risk_register", "entries": [r["risk"] for r in risks]},
+            {"database": "sop_repo", "entry": "Breach-response playbook + access-control & backup SOPs."},
+        ],
+        "compliance_impact": "India's DPDP Act 2023 (Rules notified 14 Nov 2025, phasing in) makes consent, purpose-limitation, breach notification and data-principal rights legal obligations, with significant penalties via the Data Protection Board. CERT-In's 2022 directions add 6-hour incident reporting and 180-day Indian log retention. Baseline cyber hygiene (MFA, backups, access control) is the prerequisite control set.",
+        "kpis_to_monitor": [
+            {"kpi": "DPDP readiness %", "current": "TBD", "target": "100%", "source": "DPDP gap checker"},
+            {"kpi": "MFA coverage %", "current": "TBD", "target": "100%", "source": "Identity logs"},
+            {"kpi": "Critical vulnerabilities open", "current": "TBD", "target": "0", "source": "Scan/patch report"},
+            {"kpi": "Last successful restore test", "current": "TBD", "target": "< 90 days", "source": "Backup logs"},
+        ],
+        "citations": _cite(*(["dpdp", "certin", "meity_ai"] + compliance_for(cls))),
+        "human_approval_points": ["Founder sign-off on the DPDP consent notice and breach-response plan before they go live."],
+    }
+
+
+# ============================================================
 # 14. WIRE GENERATORS → REGISTRY + DISPATCHER
 # ============================================================
 _GENERATORS = {
@@ -2408,6 +2627,8 @@ _GENERATORS = {
     "procurement_agent": gen_procurement,
     "customer_support": gen_customer_support,
     "legal_contracts": gen_legal_contracts,
+    "sustainability_esg": gen_sustainability_esg,
+    "cyber_dpdp": gen_cyber_dpdp,
 }
 for _k, _fn in _GENERATORS.items():
     MSME_AGENTS[_k]["generator"] = _fn
@@ -2416,27 +2637,45 @@ for _k, _fn in _GENERATORS.items():
 # UX metadata: which workspace mode (startup / existing business) an agent suits,
 # and its grouping category. Drives the two-section, filterable frontend.
 AGENT_UX = {
-    "ceo_copilot":        {"category": "Strategy & Growth",     "modes": ["startup", "existing"]},
-    "coo_operations":     {"category": "Operations",            "modes": ["existing"]},
-    "cfo_finance":        {"category": "Finance & Compliance",  "modes": ["startup", "existing"]},
-    "gst_compliance":     {"category": "Finance & Compliance",  "modes": ["startup", "existing"]},
-    "erp_consultant":     {"category": "Operations",            "modes": ["existing"]},
-    "msme_due_diligence": {"category": "Risk & Diligence",      "modes": ["startup", "existing"]},
-    "market_research":    {"category": "Strategy & Growth",     "modes": ["startup"]},
-    "competitor_intel":   {"category": "Strategy & Growth",     "modes": ["startup", "existing"]},
-    "product_manager":    {"category": "Strategy & Growth",     "modes": ["startup"]},
-    "notion_workspace":   {"category": "Workspace",             "modes": ["startup", "existing"]},
-    "sop_agent":          {"category": "Operations",            "modes": ["existing"]},
-    "risk_audit":         {"category": "Risk & Diligence",      "modes": ["existing"]},
-    "inventory_agent":    {"category": "Operations",            "modes": ["existing"]},
-    "sales_gtm":          {"category": "Strategy & Growth",     "modes": ["startup", "existing"]},
-    "procurement_agent":  {"category": "Operations",            "modes": ["existing"]},
-    "customer_support":   {"category": "Operations",            "modes": ["existing"]},
-    "hr_payroll":         {"category": "Finance & Compliance",  "modes": ["existing"]},
-    "export_compliance":  {"category": "Risk & Diligence",      "modes": ["startup", "existing"]},
-    "legal_contracts":    {"category": "Finance & Compliance",  "modes": ["startup", "existing"]},
-    "investor_readiness": {"category": "Risk & Diligence",      "modes": ["startup"]},
+    # service_line maps each agent to the Big 3 / Big 4 consulting-practice taxonomy
+    # (see SERVICE_LINES) so the tool can prove it covers every consulting practice.
+    "ceo_copilot":        {"category": "Strategy & Growth",     "modes": ["startup", "existing"], "service_line": "Strategy & Growth"},
+    "coo_operations":     {"category": "Operations",            "modes": ["existing"],            "service_line": "Operations"},
+    "cfo_finance":        {"category": "Finance & Compliance",  "modes": ["startup", "existing"], "service_line": "Finance, Risk & Resilience"},
+    "gst_compliance":     {"category": "Finance & Compliance",  "modes": ["startup", "existing"], "service_line": "Finance, Risk & Resilience"},
+    "erp_consultant":     {"category": "Operations",            "modes": ["existing"],            "service_line": "Technology, Data, AI & Cyber"},
+    "msme_due_diligence": {"category": "Risk & Diligence",      "modes": ["startup", "existing"], "service_line": "Deals & Private Capital"},
+    "market_research":    {"category": "Strategy & Growth",     "modes": ["startup"],             "service_line": "Strategy & Growth"},
+    "competitor_intel":   {"category": "Strategy & Growth",     "modes": ["startup", "existing"], "service_line": "Strategy & Growth"},
+    "product_manager":    {"category": "Strategy & Growth",     "modes": ["startup"],             "service_line": "Strategy & Growth"},
+    "notion_workspace":   {"category": "Workspace",             "modes": ["startup", "existing"], "service_line": "Transformation & Implementation"},
+    "sop_agent":          {"category": "Operations",            "modes": ["existing"],            "service_line": "Operations"},
+    "risk_audit":         {"category": "Risk & Diligence",      "modes": ["existing"],            "service_line": "Finance, Risk & Resilience"},
+    "inventory_agent":    {"category": "Operations",            "modes": ["existing"],            "service_line": "Operations"},
+    "sales_gtm":          {"category": "Strategy & Growth",     "modes": ["startup", "existing"], "service_line": "Customer & Commercial"},
+    "procurement_agent":  {"category": "Operations",            "modes": ["existing"],            "service_line": "Operations"},
+    "customer_support":   {"category": "Operations",            "modes": ["existing"],            "service_line": "Customer & Commercial"},
+    "hr_payroll":         {"category": "Finance & Compliance",  "modes": ["existing"],            "service_line": "People & Organisation"},
+    "export_compliance":  {"category": "Risk & Diligence",      "modes": ["startup", "existing"], "service_line": "Finance, Risk & Resilience"},
+    "legal_contracts":    {"category": "Finance & Compliance",  "modes": ["startup", "existing"], "service_line": "Finance, Risk & Resilience"},
+    "investor_readiness": {"category": "Risk & Diligence",      "modes": ["startup"],             "service_line": "Deals & Private Capital"},
+    "sustainability_esg": {"category": "Sustainability",        "modes": ["startup", "existing"], "service_line": "Sustainability & Climate"},
+    "cyber_dpdp":         {"category": "Technology & Cyber",    "modes": ["startup", "existing"], "service_line": "Technology, Data, AI & Cyber"},
 }
+
+# The nine consulting service-line families from the Big 3 / Big 4 practice taxonomy.
+# Every family must be served by at least one live agent (see run_service_line_coverage).
+SERVICE_LINES = [
+    "Strategy & Growth",
+    "Deals & Private Capital",
+    "Operations",
+    "Customer & Commercial",
+    "Technology, Data, AI & Cyber",
+    "People & Organisation",
+    "Finance, Risk & Resilience",
+    "Transformation & Implementation",
+    "Sustainability & Climate",
+]
 for _k, _ux in AGENT_UX.items():
     if _k in MSME_AGENTS:
         MSME_AGENTS[_k].update(_ux)
@@ -2724,6 +2963,20 @@ SCENARIO_TESTS = [
         "expect_citations": ["contract_act", "stamp_act"],
         "expect_severity": "High",
     },
+    {
+        "agent": "sustainability_esg",
+        "scenario": {"description": "Steel auto-parts manufacturer exporting to the EU, buyers asking for embedded carbon (CBAM) and a decarbonisation plan"},
+        "expect_keywords": ["cbam", "zed", "energy", "emission", "decarbon"],
+        "expect_citations": ["cbam", "zed", "bee_pat"],
+        "expect_severity": "Critical",
+    },
+    {
+        "agent": "cyber_dpdp",
+        "scenario": {"description": "D2C brand holding lakhs of customer records with no consent notice, no MFA and no breach plan, worried about DPDP"},
+        "expect_keywords": ["dpdp", "consent", "mfa", "breach", "backup"],
+        "expect_citations": ["dpdp", "certin"],
+        "expect_severity": "Critical",
+    },
 ]
 
 
@@ -2862,7 +3115,31 @@ def run_taxonomy_coverage() -> dict:
             "results": results}
 
 
+def run_service_line_coverage() -> dict:
+    """Map the live agents onto the Big 3 / Big 4 consulting service-line taxonomy and
+    prove every one of the nine families is served by at least one LIVE agent — i.e. the
+    tool can actually do the consulting jobs the taxonomy describes."""
+    by_line = {sl: [] for sl in SERVICE_LINES}
+    unmapped = []
+    for k, a in MSME_AGENTS.items():
+        if a.get("status") != "live":
+            continue
+        sl = a.get("service_line")
+        if sl in by_line:
+            by_line[sl].append({"key": k, "name": a.get("name")})
+        else:
+            unmapped.append(k)
+    results = [{"service_line": sl, "agents": by_line[sl], "covered": len(by_line[sl]) > 0} for sl in SERVICE_LINES]
+    covered = sum(1 for r in results if r["covered"])
+    return {"summary": {"total_families": len(SERVICE_LINES), "covered": covered,
+                        "uncovered": [r["service_line"] for r in results if not r["covered"]],
+                        "unmapped_agents": unmapped,
+                        "deployment_ready": covered == len(SERVICE_LINES) and not unmapped},
+            "results": results}
+
+
 if __name__ == "__main__":
     import json as _json
     print(_json.dumps(run_agent_tests()["summary"], indent=2))
     print(_json.dumps(run_taxonomy_coverage()["summary"], indent=2))
+    print(_json.dumps(run_service_line_coverage()["summary"], indent=2))
