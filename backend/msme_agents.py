@@ -623,6 +623,28 @@ MSME_AGENTS = {
         "kpis_improved": ["Days to close", "Reconciliations complete %", "Audit adjustments", "MIS turnaround"],
         "example_scenario": "Manufacturer takes 18 days to close the books, with unreconciled bank/GST ledgers and no monthly MIS for the owner.",
     },
+    "marketing_agent": {
+        "name": "Marketing Advisor Agent", "icon": "📣", "status": "planned",
+        "purpose": "Brand, digital & performance marketing, marketing automation, customer experience and loyalty — built for Indian MSME/D2C unit economics (CAC/LTV/ROAS, WhatsApp, ONDC, festive cycles).",
+        "business_types": ["d2c", "retail", "services", "food_bev", "all"],
+        "inputs_required": ["Target customer", "Channels & ad spend", "CAC/LTV", "Brand assets", "Repeat rate"],
+        "tools_connected": ["Funnel model", "CAC/LTV calculator", "Channel-mix planner", "Content calendar"],
+        "erp_modules": ["customers", "sales", "billing"],
+        "notion_databases": ["kpi_db", "research_db", "ai_reco_log", "task_tracker"],
+        "kpis_improved": ["CAC", "LTV:CAC", "ROAS", "Repeat rate", "Conversion %"],
+        "example_scenario": "D2C brand burning on ads with CAC above LTV and weak repeat purchase; needs a profitable channel mix and retention plan.",
+    },
+    "org_change": {
+        "name": "Org Design & Change Agent", "icon": "🧩", "status": "planned",
+        "purpose": "Organisation design, target operating model, role clarity (RACI), performance/OKR framework, capability building and change management for a scaling MSME.",
+        "business_types": ["manufacturing", "services", "wholesale", "all"],
+        "inputs_required": ["Org chart / headcount", "Roles & owners", "Growth stage", "Pain points"],
+        "tools_connected": ["Org-design canvas", "RACI builder", "OKR framework", "Change plan"],
+        "erp_modules": ["payroll", "approvals", "audit_logs"],
+        "notion_databases": ["strategy_room", "task_tracker", "kpi_db", "decision_history"],
+        "kpis_improved": ["Span of control", "Role clarity", "Goal attainment", "Attrition"],
+        "example_scenario": "Founder-led firm at 60 staff where everything routes through the owner; needs an operating model, clear roles and an OKR cadence to scale.",
+    },
     "cyber_dpdp": {
         "name": "Cyber & Data Protection Agent", "icon": "🔐", "status": "planned",
         "purpose": "Cybersecurity posture + India data-protection compliance (DPDP Act 2023, CERT-In) — consent & privacy, breach response, access controls, and a practical hardening plan for an MSME.",
@@ -2802,6 +2824,177 @@ def gen_r2r_expert(scenario: dict, cls: dict) -> dict:
 
 
 # ============================================================
+# 13w. FLAGSHIP GENERATOR — MARKETING ADVISOR
+# ============================================================
+def gen_marketing(scenario: dict, cls: dict) -> dict:
+    desc = scenario.get("description", "")
+    dl = desc.lower()
+    is_d2c = cls["industry"] == "d2c" or cls["is_tech"] or any(k in dl for k in ("d2c", "ecommerce", "online", "shopify", "ads", "performance"))
+    cac_pain = any(k in dl for k in ("cac", "ad spend", "burning", "roas", "acquisition cost", "unprofitable"))
+
+    risks = [
+        {"risk": "CAC ≥ LTV — paid acquisition loses money on every order", "severity": "Critical" if cac_pain else "High", "likelihood": "High",
+         "control": "Fix unit economics first: target LTV:CAC ≥ 3; cap blended CAC; shift spend to profitable channels.", "owner": "Founder/Marketing", "cite": "benchmark_d2c"},
+        {"risk": "Over-reliance on one channel (e.g. Meta/Google) — fragile + rising costs", "severity": "High", "likelihood": "Medium",
+         "control": "Diversify: organic/SEO, WhatsApp/CRM, marketplaces/ONDC, referrals; build owned audience.", "owner": "Marketing", "cite": "benchmark_d2c"},
+        {"risk": "Weak retention — all spend on acquisition, low repeat rate", "severity": "High", "likelihood": "High",
+         "control": "Lifecycle marketing (WhatsApp/email), loyalty, subscription; lift repeat-rate to grow LTV.", "owner": "Marketing/CX", "cite": "benchmark_d2c"},
+        {"risk": "Ad/claims & data-consent non-compliance (misleading claims, no marketing consent)", "severity": "Medium", "likelihood": "Medium",
+         "control": "Honest claims (CCPA/ASCI), DPDP-compliant consent for marketing data, easy opt-out.", "owner": "Marketing/Legal", "cite": "consumer_protection"},
+    ]
+
+    return {
+        "business_context": f"{cls['size'].title()} {cls['industry'].replace('_',' ')} business"
+                            + (" — D2C/online, where profitable customer acquisition + retention is the whole game." if is_d2c
+                               else " — building a marketing engine: brand, demand generation, conversion and loyalty.")
+                            + (" Acquisition costs are currently unprofitable." if cac_pain else ""),
+        "assumptions": [
+            "Marketing for an MSME is judged on unit economics (CAC, LTV:CAC, ROAS, payback), not vanity reach.",
+            "Retention/repeat is usually cheaper growth than more paid acquisition.",
+            "India levers: WhatsApp, vernacular content, ONDC/marketplaces, festive/seasonal cycles, UPI checkout.",
+        ],
+        "required_data": [
+            {"item": "Channels + monthly ad spend", "have": False, "why": "Channel-mix + ROAS analysis."},
+            {"item": "CAC, LTV, repeat rate, AOV", "have": False, "why": "Unit-economics health + payback."},
+            {"item": "Funnel metrics (traffic→lead→order)", "have": False, "why": "Find the leaking stage."},
+            {"item": "Brand assets + positioning", "have": False, "why": "Message-market fit."},
+        ],
+        "clarifying_questions": [
+            "What's your CAC vs LTV today, and what's the blended ROAS on paid?",
+            "What share of revenue is repeat vs new customers?",
+            "Which channels drive orders now, and where does the funnel leak most?",
+        ],
+        "analysis": {
+            "framework": "Brand & positioning → full-funnel demand gen → conversion-rate optimisation → retention/loyalty, all on a CAC/LTV/ROAS P&L.",
+            "funnel": ["Awareness (brand/content/SEO)", "Acquisition (paid/marketplace/referral)", "Conversion (site/WhatsApp/UPI checkout)", "Retention (lifecycle/loyalty/subscription)"],
+            "channel_mix": ["Meta/Google performance", "SEO/content", "WhatsApp & CRM", "Marketplaces / ONDC", "Influencer/UGC", "Referral"],
+            "unit_economics_targets": {"ltv_cac": "≥ 3:1", "cac_payback": "< 6 months", "repeat_rate": "↑"},
+            "india_levers": ["WhatsApp commerce", "Vernacular creative", "Festive calendar", "ONDC", "COD→prepaid nudges"],
+        },
+        "risks": risks,
+        "recommendations": [
+            "Fix unit economics before scaling spend: get LTV:CAC ≥ 3 and CAC payback under 6 months.",
+            "Rebalance the channel mix away from a single paid platform toward owned + organic + marketplaces/ONDC.",
+            "Stand up lifecycle marketing (WhatsApp/email) + loyalty to grow repeat rate and LTV.",
+            "Run conversion-rate optimisation on the leaking funnel stage (checkout, COD→prepaid, page speed).",
+            "Keep claims honest (ASCI/CCPA) and capture DPDP-compliant marketing consent with easy opt-out.",
+        ],
+        "action_plan": [
+            {"step": "Build CAC/LTV/ROAS dashboard by channel", "owner": "Marketing", "timeline": "Week 1-2", "system": "sales"},
+            {"step": "Cut/again-test unprofitable channels; reallocate budget", "owner": "Founder/Marketing", "timeline": "Week 2-3", "system": "sales"},
+            {"step": "Launch WhatsApp/email lifecycle + loyalty", "owner": "Marketing/CX", "timeline": "Week 3-6", "system": "customers"},
+            {"step": "CRO sprint on the top funnel leak", "owner": "Marketing", "timeline": "Month 2", "system": "billing"},
+        ],
+        "erp_impact": [
+            {"module": "customers", "change": "Capture source/segment + consent; enable lifecycle & loyalty segments."},
+            {"module": "sales", "change": "Tag orders by channel/campaign for CAC/ROAS attribution."},
+            {"module": "billing", "change": "Promo/discount governance so offers don't quietly destroy margin."},
+        ],
+        "notion_update": [
+            {"database": "kpi_db", "entry": "CAC, LTV:CAC, ROAS, repeat rate, conversion %, payback."},
+            {"database": "research_db", "entry": "ICP/positioning, channel tests, competitor creative."},
+            {"database": "task_tracker", "entry": "Content calendar + campaign + CRO backlog."},
+        ],
+        "compliance_impact": "Marketing claims must be truthful under the Consumer Protection Act 2019 / ASCI (CCPA can act on misleading ads), and using customer data for marketing needs DPDP-compliant consent with an easy opt-out.",
+        "kpis_to_monitor": [
+            {"kpi": "LTV:CAC", "current": "TBD", "target": "≥ 3:1", "source": "Unit economics"},
+            {"kpi": "CAC payback", "current": "TBD", "target": "< 6 months", "source": "Finance"},
+            {"kpi": "Blended ROAS", "current": "TBD", "target": "> 3x", "source": "Ad platforms"},
+            {"kpi": "Repeat rate", "current": "TBD", "target": "↑ QoQ", "source": "Orders"},
+        ],
+        "citations": _cite(*(["benchmark_d2c", "consumer_protection", "dpdp"] + compliance_for(cls))),
+        "human_approval_points": ["Founder sign-off on brand positioning and the marketing budget reallocation."],
+    }
+
+
+# ============================================================
+# 13x. FLAGSHIP GENERATOR — ORG DESIGN & CHANGE
+# ============================================================
+def gen_org_change(scenario: dict, cls: dict) -> dict:
+    desc = scenario.get("description", "")
+    data = scenario.get("data", {})
+    dl = desc.lower()
+    try:
+        headcount = float(str(data.get("headcount") or 0).replace(",", "").strip())
+    except Exception:
+        headcount = 0
+    founder_bottleneck = any(k in dl for k in ("founder", "owner", "everything", "routes through", "bottleneck", "delegat"))
+
+    risks = [
+        {"risk": "Founder/owner is the bottleneck — every decision routes through one person", "severity": "High", "likelihood": "High",
+         "control": "Define an operating model + delegation/approval matrix; push decisions to accountable owners.", "owner": "Founder", "cite": "companies_act"},
+        {"risk": "Unclear roles & accountability (overlap, gaps, no RACI)", "severity": "High", "likelihood": "Medium",
+         "control": "Role charters + RACI per core process; one accountable owner per outcome.", "owner": "Leadership", "cite": "labour_codes"},
+        {"risk": "No goal-setting cadence — effort not aligned to priorities", "severity": "Medium", "likelihood": "High",
+         "control": "Quarterly OKRs cascaded to teams; monthly review; tie to the operating rhythm.", "owner": "Leadership", "cite": "benchmark_ar"},
+        {"risk": "Key-person dependency + attrition risk (no succession/capability building)", "severity": "High", "likelihood": "Medium",
+         "control": "Document SOPs, cross-train, build a simple competency/L&D plan and backups for key roles.", "owner": "HR/Leadership", "cite": "labour_codes"},
+    ]
+
+    return {
+        "business_context": f"{cls['size'].title()} {cls['industry'].replace('_',' ')} business"
+                            + (f" at ~{headcount:.0f} staff" if headcount else "")
+                            + " — designing the organisation and operating model to scale beyond the founder."
+                            + (" Today everything routes through the owner." if founder_bottleneck else ""),
+        "assumptions": [
+            "Org design follows strategy: structure, roles and decisions should serve the operating model, not the org chart.",
+            "For an MSME the highest-leverage move is clear accountability + a simple goal/operating rhythm, not a big restructure.",
+            "Change sticks through communication, role clarity and a cadence — not a one-off announcement.",
+        ],
+        "required_data": [
+            {"item": "Current org chart + headcount by function", "have": headcount > 0, "why": "Spot spans, layers and gaps."},
+            {"item": "Who decides what (delegation today)", "have": False, "why": "Find founder bottlenecks."},
+            {"item": "Core processes + owners", "have": False, "why": "Build RACI and accountability."},
+            {"item": "Growth stage + 12-month plan", "have": False, "why": "Design the target operating model."},
+        ],
+        "clarifying_questions": [
+            "Which decisions still require the founder/owner, and where does that slow things down?",
+            "Do functions have a single accountable owner, or is accountability shared/unclear?",
+            "Is there a goal-setting + review rhythm (OKRs/KPIs), and how often does it run?",
+        ],
+        "analysis": {
+            "framework": "Operating model → structure & spans → role charters + RACI → OKR/performance cadence → capability building → change plan.",
+            "design_levers": ["Target operating model", "Delegation/approval matrix", "RACI per core process", "Spans & layers", "Quarterly OKRs", "Capability/L&D plan"],
+            "headcount": headcount or "unknown",
+            "operating_rhythm": ["Weekly ops review", "Monthly business review (KPIs)", "Quarterly OKR planning"],
+        },
+        "risks": risks,
+        "recommendations": [
+            "Define a simple target operating model and a delegation/approval matrix so decisions leave the founder's desk.",
+            "Write one-page role charters with a RACI per core process — one accountable owner per outcome.",
+            "Install a quarterly OKR + monthly review rhythm so effort lines up with the priorities.",
+            "Reduce key-person risk: document SOPs, cross-train and name backups for critical roles.",
+            "Run change as a cadence — communicate the why, set the rhythm, and review adoption, don't just reorg once.",
+        ],
+        "action_plan": [
+            {"step": "Map current decisions/owners; design target operating model", "owner": "Founder/Leadership", "timeline": "Week 1-3", "system": "approvals"},
+            {"step": "Write role charters + RACI; set the approval matrix", "owner": "Leadership", "timeline": "Week 2-5", "system": "approvals"},
+            {"step": "Launch quarterly OKRs + monthly review rhythm", "owner": "Leadership", "timeline": "Month 1-2", "system": "audit_logs"},
+            {"step": "Capability/L&D + cross-training plan for key roles", "owner": "HR", "timeline": "Month 2-3", "system": "payroll"},
+        ],
+        "erp_impact": [
+            {"module": "approvals", "change": "Encode the delegation/approval matrix so authority sits with accountable owners."},
+            {"module": "payroll", "change": "Reflect roles/levels and the competency framework in the people master."},
+            {"module": "audit_logs", "change": "Track OKR/decision history and who approved what."},
+        ],
+        "notion_update": [
+            {"database": "strategy_room", "entry": "Target operating model, org design and OKRs."},
+            {"database": "task_tracker", "entry": "RACI, role charters and the change-plan milestones."},
+            {"database": "kpi_db", "entry": "Span of control, goal attainment, attrition, role-clarity score."},
+        ],
+        "compliance_impact": "Clear roles, a delegation matrix and documented HR practices support Companies Act governance and Labour-Code obligations (appointment terms, OSH, social security), and reduce key-person and compliance risk as the team scales.",
+        "kpis_to_monitor": [
+            {"kpi": "Decisions needing founder", "current": "High", "target": "↓ sharply", "source": "Delegation matrix"},
+            {"kpi": "Role clarity (RACI coverage)", "current": "TBD", "target": "100% core processes", "source": "Org design"},
+            {"kpi": "OKR attainment", "current": "TBD", "target": "> 70%", "source": "Quarterly review"},
+            {"kpi": "Regretted attrition", "current": "TBD", "target": "↓", "source": "HR"},
+        ],
+        "citations": _cite(*(["companies_act", "labour_codes", "benchmark_ar"] + compliance_for(cls))),
+        "human_approval_points": ["Founder/leadership sign-off on the operating model, structure and delegation matrix."],
+    }
+
+
+# ============================================================
 # 14. WIRE GENERATORS → REGISTRY + DISPATCHER
 # ============================================================
 _GENERATORS = {
@@ -2829,6 +3022,8 @@ _GENERATORS = {
     "cyber_dpdp": gen_cyber_dpdp,
     "o2c_expert": gen_o2c_expert,
     "r2r_expert": gen_r2r_expert,
+    "marketing_agent": gen_marketing,
+    "org_change": gen_org_change,
 }
 for _k, _fn in _GENERATORS.items():
     MSME_AGENTS[_k]["generator"] = _fn
@@ -2863,6 +3058,8 @@ AGENT_UX = {
     "cyber_dpdp":         {"category": "Technology & Cyber",    "modes": ["startup", "existing"], "service_line": "Technology, Data, AI & Cyber"},
     "o2c_expert":         {"category": "Finance & Compliance",  "modes": ["existing"],            "service_line": "Finance, Risk & Resilience"},
     "r2r_expert":         {"category": "Finance & Compliance",  "modes": ["existing"],            "service_line": "Finance, Risk & Resilience"},
+    "marketing_agent":    {"category": "Strategy & Growth",     "modes": ["startup", "existing"], "service_line": "Customer & Commercial"},
+    "org_change":         {"category": "Strategy & Growth",     "modes": ["existing"],            "service_line": "People & Organisation"},
 }
 
 # The nine consulting service-line families from the Big 3 / Big 4 practice taxonomy.
@@ -3191,6 +3388,20 @@ SCENARIO_TESTS = [
         "scenario": {"description": "Manufacturer takes 18 days to close the books with unreconciled bank and GST ledgers and no monthly MIS", "data": {"close_days": 18}},
         "expect_keywords": ["close", "reconcil", "mis", "fixed asset", "accrual"],
         "expect_citations": ["companies_act", "gst_portal"],
+        "expect_severity": "High",
+    },
+    {
+        "agent": "marketing_agent",
+        "scenario": {"description": "D2C brand burning on ads with CAC above LTV and weak repeat purchase, needs a profitable channel mix"},
+        "expect_keywords": ["cac", "ltv", "roas", "repeat", "funnel"],
+        "expect_citations": ["benchmark_d2c", "consumer_protection"],
+        "expect_severity": "Critical",
+    },
+    {
+        "agent": "org_change",
+        "scenario": {"description": "Founder-led firm at 60 staff where everything routes through the owner, needs an operating model, clear roles and an OKR cadence", "data": {"headcount": 60}},
+        "expect_keywords": ["operating model", "raci", "okr", "delegat", "accountab"],
+        "expect_citations": ["companies_act", "labour_codes"],
         "expect_severity": "High",
     },
 ]

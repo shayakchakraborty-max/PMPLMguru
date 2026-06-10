@@ -132,12 +132,12 @@ TOWERS = [
     {
         "key": "human_capital", "name": "Human Capital Consulting", "icon": "👥",
         "ai_advisor": "AI CHRO Advisor",
-        "agents": ["hr_payroll"],
+        "agents": ["org_change", "hr_payroll"],
         "service_lines": [
-            _sl("HR Transformation", ["HR Operating Model"], "hr_payroll"),
+            _sl("HR Transformation", ["HR Operating Model"], "org_change"),
             _sl("Talent Acquisition", ["Hiring", "Workforce Planning"], "hr_payroll"),
-            _sl("Learning & Development", ["Training Programs"], "hr_payroll"),
-            _sl("Performance Management", ["KPI Framework"], "hr_payroll"),
+            _sl("Learning & Development", ["Training Programs"], "org_change"),
+            _sl("Performance Management", ["KPI Framework"], "org_change"),
             _sl("Compensation & Benefits", ["Salary Benchmarking"], "hr_payroll"),
         ],
     },
@@ -184,14 +184,14 @@ TOWERS = [
     {
         "key": "marketing", "name": "Marketing Consulting", "icon": "📣",
         "ai_advisor": "AI Marketing Advisor",
-        "agents": ["sales_gtm"],
+        "agents": ["marketing_agent", "sales_gtm", "customer_support"],
         "service_lines": [
-            _sl("Brand Strategy", ["Positioning", "Brand Architecture"], "sales_gtm"),
-            _sl("Digital Marketing", ["SEO", "Content"], "sales_gtm"),
-            _sl("Performance Marketing", ["Paid Acquisition", "CAC/ROAS"], "sales_gtm"),
-            _sl("Marketing Automation", ["Funnels", "CRM Journeys"], "sales_gtm"),
+            _sl("Brand Strategy", ["Positioning", "Brand Architecture"], "marketing_agent"),
+            _sl("Digital Marketing", ["SEO", "Content"], "marketing_agent"),
+            _sl("Performance Marketing", ["Paid Acquisition", "CAC/ROAS"], "marketing_agent"),
+            _sl("Marketing Automation", ["Funnels", "CRM Journeys"], "marketing_agent"),
             _sl("Customer Experience", ["CX Journey", "NPS"], "customer_support"),
-            _sl("Loyalty Programs", ["Rewards", "Repeat Rate"], "sales_gtm"),
+            _sl("Loyalty Programs", ["Rewards", "Repeat Rate"], "marketing_agent"),
         ],
     },
     {
@@ -276,6 +276,8 @@ AI_ADVISORS = [
     {"advisor": "AI Technology Advisor", "agent": "erp_consultant", "tower": "technology"},
     {"advisor": "AI Risk Advisor", "agent": "risk_audit", "tower": "risk_advisory"},
     {"advisor": "AI Sustainability Advisor", "agent": "sustainability_esg", "tower": "esg_sustainability"},
+    {"advisor": "AI Marketing Advisor", "agent": "marketing_agent", "tower": "marketing"},
+    {"advisor": "AI Org & Change Advisor", "agent": "org_change", "tower": "human_capital"},
 ]
 
 
