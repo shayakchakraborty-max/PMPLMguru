@@ -376,15 +376,39 @@ def _kw(s):
     return {w for w in (s or "").lower().replace("/", " ").replace("&", " ").split() if w not in _STOP and len(w) > 2}
 
 
+# Distinctive, high-signal terms that should lock a query onto the right tower even
+# when a generic word collides elsewhere (e.g. "ads not working" vs "Working Capital").
+_TOWER_HINTS = {
+    "strategy_corporate": ["strategy", "growth", "market entry", "business model", "vision", "expansion", "turnaround", "diversif", "m&a", "merger", "acquisition target", "valuation", "pmo", "transformation office"],
+    "finance_transformation": ["working capital", "cash flow", "cash conversion", "liquidity", "treasury", "budgeting", "forecast", "fp&a", "variance", "cost reduction", "zero-based", "spend analysis"],
+    "o2c": ["o2c", "order-to-cash", "order to cash", "dso", "receivable", "collection", "unapplied", "deduction", "days sales outstanding", "overdue invoice", "credit limit", "cash application"],
+    "p2p": ["p2p", "procure-to-pay", "procure to pay", "vendor", "supplier", "procurement", "purchase order", "3-way", "two-way", "payable", "rfq", "rfp", "sourcing"],
+    "r2r": ["r2r", "record-to-report", "record to report", "month-end", "month end", "close the books", "reconcil", "mis", "consolidation", "journal", "accrual", "fixed asset", "depreciation"],
+    "tax_compliance": ["gst", "income tax", "tds", "transfer pricing", "customs", "roc filing", "companies act", "secretarial", "tax notice"],
+    "risk_advisory": ["risk register", "internal audit", "fraud", "internal control", "sox", "ifc", "security assessment", "enterprise risk"],
+    "legal_advisory": ["contract", "agreement", "litigation", "legal", "clause", "lease deed", "nda"],
+    "human_capital": ["hiring", "recruit", "workforce", "payroll", "org design", "operating model", "okr", "attrition", "raci", "performance management", "appraisal", "training", "l&d", "compensation", "salary benchmark"],
+    "supply_chain": ["inventory", "demand planning", "warehouse", "logistics", "s&op", "safety stock", "abc analysis", "stockout", "dead stock", "route optim"],
+    "manufacturing_excellence": ["lean", "six sigma", "oee", "production planning", "plant performance", "quality management", "bottleneck", "maintenance", "industry 4.0", "throughput"],
+    "sales_crm": ["crm", "pipeline", "lead management", "opportunity", "territory", "beat plan", "sales forecast", "customer success"],
+    "marketing": ["marketing", "brand", "cac", "ltv", "roas", "ad spend", "ads", "campaign", "seo", "performance marketing", "funnel", "conversion rate", "loyalty", "repeat purchase", "retention"],
+    "technology": ["erp", "sap", "oracle fusion", "dynamics 365", "cloud", "data platform", "analytics", "ai strategy", "rpa", "automation", "genai", "enterprise architecture"],
+    "esg_sustainability": ["esg", "carbon", "emission", "cbam", "brsr", "sustainability", "decarbon", "energy efficiency", "net-zero", "scope 1", "scope 2", "epr", "green supply"],
+}
+
+
 def resolve(query):
     """Map a free-text consulting need to the best tower / service line / workflow + the
     delivering agent, so a request can be routed straight to the right AI advisor."""
     q = _kw(query)
     if not q:
         return {"matched": False}
+    qlow = (query or "").lower()
     best = None
     for t in TOWERS:
         tower_kw = _kw(t["name"]) | _kw(t.get("ai_advisor", ""))
+        # Strong bonus when a distinctive term for this tower appears in the query.
+        hint_bonus = 8 if any(h in qlow for h in _TOWER_HINTS.get(t["key"], [])) else 0
         for s in t["service_lines"]:
             # Weight name matches over generic workflow words (e.g. "reporting" shouldn't
             # pull an ESG query into R2R just because both have a "Reporting" workflow).
@@ -393,7 +417,7 @@ def resolve(query):
             wf_words = set().union(*[_kw(w) for w in s["workflows"]] or [set()])
             wf_score = len(q & wf_words)
             wf_hit = next((w for w in s["workflows"] if q & _kw(w)), None)
-            score = name_score + tower_score + wf_score + (2 if wf_hit else 0)
+            score = name_score + tower_score + wf_score + (2 if wf_hit else 0) + hint_bonus
             if best is None or score > best["score"]:
                 best = {"score": score, "tower": t, "sl": s, "workflow": wf_hit}
     if not best or best["score"] <= 0:
@@ -447,6 +471,11 @@ def run_catalog_tests():
     cases.append(("resolve_o2c", r.get("matched") and r.get("tower", {}).get("key") == "o2c"))
     r2 = resolve("month-end close takes too long and books are not reconciled")
     cases.append(("resolve_r2r", r2.get("matched") and r2.get("tower", {}).get("key") == "r2r"))
+    # distinctive-term hints must beat generic-word collisions
+    r3 = resolve("our CAC is higher than LTV and ads are not working")
+    cases.append(("resolve_marketing", r3.get("matched") and r3.get("tower", {}).get("key") == "marketing"))
+    r4 = resolve("we want to optimise working capital and cash flow")
+    cases.append(("resolve_finance", r4.get("matched") and r4.get("tower", {}).get("key") == "finance_transformation"))
     passed = sum(1 for _, ok in cases if ok)
     return {"summary": {"total": len(cases), "passed": passed, "deployment_ready": passed == len(cases),
                         "bad_agents": bad},

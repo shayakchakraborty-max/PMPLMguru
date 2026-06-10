@@ -27,6 +27,19 @@ export default function CeoOffice() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [eng, setEng] = useState(null);
+  const [need, setNeed] = useState("");
+  const [routing, setRouting] = useState(false);
+  const [route, setRoute] = useState(null);
+
+  async function routeNeed() {
+    if (!need.trim()) return;
+    setRouting(true); setRoute(null);
+    try {
+      const r = await fetch("/api/catalog", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: need }) });
+      setRoute(await r.json());
+    } catch (e) { setRoute({ error: e.message }); }
+    finally { setRouting(false); }
+  }
 
   async function run(custom) {
     const body = custom || { description: desc, top_challenges: challenges, turnover_cr: turnover, city_tier: tier };
@@ -52,6 +65,7 @@ export default function CeoOffice() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <a href="/auto" className="font-black tracking-tight text-sm sm:text-base">Indian MSME Consulting <span className="text-indigo-600">· Powered by AI</span></a>
           <div className="flex items-center gap-1 text-sm">
+            <a href="/catalog" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 font-semibold">Services</a>
             <a href="/playbooks" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 font-semibold">Engagement</a>
             <a href="/advisor" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 font-semibold">Advisors</a>
           </div>
@@ -106,9 +120,38 @@ export default function CeoOffice() {
         {loading && <div className="text-center text-slate-500 py-20 animate-pulse">Your Managing Partner is assembling the engagement…</div>}
 
         {!loading && !eng && (
-          <div className="text-center text-slate-400 py-16">
-            <div className="text-5xl mb-3">🏛️</div>
-            <p>Run an engagement above to populate your command center.</p>
+          <div className="py-10">
+            <div className="text-center text-slate-400 mb-8">
+              <div className="text-5xl mb-3">🏛️</div>
+              <p>Run an engagement above to populate your command center — or jump straight to the right specialist below.</p>
+            </div>
+
+            {/* Find-my-advisor router (wired to the consulting catalog) */}
+            <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+              <div className="text-[11px] uppercase tracking-wide text-slate-500 font-bold mb-2">Have a specific problem? Route it to the right advisor</div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input value={need} onChange={(e) => setNeed(e.target.value)} onKeyDown={(e) => e.key === "Enter" && routeNeed()}
+                  placeholder="e.g. receivables are stretched and collections are a mess…"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-400" />
+                <button onClick={routeNeed} disabled={routing}
+                  className="px-5 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500 disabled:opacity-50">
+                  {routing ? "Routing…" : "Find advisor →"}
+                </button>
+              </div>
+              {route && route.matched && (
+                <div className="mt-3 bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-sm">
+                  <span className="text-slate-500">Routed to</span> <b>{route.tower.icon} {route.tower.name}</b> → <b>{route.service_line}</b>
+                  {route.workflow && <> → <span className="text-indigo-600">{route.workflow}</span></>}
+                  <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                    <span className="text-[12px]">{route.tower.ai_advisor}</span>
+                    {route.agent_live && <a href={`/advisor?agent=${route.agent}`} className="ml-auto px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold text-[12px] hover:bg-indigo-500">Open advisor →</a>}
+                  </div>
+                </div>
+              )}
+              {route && !route.matched && !route.error && <div className="mt-3 text-amber-600 text-sm">Try naming the function (finance, receivables, procurement, tax, risk, marketing, HR…).</div>}
+              {route?.error && <div className="mt-3 text-rose-600 text-sm">{route.error}</div>}
+              <a href="/catalog" className="inline-block mt-3 text-[13px] font-semibold text-indigo-600 hover:underline">Or browse all 16 consulting towers · 90+ service lines →</a>
+            </div>
           </div>
         )}
 
@@ -250,8 +293,9 @@ export default function CeoOffice() {
                 <div className="font-black text-lg">Go deeper on this engagement</div>
                 <div className="text-sm text-slate-300">Full DD report, SWOT, 12-month roadmap, board pack and AI PMO.</div>
               </div>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex gap-2 shrink-0 flex-wrap">
                 <a href="/playbooks" className="px-5 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl font-bold hover:opacity-90 transition">Open full engagement →</a>
+                <a href="/catalog" className="px-5 py-3 bg-white/10 border border-white/20 rounded-xl font-bold hover:bg-white/20 transition">All services</a>
                 <a href="/advisor" className="px-5 py-3 bg-white/10 border border-white/20 rounded-xl font-bold hover:bg-white/20 transition">Advisors</a>
               </div>
             </div>
