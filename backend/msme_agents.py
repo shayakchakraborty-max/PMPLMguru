@@ -601,6 +601,28 @@ MSME_AGENTS = {
         "kpis_improved": ["Energy intensity", "Emissions intensity", "Waste recycled %", "ZED level"],
         "example_scenario": "Steel-parts exporter to the EU asked for embedded-carbon data (CBAM) and a decarbonisation plan by buyers.",
     },
+    "o2c_expert": {
+        "name": "O2C (Order-to-Cash) Expert Agent", "icon": "🧾", "status": "planned",
+        "purpose": "End-to-end Order-to-Cash transformation — customer master & credit, order management, billing/e-invoicing, collections & AR, cash application, deductions/disputes and revenue assurance.",
+        "business_types": ["wholesale", "distribution", "manufacturing", "retail", "all"],
+        "inputs_required": ["AR ageing", "DSO", "Order/billing volume", "Disputes/deductions", "Credit policy"],
+        "tools_connected": ["AR ageing engine", "Credit scorecard", "Cash-application matcher", "Dispute tracker"],
+        "erp_modules": ["customers", "sales", "billing", "receivables", "finance"],
+        "notion_databases": ["kpi_db", "risk_register", "compliance_tracker", "ai_reco_log"],
+        "kpis_improved": ["DSO", "Cash conversion cycle", "Collection effectiveness", "Revenue leakage %"],
+        "example_scenario": "Distributor with 68-day DSO, unapplied cash and trade-promotion deductions eroding realised revenue.",
+    },
+    "r2r_expert": {
+        "name": "R2R (Record-to-Report) Expert Agent", "icon": "📒", "status": "planned",
+        "purpose": "Record-to-Report transformation — general accounting, reconciliations, fixed assets, intercompany, a faster month-end close, consolidation and MIS/board reporting.",
+        "business_types": ["manufacturing", "wholesale", "services", "all"],
+        "inputs_required": ["Close calendar", "Reconciliation status", "Chart of accounts", "MIS pack"],
+        "tools_connected": ["Close tracker", "Reconciliation engine", "MIS builder", "Fixed-asset register"],
+        "erp_modules": ["finance", "master_data", "audit_logs", "approvals"],
+        "notion_databases": ["kpi_db", "compliance_tracker", "sop_repo", "decision_history"],
+        "kpis_improved": ["Days to close", "Reconciliations complete %", "Audit adjustments", "MIS turnaround"],
+        "example_scenario": "Manufacturer takes 18 days to close the books, with unreconciled bank/GST ledgers and no monthly MIS for the owner.",
+    },
     "cyber_dpdp": {
         "name": "Cyber & Data Protection Agent", "icon": "🔐", "status": "planned",
         "purpose": "Cybersecurity posture + India data-protection compliance (DPDP Act 2023, CERT-In) — consent & privacy, breach response, access controls, and a practical hardening plan for an MSME.",
@@ -2604,6 +2626,182 @@ def gen_cyber_dpdp(scenario: dict, cls: dict) -> dict:
 
 
 # ============================================================
+# 13u. FLAGSHIP GENERATOR — O2C (ORDER-TO-CASH) EXPERT
+# ============================================================
+def gen_o2c_expert(scenario: dict, cls: dict) -> dict:
+    desc = scenario.get("description", "")
+    data = scenario.get("data", {})
+    try:
+        dso = float(str(data.get("dso_days") or 0).replace(",", "").strip())
+    except Exception:
+        dso = 0
+    dso_txt = f"{dso:.0f} days" if dso else "high"
+
+    risks = [
+        {"risk": "Receivables stretched well beyond terms — cash trapped in debtors", "severity": "Critical" if dso >= 60 else "High", "likelihood": "High",
+         "control": "Ageing-based collection cadence; enforce credit terms; TReDS/bill-discounting for large dues.", "owner": "AR/Collections", "cite": "sec_43b_h"},
+        {"risk": "Unapplied / on-account cash — payments not matched to invoices", "severity": "High", "likelihood": "Medium",
+         "control": "Auto cash-application (UTR/UPI/remittance matching); daily unapplied-cash clearance.", "owner": "Cash App", "cite": "benchmark_ar"},
+        {"risk": "Revenue leakage via pricing/short-payment/trade-promo deductions", "severity": "High", "likelihood": "Medium",
+         "control": "Deduction taxonomy + dispute workflow; recover invalid claims; root-cause repeat deductions.", "owner": "AR/Sales", "cite": "benchmark_ar"},
+        {"risk": "Credit extended without assessment → bad-debt + concentration risk", "severity": "High", "likelihood": "Medium",
+         "control": "Credit scorecard + limits per customer; periodic credit review; block orders over limit.", "owner": "Credit", "cite": "rbi_msme"},
+        {"risk": "Billing/e-invoicing & tax errors → ITC denial to customer + GST notices", "severity": "High", "likelihood": "Medium",
+         "control": "E-invoicing (IRN/QR), HSN & GST-rate validation at billing, recon vs GSTR-1.", "owner": "Billing", "cite": "einvoice"},
+    ]
+
+    return {
+        "business_context": f"{cls['size'].title()} {cls['industry'].replace('_',' ')} business running an Order-to-Cash diagnostic — "
+                            f"DSO is {dso_txt} and cash is trapped across credit, collections, cash-application and disputes.",
+        "assumptions": [
+            "O2C is run as one value stream: customer master → credit → order → billing → AR → cash application → deductions → revenue assurance.",
+            "The fastest cash release for an MSME is collections + cash-application discipline, not new sales.",
+            "MSMED Act 45-day payment terms + Sec 43B(h) disallowance are live levers in India.",
+        ],
+        "required_data": [
+            {"item": "AR ageing (0-30/31-60/61-90/90+) by customer", "have": bool(data), "why": "Target the oldest, largest exposures first."},
+            {"item": "DSO + collection effectiveness index", "have": dso > 0, "why": "Quantify the cash trapped vs terms."},
+            {"item": "Deductions / disputes log", "have": False, "why": "Size revenue leakage and recover invalid claims."},
+            {"item": "Credit policy + limits", "have": False, "why": "Spot un-assessed credit and concentration."},
+        ],
+        "clarifying_questions": [
+            "What are your standard credit terms, and what is the actual average days-to-collect?",
+            "How much cash is sitting unapplied / on-account right now?",
+            "What % of invoiced revenue is lost to deductions, short-payments or returns?",
+        ],
+        "analysis": {
+            "framework": "O2C value-stream diagnostic across 8 sub-processes with a cash-release and revenue-assurance lens.",
+            "subprocesses": ["Customer master & credit", "Order management", "Billing & e-invoicing", "Accounts receivable", "Cash application", "Deductions & disputes", "Collections strategy", "Revenue assurance"],
+            "cash_release_levers": ["Collect oldest 20% of invoices", "Clear unapplied cash daily", "Recover invalid deductions", "Enforce credit limits", "TReDS-discount large receivables"],
+            "dso": dso or "unknown",
+            "cash_conversion_note": "Every 10-day DSO cut on a ₹10 cr book frees roughly ₹27 lakh of cash.",
+        },
+        "risks": risks,
+        "recommendations": [
+            "Stand up an ageing-driven collections cadence and chase the oldest, largest 20% of invoices first.",
+            "Automate cash application (UTR/UPI/remittance matching) and clear unapplied cash every day.",
+            "Build a deduction taxonomy + dispute workflow to plug revenue leakage and recover invalid claims.",
+            "Introduce a credit scorecard with per-customer limits and auto-block orders that breach them.",
+            "Tighten billing: e-invoicing with HSN/GST-rate validation and a GSTR-1 reconciliation so customers get clean ITC.",
+        ],
+        "action_plan": [
+            {"step": "Pull AR ageing; segment & prioritise top overdue accounts", "owner": "AR lead", "timeline": "Week 1", "system": "receivables"},
+            {"step": "Stand up collections cadence + promise-to-pay tracking", "owner": "Collections", "timeline": "Week 1-2", "system": "receivables"},
+            {"step": "Deploy cash-application matching; clear unapplied cash", "owner": "Cash App", "timeline": "Week 2-3", "system": "finance"},
+            {"step": "Credit scorecard + limits; e-invoicing validation", "owner": "Credit/Billing", "timeline": "Week 3-5", "system": "billing"},
+        ],
+        "erp_impact": [
+            {"module": "customers", "change": "Customer master with credit limits, terms and risk grade; block orders over limit."},
+            {"module": "receivables", "change": "Ageing buckets, promise-to-pay, deduction/dispute codes and collection workflow."},
+            {"module": "billing", "change": "E-invoicing (IRN/QR) + HSN/GST validation at invoice creation."},
+            {"module": "finance", "change": "Auto cash-application + daily unapplied-cash clearing."},
+        ],
+        "notion_update": [
+            {"database": "kpi_db", "entry": "DSO, collection effectiveness, unapplied cash, deduction/leakage %."},
+            {"database": "risk_register", "entries": [r["risk"] for r in risks]},
+            {"database": "compliance_tracker", "entry": "E-invoicing + GSTR-1 reconciliation cadence."},
+        ],
+        "compliance_impact": "Clean billing and e-invoicing protect customer ITC and avoid GST notices; the MSMED Act 45-day rule and Section 43B(h) (disallowance of deductions for delayed MSME payments) make tight receivables both a cash and a tax matter.",
+        "kpis_to_monitor": [
+            {"kpi": "DSO", "current": dso or "TBD", "target": "< 45 days", "source": "AR ageing"},
+            {"kpi": "Collection effectiveness index", "current": "TBD", "target": "> 90%", "source": "Collections"},
+            {"kpi": "Unapplied cash", "current": "TBD", "target": "~0", "source": "Cash application"},
+            {"kpi": "Revenue leakage %", "current": "TBD", "target": "< 1%", "source": "Deductions log"},
+        ],
+        "citations": _cite(*(["sec_43b_h", "msmed_act", "einvoice", "benchmark_ar", "rbi_msme"] + compliance_for(cls))),
+        "human_approval_points": ["Owner sign-off on credit policy/limits and on write-off of any uncollectible balances."],
+    }
+
+
+# ============================================================
+# 13v. FLAGSHIP GENERATOR — R2R (RECORD-TO-REPORT) EXPERT
+# ============================================================
+def gen_r2r_expert(scenario: dict, cls: dict) -> dict:
+    desc = scenario.get("description", "")
+    data = scenario.get("data", {})
+    try:
+        close_days = float(str(data.get("close_days") or 0).replace(",", "").strip())
+    except Exception:
+        close_days = 0
+    close_txt = f"{close_days:.0f} days" if close_days else "slow / unpredictable"
+
+    risks = [
+        {"risk": "Slow, manual month-end close → owner/board flies blind for weeks", "severity": "High" if close_days >= 10 or not close_days else "Medium", "likelihood": "High",
+         "control": "Close calendar with owners + cut-off discipline; standard checklists; target a 5-day close.", "owner": "Finance", "cite": "companies_act"},
+        {"risk": "Unreconciled bank / GST / vendor / customer ledgers → wrong numbers + audit pain", "severity": "High", "likelihood": "High",
+         "control": "Monthly reconciliation of bank, GST (2B vs books), AR/AP; investigate & clear breaks.", "owner": "Accounts", "cite": "gst_portal"},
+        {"risk": "Fixed assets / depreciation not maintained per Companies Act Schedule II", "severity": "Medium", "likelihood": "Medium",
+         "control": "Fixed-asset register with componentised useful-life depreciation; tag & verify assets.", "owner": "Finance", "cite": "companies_act"},
+        {"risk": "No monthly MIS → decisions made on gut, not margin", "severity": "High", "likelihood": "High",
+         "control": "Standard MIS pack (P&L, cash, AR/AP, KPIs) within 5 working days of month-end.", "owner": "Finance", "cite": "benchmark_ar"},
+        {"risk": "Weak accruals / cut-off → profit misstated period-to-period", "severity": "Medium", "likelihood": "Medium",
+         "control": "Accrual & prepaid schedules; revenue/expense cut-off rules at close.", "owner": "Accounts", "cite": "income_tax"},
+    ]
+
+    return {
+        "business_context": f"{cls['size'].title()} {cls['industry'].replace('_',' ')} business running a Record-to-Report diagnostic — "
+                            f"month-end close is {close_txt}, with reconciliation gaps and limited MIS for decisions.",
+        "assumptions": [
+            "R2R is run as one chain: journals/accruals → reconciliations → fixed assets/intercompany → close → consolidation → reporting.",
+            "A reliable, fast close + monthly MIS is the highest-leverage finance habit for an MSME owner.",
+            "Indian GAAP / Companies Act Schedule III presentation and Schedule II depreciation apply.",
+        ],
+        "required_data": [
+            {"item": "Current close calendar + days-to-close", "have": close_days > 0, "why": "Baseline the close and find bottlenecks."},
+            {"item": "Reconciliation status (bank/GST/AR/AP)", "have": False, "why": "Find unreconciled, unreliable balances."},
+            {"item": "Chart of accounts + trial balance", "have": False, "why": "Assess structure and reporting readiness."},
+            {"item": "Existing MIS pack (if any)", "have": False, "why": "Gap vs a decision-useful monthly pack."},
+        ],
+        "clarifying_questions": [
+            "How many days after month-end do you actually finalise the books?",
+            "Are bank and GST (2B vs books) reconciled every month, and who owns the breaks?",
+            "Do you get a monthly MIS (P&L, cash, AR/AP, KPIs), and how soon after close?",
+        ],
+        "analysis": {
+            "framework": "R2R maturity diagnostic across general accounting, reconciliations, fixed assets, intercompany, close, consolidation and reporting.",
+            "subprocesses": ["General accounting & accruals", "Reconciliations", "Fixed assets & depreciation", "Intercompany", "Month-end close", "Consolidation", "Financial & MIS reporting"],
+            "close_accelerators": ["Close calendar + owners", "Standard recon templates", "Cut-off & accrual rules", "Pre-close housekeeping", "Exception-only review"],
+            "days_to_close": close_days or "unknown",
+            "target": "5-working-day close + MIS within 5 days of month-end.",
+        },
+        "risks": risks,
+        "recommendations": [
+            "Put in a close calendar with named owners and cut-off discipline; target a 5-working-day close.",
+            "Reconcile bank, GST (2B vs books) and AR/AP every month and clear breaks — no carried-forward unknowns.",
+            "Maintain a fixed-asset register with Schedule II componentised depreciation and periodic physical verification.",
+            "Publish a standard monthly MIS (P&L, cash, AR/AP, KPIs) within 5 days so the owner decides on facts.",
+            "Add accrual/prepaid schedules and cut-off rules so monthly profit is real, not lumpy.",
+        ],
+        "action_plan": [
+            {"step": "Build close calendar + checklist with owners", "owner": "Finance lead", "timeline": "Week 1", "system": "finance"},
+            {"step": "Stand up monthly reconciliations (bank/GST/AR/AP)", "owner": "Accounts", "timeline": "Week 1-3", "system": "finance"},
+            {"step": "Create fixed-asset register + depreciation schedule", "owner": "Finance", "timeline": "Week 2-4", "system": "master_data"},
+            {"step": "Design & issue the standard monthly MIS pack", "owner": "Finance", "timeline": "Week 3-5", "system": "finance"},
+        ],
+        "erp_impact": [
+            {"module": "finance", "change": "Close calendar, recon workspaces, accrual/prepaid schedules and the MIS pack."},
+            {"module": "master_data", "change": "Fixed-asset register with useful-life depreciation per Schedule II."},
+            {"module": "audit_logs", "change": "Lock periods post-close; log late journals and master-data edits."},
+            {"module": "approvals", "change": "Maker-checker on journals, write-offs and master-data changes."},
+        ],
+        "notion_update": [
+            {"database": "kpi_db", "entry": "Days-to-close, reconciliations complete %, audit adjustments, MIS turnaround."},
+            {"database": "compliance_tracker", "entry": "Statutory reporting (Schedule III, ROC AOC-4) tied to the close."},
+            {"database": "sop_repo", "entry": "Close checklist, reconciliation and MIS SOPs."},
+        ],
+        "compliance_impact": "A reliable close underpins accurate GST/TDS/income-tax filings, Companies Act Schedule III financials and Schedule II depreciation, and a clean statutory audit — and is a prerequisite for lender/investor due diligence.",
+        "kpis_to_monitor": [
+            {"kpi": "Days to close", "current": close_days or "TBD", "target": "≤ 5 days", "source": "Close calendar"},
+            {"kpi": "Reconciliations complete %", "current": "TBD", "target": "100%", "source": "Recon tracker"},
+            {"kpi": "Audit adjustments", "current": "TBD", "target": "→ 0", "source": "Audit"},
+            {"kpi": "MIS turnaround", "current": "TBD", "target": "< 5 days", "source": "Finance"},
+        ],
+        "citations": _cite(*(["companies_act", "gst_portal", "income_tax", "benchmark_ar"] + compliance_for(cls))),
+        "human_approval_points": ["Owner/auditor sign-off on accounting policies, depreciation rates and any write-offs."],
+    }
+
+
+# ============================================================
 # 14. WIRE GENERATORS → REGISTRY + DISPATCHER
 # ============================================================
 _GENERATORS = {
@@ -2629,6 +2827,8 @@ _GENERATORS = {
     "legal_contracts": gen_legal_contracts,
     "sustainability_esg": gen_sustainability_esg,
     "cyber_dpdp": gen_cyber_dpdp,
+    "o2c_expert": gen_o2c_expert,
+    "r2r_expert": gen_r2r_expert,
 }
 for _k, _fn in _GENERATORS.items():
     MSME_AGENTS[_k]["generator"] = _fn
@@ -2661,6 +2861,8 @@ AGENT_UX = {
     "investor_readiness": {"category": "Risk & Diligence",      "modes": ["startup"],             "service_line": "Deals & Private Capital"},
     "sustainability_esg": {"category": "Sustainability",        "modes": ["startup", "existing"], "service_line": "Sustainability & Climate"},
     "cyber_dpdp":         {"category": "Technology & Cyber",    "modes": ["startup", "existing"], "service_line": "Technology, Data, AI & Cyber"},
+    "o2c_expert":         {"category": "Finance & Compliance",  "modes": ["existing"],            "service_line": "Finance, Risk & Resilience"},
+    "r2r_expert":         {"category": "Finance & Compliance",  "modes": ["existing"],            "service_line": "Finance, Risk & Resilience"},
 }
 
 # The nine consulting service-line families from the Big 3 / Big 4 practice taxonomy.
@@ -2976,6 +3178,20 @@ SCENARIO_TESTS = [
         "expect_keywords": ["dpdp", "consent", "mfa", "breach", "backup"],
         "expect_citations": ["dpdp", "certin"],
         "expect_severity": "Critical",
+    },
+    {
+        "agent": "o2c_expert",
+        "scenario": {"description": "Distributor with a 68-day DSO, unapplied cash and trade-promotion deductions eroding realised revenue", "data": {"dso_days": 68}},
+        "expect_keywords": ["dso", "collection", "cash applic", "deduction", "credit"],
+        "expect_citations": ["sec_43b_h", "einvoice"],
+        "expect_severity": "Critical",
+    },
+    {
+        "agent": "r2r_expert",
+        "scenario": {"description": "Manufacturer takes 18 days to close the books with unreconciled bank and GST ledgers and no monthly MIS", "data": {"close_days": 18}},
+        "expect_keywords": ["close", "reconcil", "mis", "fixed asset", "accrual"],
+        "expect_citations": ["companies_act", "gst_portal"],
+        "expect_severity": "High",
     },
 ]
 

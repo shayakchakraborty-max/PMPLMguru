@@ -75,6 +75,7 @@ export default function LandingPage() {
             <a href="/ceo" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">CEO Office</a>
             <a href="#practices" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Practices</a>
             <a href="/experts" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Experts</a>
+            <a href="/catalog" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Services</a>
             <a href="/process" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Process Map</a>
             <a href="/schemes" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Schemes</a>
             <a href="/monitor" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Monitor</a>
@@ -190,6 +191,20 @@ export default function LandingPage() {
             </span>
           ))}
         </div>
+      </section>
+
+      {/* Consulting Service Catalog banner */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-4">
+        <a href="/catalog" className="group block rounded-3xl border-2 border-slate-200 hover:border-indigo-400 bg-gradient-to-r from-slate-900 to-indigo-900 text-white p-6 sm:p-8 shadow-sm hover:shadow-2xl transition">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <div className="text-xs font-semibold text-indigo-200 uppercase tracking-wide">Consulting Service Portfolio</div>
+              <div className="text-xl sm:text-2xl font-black mt-1">Everything a Big-4 firm sells — 16 towers, 90+ service lines, delivered by AI advisors</div>
+              <p className="text-indigo-100 text-sm mt-1 max-w-2xl">Strategy, Finance, O2C, P2P, R2R, Tax, Risk, Legal, Supply Chain, Technology, ESG and more — organised as Towers → Service Lines → Workflows. Describe your problem and get routed to the right advisor.</p>
+            </div>
+            <span className="shrink-0 px-6 py-3 bg-white text-indigo-700 rounded-xl font-black group-hover:opacity-90 transition">Browse services →</span>
+          </div>
+        </a>
       </section>
 
       {/* Process & Value-Stream Copilot banner */}

@@ -83,6 +83,12 @@ except Exception as _e:
     print(f"[process_map] not loaded: {_e}", flush=True)
 
 try:
+    import consulting_catalog as CATALOG
+except Exception as _e:
+    CATALOG = None
+    print(f"[consulting_catalog] not loaded: {_e}", flush=True)
+
+try:
     import llm_stack as LLM
 except Exception as _e:
     LLM = None
@@ -3480,6 +3486,11 @@ class Handler(BaseHTTPRequestHandler):
                 "process_map": ({"lanes": [l for l, _ in PROCESS._LANES],
                                  "team_roles": 5,
                                  "endpoints": ["POST /process", "GET /process/meta", "GET /process/tests"]} if PROCESS else "not loaded"),
+                "consulting_catalog": ({"towers": len(CATALOG.TOWERS),
+                                        "service_lines": sum(len(t["service_lines"]) for t in CATALOG.TOWERS),
+                                        "workflows": sum(len(s["workflows"]) for t in CATALOG.TOWERS for s in t["service_lines"]),
+                                        "ai_advisors": len(CATALOG.AI_ADVISORS),
+                                        "endpoints": ["GET /catalog", "GET /catalog/coverage", "GET /catalog/meta", "POST /catalog/resolve"]} if CATALOG else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3605,6 +3616,26 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "process_map module not loaded"})
                 return
             self._send(200, PROCESS.run_process_tests())
+        elif path == "/catalog":
+            if not CATALOG:
+                self._send(200, {"error": "consulting_catalog module not loaded"})
+                return
+            self._send(200, CATALOG.catalog())
+        elif path == "/catalog/coverage":
+            if not CATALOG:
+                self._send(200, {"error": "consulting_catalog module not loaded"})
+                return
+            self._send(200, CATALOG.coverage())
+        elif path == "/catalog/meta":
+            if not CATALOG:
+                self._send(200, {"error": "consulting_catalog module not loaded"})
+                return
+            self._send(200, CATALOG.meta())
+        elif path == "/catalog/tests":
+            if not CATALOG:
+                self._send(200, {"error": "consulting_catalog module not loaded"})
+                return
+            self._send(200, CATALOG.run_catalog_tests())
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3672,6 +3703,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_experts(body)
             elif path in ("/process", "/process-map", "/vsm"):
                 self.handle_process(body)
+            elif path in ("/catalog/resolve", "/catalog/route"):
+                self.handle_catalog_resolve(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -3927,6 +3960,19 @@ class Handler(BaseHTTPRequestHandler):
             if res.get("text"):
                 brief, engine = res["text"].strip(), f"groq:{res.get('provider', 'llm')}"
         out["partner_brief"] = {"engine": engine, "narrative": brief}
+
+    def handle_catalog_resolve(self, body):
+        """Route a free-text consulting need to the right tower / service line / workflow
+        + the delivering AI advisor agent (deterministic)."""
+        if not CATALOG:
+            self._send(200, {"error": "consulting_catalog module not loaded"})
+            return
+        q = (body.get("query") or body.get("description") or body.get("need") or "").strip()
+        if not q:
+            self._send(200, {"error": "Describe the consulting need to route it."})
+            return
+        print(f"[catalog] resolve: {q[:60]}", flush=True)
+        self._send(200, CATALOG.resolve(q))
 
     def handle_monitor(self, body):
         """Monitoring / Business Command Center: KPI snapshot + profile ->
