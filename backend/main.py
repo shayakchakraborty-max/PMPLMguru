@@ -16,7 +16,7 @@ import os
 import re
 import sys
 import traceback
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
 
 try:
     sys.stdout.reconfigure(line_buffering=True)
@@ -87,6 +87,18 @@ try:
 except Exception as _e:
     CATALOG = None
     print(f"[consulting_catalog] not loaded: {_e}", flush=True)
+
+try:
+    import orchestrator as ORCH
+except Exception as _e:
+    ORCH = None
+    print(f"[orchestrator] not loaded: {_e}", flush=True)
+
+try:
+    import situations as SITUATIONS
+except Exception as _e:
+    SITUATIONS = None
+    print(f"[situations] not loaded: {_e}", flush=True)
 
 try:
     import llm_stack as LLM
@@ -3491,6 +3503,10 @@ class Handler(BaseHTTPRequestHandler):
                                         "workflows": sum(len(s["workflows"]) for t in CATALOG.TOWERS for s in t["service_lines"]),
                                         "ai_advisors": len(CATALOG.AI_ADVISORS),
                                         "endpoints": ["GET /catalog", "GET /catalog/coverage", "GET /catalog/meta", "POST /catalog/resolve"]} if CATALOG else "not loaded"),
+                "orchestrator": ({"max_workstreams": 6,
+                                  "endpoints": ["POST /orchestrate", "GET /orchestrate/meta", "GET /orchestrate/tests"]} if ORCH else "not loaded"),
+                "situations": ({"count": len(SITUATIONS.SITUATIONS),
+                                "endpoints": ["GET /situations", "GET /situations/meta"]} if SITUATIONS else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3636,6 +3652,26 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "consulting_catalog module not loaded"})
                 return
             self._send(200, CATALOG.run_catalog_tests())
+        elif path == "/orchestrate/meta":
+            if not ORCH:
+                self._send(200, {"error": "orchestrator module not loaded"})
+                return
+            self._send(200, ORCH.meta())
+        elif path == "/orchestrate/tests":
+            if not ORCH:
+                self._send(200, {"error": "orchestrator module not loaded"})
+                return
+            self._send(200, ORCH.run_orchestrator_tests())
+        elif path in ("/situations", "/situations/list"):
+            if not SITUATIONS:
+                self._send(200, {"error": "situations module not loaded"})
+                return
+            self._send(200, SITUATIONS.situations())
+        elif path == "/situations/meta":
+            if not SITUATIONS:
+                self._send(200, {"error": "situations module not loaded"})
+                return
+            self._send(200, SITUATIONS.meta())
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3705,6 +3741,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_process(body)
             elif path in ("/catalog/resolve", "/catalog/route"):
                 self.handle_catalog_resolve(body)
+            elif path in ("/orchestrate", "/engage", "/superagent"):
+                self.handle_orchestrate(body)
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -3960,6 +3998,38 @@ class Handler(BaseHTTPRequestHandler):
             if res.get("text"):
                 brief, engine = res["text"].strip(), f"groq:{res.get('provider', 'llm')}"
         out["partner_brief"] = {"engine": engine, "narrative": brief}
+
+    def handle_orchestrate(self, body):
+        """Managing-Partner super-agent: one problem (+ ERP-style intake) -> a curated,
+        multi-workstream Big-4-style engagement. Deterministic core; optional Groq
+        'managing_partner_brief' narrative layered on best-effort."""
+        if not ORCH:
+            self._send(200, {"error": "orchestrator module not loaded"})
+            return
+        out = ORCH.orchestrate(body)
+        if not out.get("error") and body.get("deep", True):
+            try:
+                self._orchestrate_brief(out)
+            except Exception as e:
+                print(f"[orchestrate] brief failed: {str(e)[:160]}", flush=True)
+        print(f"[orchestrate] {out.get('title','')[:40]} team={[w.get('agent') for w in out.get('workstreams',[])]}", flush=True)
+        self._send(200, out)
+
+    def _orchestrate_brief(self, out):
+        """Best-effort Groq narrative in the voice of the Managing Partner."""
+        engine, brief = "deterministic", None
+        if LLM and LLM.available():
+            recs = "; ".join(r.get("text", "")[:90] for r in (out.get("recommendations") or [])[:4]) or "n/a"
+            risks = "; ".join(r.get("risk", "")[:80] for r in (out.get("risks") or [])[:3]) or "n/a"
+            system = ("You are the Managing Partner of a top consulting firm presenting to an Indian MSME owner. "
+                      "In 4-5 tight sentences give the so-what: the situation, the 2-3 moves that matter most, "
+                      "the prize, and the first 90 days. India-aware (₹), concrete, no hype. Plain text only.")
+            user = (f"BUSINESS: {out.get('title')} ({out.get('sector')})\nPOSTURE: {out.get('diagnosis',{}).get('posture')}\n"
+                    f"TOP RECOMMENDATIONS: {recs}\nTOP RISKS: {risks}\n\nWrite the partner brief.")
+            res = LLM.augment(system, user, max_tokens=380)
+            if res.get("text"):
+                brief, engine = res["text"].strip(), f"groq:{res.get('provider','llm')}"
+        out["managing_partner_brief"] = {"engine": engine, "narrative": brief}
 
     def handle_catalog_resolve(self, body):
         """Route a free-text consulting need to the right tower / service line / workflow
@@ -5154,4 +5224,6 @@ if __name__ == "__main__":
     print(f"PLM phases: {[p['name'] for p in PLM_PHASE_SPECS]}", flush=True)
     print(f"GROQ_API_KEY set: {bool(os.getenv('GROQ_API_KEY', '').strip())}", flush=True)
     print("=" * 60, flush=True)
-    HTTPServer(("0.0.0.0", port), Handler).serve_forever()
+    # ThreadingHTTPServer so concurrent requests (e.g. the Engage page loads situations
+    # while running an engagement) are handled in parallel instead of dropped.
+    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
