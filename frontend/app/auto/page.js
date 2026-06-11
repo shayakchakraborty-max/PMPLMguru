@@ -75,6 +75,7 @@ export default function LandingPage() {
             <a href="/ceo" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">CEO Office</a>
             <a href="#practices" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Practices</a>
             <a href="/experts" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Experts</a>
+            <a href="/market" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Intelligence</a>
             <a href="/engage" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Engage</a>
             <a href="/catalog" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Services</a>
             <a href="/process" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold">Process Map</a>
@@ -192,6 +193,20 @@ export default function LandingPage() {
             </span>
           ))}
         </div>
+      </section>
+
+      {/* MSME Intelligence banner — filter by business type */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-4">
+        <a href="/market" className="group block rounded-3xl border-2 border-emerald-300 bg-gradient-to-r from-emerald-700 via-teal-700 to-cyan-700 text-white p-6 sm:p-8 shadow-md hover:shadow-2xl transition">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <div className="text-xs font-semibold text-emerald-100 uppercase tracking-wide">📊 MSME Intelligence · India 2026</div>
+              <div className="text-xl sm:text-3xl font-black mt-1">Find your business type — market size, margins, benchmarks & the AI advisors that fit</div>
+              <p className="text-emerald-50 text-sm mt-1 max-w-2xl">13 sectors · 39 business types with TAM, EBITDA, CAGR, working-capital benchmarks, key risks & KPIs — then one click to a full Big-4-style engagement with sample data.</p>
+            </div>
+            <span className="shrink-0 px-6 py-3 bg-white text-emerald-700 rounded-xl font-black group-hover:opacity-90 transition">Explore by business type →</span>
+          </div>
+        </a>
       </section>
 
       {/* Super-Agent (Engage) banner — the flagship entry */}

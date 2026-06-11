@@ -34,6 +34,12 @@ export default function EngagePage() {
     (async () => {
       try { const r = await fetch("/api/situations", { cache: "no-store" }); const d = await r.json(); if (!d.error) setSits(d); } catch {}
     })();
+    // Auto-run an engagement handed off from the Intelligence landing (/market).
+    try {
+      const pf = JSON.parse(localStorage.getItem("pmguru_prefill") || "null");
+      if (pf?.description) { localStorage.removeItem("pmguru_prefill"); runEngagement({ description: pf.description, intake: pf.intake || {} }); }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function persist(next) { setThreads(next); try { localStorage.setItem(LS, JSON.stringify(next)); } catch {} }

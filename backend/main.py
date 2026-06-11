@@ -101,6 +101,12 @@ except Exception as _e:
     print(f"[situations] not loaded: {_e}", flush=True)
 
 try:
+    import market_intel as MARKET
+except Exception as _e:
+    MARKET = None
+    print(f"[market_intel] not loaded: {_e}", flush=True)
+
+try:
     import llm_stack as LLM
 except Exception as _e:
     LLM = None
@@ -3507,6 +3513,9 @@ class Handler(BaseHTTPRequestHandler):
                                   "endpoints": ["POST /orchestrate", "GET /orchestrate/meta", "GET /orchestrate/tests"]} if ORCH else "not loaded"),
                 "situations": ({"count": len(SITUATIONS.SITUATIONS),
                                 "endpoints": ["GET /situations", "GET /situations/meta"]} if SITUATIONS else "not loaded"),
+                "market_intel": ({"sectors": len(MARKET.SECTORS),
+                                  "segments": sum(len(v) for v in MARKET.SEGMENTS.values()),
+                                  "endpoints": ["GET /market/sectors", "GET /market/segments", "POST /market/lookup"]} if MARKET else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3672,6 +3681,26 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "situations module not loaded"})
                 return
             self._send(200, SITUATIONS.meta())
+        elif path in ("/market/sectors", "/market"):
+            if not MARKET:
+                self._send(200, {"error": "market_intel module not loaded"})
+                return
+            self._send(200, MARKET.sectors())
+        elif path == "/market/segments":
+            if not MARKET:
+                self._send(200, {"error": "market_intel module not loaded"})
+                return
+            self._send(200, MARKET.segments(self.path.split("sector=")[1].split("&")[0] if "sector=" in self.path else None))
+        elif path == "/market/meta":
+            if not MARKET:
+                self._send(200, {"error": "market_intel module not loaded"})
+                return
+            self._send(200, MARKET.meta())
+        elif path == "/market/tests":
+            if not MARKET:
+                self._send(200, {"error": "market_intel module not loaded"})
+                return
+            self._send(200, MARKET.run_market_tests())
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3743,6 +3772,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_catalog_resolve(body)
             elif path in ("/orchestrate", "/engage", "/superagent"):
                 self.handle_orchestrate(body)
+            elif path in ("/market/lookup", "/market/intel"):
+                if not MARKET:
+                    self._send(200, {"error": "market_intel module not loaded"})
+                else:
+                    self._send(200, MARKET.lookup(body))
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
