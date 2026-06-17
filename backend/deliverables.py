@@ -106,17 +106,74 @@ def build_memo(report):
     return {"markdown": "\n".join(md)}
 
 
+def build_pptx(report):
+    """Native .pptx (base64) when python-pptx is installed; else a graceful flag so the
+    caller falls back to the Markdown deck. Consumes the same slide model as build_deck."""
+    deck = build_deck(report)
+    if deck.get("error"):
+        return deck
+    try:
+        import io
+        import base64
+        from pptx import Presentation
+        from pptx.util import Inches, Pt
+    except Exception:
+        return {**deck, "pptx_available": False,
+                "note": "Native .pptx needs python-pptx (added at deploy). Markdown deck returned instead."}
+    try:
+        prs = Presentation()
+        blank, bullet = prs.slide_layouts[6], prs.slide_layouts[1]
+        for s in deck["slides"]:
+            if s["type"] == "cover":
+                slide = prs.slides.add_slide(prs.slide_layouts[0])
+                slide.shapes.title.text = s["title"]
+                if slide.placeholders and len(slide.placeholders) > 1:
+                    slide.placeholders[1].text = (s["content"].get("subtitle", "") + ("  ·  " + (s["content"].get("posture") or "")).rstrip(" ·"))
+                continue
+            slide = prs.slides.add_slide(bullet)
+            slide.shapes.title.text = f"{s['n']}. {s['title']}"
+            body = slide.placeholders[1].text_frame
+            c = s["content"]
+            if s["type"] in ("bullets", "numbered"):
+                items = [x for x in (c or []) if x]
+                body.text = items[0] if items else ""
+                for it in items[1:]:
+                    p = body.add_paragraph(); p.text = it
+            elif s["type"] == "table":
+                body.text = " | ".join(c.get("columns", []))
+                for row in c.get("rows", []):
+                    p = body.add_paragraph(); p.text = " | ".join(str(x) for x in row)
+        buf = io.BytesIO(); prs.save(buf)
+        return {"kind": "pptx", "pptx_available": True,
+                "filename": (report.get("title", "engagement").replace(" ", "_")[:40] + "_deck.pptx"),
+                "pptx_base64": base64.b64encode(buf.getvalue()).decode("ascii"),
+                "slide_count": deck["slide_count"]}
+    except Exception as e:  # pragma: no cover
+        return {**deck, "pptx_available": False, "note": f"pptx build failed ({e}); Markdown deck returned."}
+
+
 def generate(body):
     report = (body or {}).get("report") or {}
     kind = (body or {}).get("kind", "deck")
     if kind == "memo":
         return {"kind": "memo", **build_memo(report)}
+    if kind == "pptx":
+        return build_pptx(report)
     return {"kind": "deck", **build_deck(report)}
 
 
+def _pptx_available():
+    try:
+        import pptx  # noqa
+        return True
+    except Exception:
+        return False
+
+
 def meta():
-    return {"kinds": ["deck", "memo"], "deck_slides": 10,
-            "formats": ["markdown", "html-print"], "pending": ["pptx", "docx"],
+    return {"kinds": ["deck", "memo", "pptx"], "deck_slides": 10,
+            "formats": ["markdown", "html-print"] + (["pptx"] if _pptx_available() else []),
+            "pptx_available": _pptx_available(), "pending": [] if _pptx_available() else ["pptx (python-pptx at deploy)"],
             "endpoints": ["POST /deliverable", "GET /deliverable/meta", "GET /deliverable/tests"]}
 
 
@@ -140,6 +197,9 @@ def run_deliverable_tests():
     cases.append(("deck_tables", "| Timeline | Action | Owner |" in d["markdown"] and "| Risk | Severity | Control |" in d["markdown"]))
     m = build_memo(rep)
     cases.append(("memo", "Executive memo" in m["markdown"] and "Collect the oldest" in m["markdown"]))
+    # pptx: native when python-pptx present, else graceful deck fallback (both valid)
+    px = build_pptx(rep)
+    cases.append(("pptx", bool(px.get("pptx_base64")) or (px.get("pptx_available") is False and bool(px.get("markdown")))))
     passed = sum(1 for _, ok in cases if ok)
     return {"summary": {"total": len(cases), "passed": passed, "deployment_ready": passed == len(cases)},
             "results": [{"case": n, "ok": ok} for n, ok in cases]}

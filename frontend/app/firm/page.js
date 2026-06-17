@@ -12,6 +12,9 @@ function ownerId() {
   catch { return "demo"; }
 }
 
+const NEXT_APPROVER = { junior_consultant: "Consultant", consultant: "Senior Consultant", senior_consultant: "Engagement Manager", engagement_manager: "Engagement Director", engagement_director: "Partner" };
+const APPR_LABEL = (role) => NEXT_APPROVER[role] || "approver";
+
 export default function FirmPage() {
   const [rbac, setRbac] = useState(null);
   const [role, setRole] = useState("senior_partner");
@@ -20,7 +23,9 @@ export default function FirmPage() {
   const [ex, setEx] = useState(null);
   const [err, setErr] = useState("");
   const [tsForm, setTsForm] = useState({ engagement_id: "", role: "consultant", hours: "", billable: true, activity: "" });
-  const [exForm, setExForm] = useState({ engagement_id: "", category: "Travel", amount: "", billable: true, note: "" });
+  const [exForm, setExForm] = useState({ engagement_id: "", category: "Travel", amount: "", billable: true, note: "", receipt: "", ocr_engine: "" });
+  const [appr, setAppr] = useState(null);
+  const [ocrMsg, setOcrMsg] = useState("");
 
   async function load() {
     const o = encodeURIComponent(ownerId());
@@ -33,7 +38,29 @@ export default function FirmPage() {
       if (c.error) setErr(c.error); else { setCk(c); setTs(t); setEx(e); }
     } catch (e) { setErr(e.message); }
   }
+  async function loadApprovals(r) {
+    try { const res = await fetch(`/api/firm?view=approvals&owner=${encodeURIComponent(ownerId())}&role=${encodeURIComponent(r)}`, { cache: "no-store" }); setAppr(await res.json()); } catch {}
+  }
   useEffect(() => { (async () => { try { const r = await fetch("/api/firm?view=rbac"); setRbac(await r.json()); } catch {} })(); load(); }, []);
+  useEffect(() => { if (role) loadApprovals(role); }, [role]); // eslint-disable-line
+
+  async function onReceipt(file) {
+    if (!file) return;
+    setOcrMsg("Reading receipt…");
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const b64 = String(reader.result).split(",")[1] || "";
+      try {
+        const r = await fetch("/api/firm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "ocr", image_base64: b64 }) });
+        const d = await r.json();
+        if (d.ok) {
+          setExForm((f) => ({ ...f, amount: d.amount || f.amount, category: d.category || f.category, note: (d.merchant ? `${d.merchant}${d.date ? " · " + d.date : ""}` : f.note), receipt: file.name, ocr_engine: d.engine }));
+          setOcrMsg(`✓ OCR (${d.engine}): ₹${d.amount || "?"} · ${d.category}`);
+        } else { setExForm((f) => ({ ...f, receipt: file.name })); setOcrMsg(d.note || d.error || "Receipt attached — enter amount manually."); }
+      } catch (e) { setOcrMsg("OCR failed; enter manually."); }
+    };
+    reader.readAsDataURL(file);
+  }
 
   const allowed = useMemo(() => new Set((rbac?.role_access?.[role]) || []), [rbac, role]);
   const can = (m) => allowed.has(m);
@@ -45,12 +72,12 @@ export default function FirmPage() {
   }
   async function submitEx() {
     if (!exForm.amount) return;
-    await fetch("/api/firm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "expense", owner: ownerId(), ...exForm }) });
-    setExForm({ ...exForm, amount: "", note: "" }); load();
+    await fetch("/api/firm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "expense", owner: ownerId(), role, ...exForm }) });
+    setExForm({ engagement_id: "", category: "Travel", amount: "", billable: true, note: "", receipt: "", ocr_engine: "" }); setOcrMsg(""); load(); loadApprovals(role);
   }
-  async function approveEx(id) {
-    await fetch("/api/firm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "expense_status", owner: ownerId(), id, status: "Approved" }) });
-    load();
+  async function decideEx(id, status) {
+    await fetch("/api/firm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "expense_status", owner: ownerId(), id, status, approver_role: role }) });
+    load(); loadApprovals(role);
   }
 
   const maxPeriod = Math.max(1, ...((ck?.revenue_by_period || []).map((p) => p.value)));
@@ -184,35 +211,72 @@ export default function FirmPage() {
           </section>
         )}
 
-        {/* Expenses */}
+        {/* Expenses + OCR + approvals */}
         {can("expenses") && ex && (
           <section className="grid md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-2xl border border-slate-200 p-4">
-              <div className="text-[11px] uppercase tracking-wide text-slate-500 font-bold mb-2">🧾 Submit expense</div>
-              <input value={exForm.engagement_id} onChange={(e) => setExForm({ ...exForm, engagement_id: e.target.value })} placeholder="Engagement id (optional)" className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm mb-2" />
-              <div className="flex gap-2 mb-2">
-                <select value={exForm.category} onChange={(e) => setExForm({ ...exForm, category: e.target.value })} className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-sm">
-                  {(ex.categories || []).map((c) => <option key={c}>{c}</option>)}
-                </select>
-                <input value={exForm.amount} onChange={(e) => setExForm({ ...exForm, amount: e.target.value })} placeholder="₹" className="w-24 border border-slate-200 rounded-lg px-2 py-1.5 text-sm" />
+            {/* Submit — everyone EXCEPT partner / senior partner */}
+            {!["partner", "senior_partner"].includes(role) ? (
+              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+                <div className="text-[11px] uppercase tracking-wide text-slate-500 font-bold mb-2">🧾 Submit expense</div>
+                <label className="block mb-2">
+                  <span className="text-[11px] text-indigo-600 font-semibold cursor-pointer">📎 Upload receipt (OCR auto-fills)</span>
+                  <input type="file" accept="image/*,application/pdf" onChange={(e) => onReceipt(e.target.files?.[0])} className="block w-full text-[11px] mt-1" />
+                </label>
+                {ocrMsg && <div className="text-[11px] text-slate-500 mb-2">{ocrMsg}</div>}
+                <input value={exForm.engagement_id} onChange={(e) => setExForm({ ...exForm, engagement_id: e.target.value })} placeholder="Engagement id (optional)" className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm mb-2" />
+                <div className="flex gap-2 mb-2">
+                  <select value={exForm.category} onChange={(e) => setExForm({ ...exForm, category: e.target.value })} className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-sm">
+                    {(ex.categories || []).map((c) => <option key={c}>{c}</option>)}
+                  </select>
+                  <input value={exForm.amount} onChange={(e) => setExForm({ ...exForm, amount: e.target.value })} placeholder="₹" className="w-24 border border-slate-200 rounded-lg px-2 py-1.5 text-sm" />
+                </div>
+                <input value={exForm.note} onChange={(e) => setExForm({ ...exForm, note: e.target.value })} placeholder="Merchant / note" className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm mb-2" />
+                <label className="flex items-center gap-1 text-[12px] mb-2"><input type="checkbox" checked={exForm.billable} onChange={(e) => setExForm({ ...exForm, billable: e.target.checked })} /> billable to client</label>
+                <button onClick={submitEx} className="w-full px-3 py-2 rounded-lg bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500">Submit for approval</button>
+                <p className="text-[10px] text-slate-400 mt-1.5">Routes to your {exForm && APPR_LABEL(role)} for approval.</p>
               </div>
-              <label className="flex items-center gap-1 text-[12px] mb-2"><input type="checkbox" checked={exForm.billable} onChange={(e) => setExForm({ ...exForm, billable: e.target.checked })} /> billable to client</label>
-              <button onClick={submitEx} className="w-full px-3 py-2 rounded-lg bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500">Submit</button>
-            </div>
-            <div className="md:col-span-2 bg-white rounded-2xl border border-slate-200 p-4">
+            ) : (
+              <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 text-[12px] text-slate-500">
+                Partners don’t file expenses here — you <b>approve</b> them. See the approvals queue →
+              </div>
+            )}
+
+            {/* Summary + recent */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-4">
               <div className="flex gap-4 mb-3 text-sm">
                 <div><span className="text-slate-400 text-[11px] uppercase font-bold">Billable</span><div className="text-lg font-black text-emerald-600">{ex.billable_label}</div></div>
-                <div><span className="text-slate-400 text-[11px] uppercase font-bold">Non-billable</span><div className="text-lg font-black text-slate-500">{ex.nonbillable_label}</div></div>
+                <div><span className="text-slate-400 text-[11px] uppercase font-bold">Non-bill</span><div className="text-lg font-black text-slate-500">{ex.nonbillable_label}</div></div>
                 <div><span className="text-slate-400 text-[11px] uppercase font-bold">Pending</span><div className="text-lg font-black text-amber-600">{ex.pending_approval}</div></div>
               </div>
-              <div className="max-h-40 overflow-y-auto text-[12px] space-y-1">
-                {(ex.expenses || []).slice(0, 12).map((e, i) => (
+              <div className="max-h-44 overflow-y-auto text-[12px] space-y-1">
+                {(ex.expenses || []).slice(0, 14).map((e, i) => (
                   <div key={i} className="flex justify-between items-center border-b border-slate-50 py-1">
-                    <span>{e.category} · ₹{e.amount.toLocaleString()} {e.billable ? "" : "(NB)"} {e.engagement_id && <span className="text-slate-400">({e.engagement_id})</span>}</span>
-                    {e.status === "Submitted" ? <button onClick={() => approveEx(e.id)} className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold">Approve</button> : <span className="text-[10px] text-emerald-600 font-bold">{e.status}</span>}
+                    <span>{e.category} · ₹{(e.amount || 0).toLocaleString()} {e.billable ? "" : "(NB)"}</span>
+                    <span className={`text-[10px] font-bold ${e.status === "Approved" ? "text-emerald-600" : e.status === "Rejected" ? "text-rose-600" : "text-amber-600"}`}>{e.status}</span>
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Approvals queue — hierarchy */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-4">
+              <div className="text-[11px] uppercase tracking-wide text-slate-500 font-bold mb-2">✅ Approvals queue · {role.replace(/_/g, " ")}</div>
+              {!appr || appr.count === 0 ? (
+                <p className="text-[12px] text-slate-400">Nothing awaiting your approval.</p>
+              ) : (
+                <div className="max-h-52 overflow-y-auto space-y-2">
+                  {appr.queue.map((e, i) => (
+                    <div key={i} className="border border-slate-100 rounded-lg p-2">
+                      <div className="flex justify-between text-[12px]"><span className="font-semibold">{e.category} · ₹{(e.amount || 0).toLocaleString()}</span><span className="text-slate-400">{(e.submit_role || "").replace(/_/g, " ")}</span></div>
+                      {e.note && <div className="text-[11px] text-slate-500">{e.note}</div>}
+                      <div className="flex gap-1.5 mt-1.5">
+                        <button onClick={() => decideEx(e.id, "Approved")} className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-bold">Approve</button>
+                        <button onClick={() => decideEx(e.id, "Rejected")} className="text-[10px] bg-white border border-rose-200 text-rose-600 px-2 py-0.5 rounded font-bold">Reject</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
         )}

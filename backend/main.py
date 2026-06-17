@@ -3806,6 +3806,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, FIRM.list_timesheets(self._q("owner"), self._q("engagement_id") or None) if FIRM else {"error": "firm_ops not loaded"})
         elif path == "/firm/expenses":
             self._send(200, FIRM.list_expenses(self._q("owner"), self._q("engagement_id") or None) if FIRM else {"error": "firm_ops not loaded"})
+        elif path == "/firm/approvals":
+            self._send(200, FIRM.approvals(self._q("owner"), self._q("role")) if FIRM else {"error": "firm_ops not loaded"})
         elif path == "/firm/meta":
             self._send(200, FIRM.meta() if FIRM else {"error": "firm_ops not loaded"})
         elif path == "/firm/tests":
@@ -3901,6 +3903,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, FIRM.add_expense(body) if FIRM else {"error": "firm_ops not loaded"})
             elif path in ("/firm/expenses/status",):
                 self._send(200, FIRM.set_expense_status(body) if FIRM else {"error": "firm_ops not loaded"})
+            elif path in ("/firm/expenses/ocr",):
+                self._send(200, FIRM.ocr_receipt(body) if FIRM else {"error": "firm_ops not loaded"})
             elif path in ("/deliverable", "/deliverable/generate"):
                 self._send(200, DELIV.generate(body) if DELIV else {"error": "deliverables not loaded"})
             else:

@@ -131,6 +131,70 @@ def _inr(n):
 
 
 # ---------------------------------------------------------------------------
+# DB seam — reuse engagement_store's Postgres connection when DATABASE_URL is set,
+# else fall back to JSONL. Keeps the whole firm ERP on one storage backend.
+# ---------------------------------------------------------------------------
+_USE_DB = bool(_ES and getattr(_ES, "_USE_DB", False))
+_RDC = getattr(_ES, "_RDC", None) if _ES else None
+
+_DDL = """
+CREATE TABLE IF NOT EXISTS timesheets (
+    id TEXT PRIMARY KEY, owner TEXT NOT NULL, ts BIGINT, engagement_id TEXT,
+    consultant TEXT, role TEXT, date TEXT, hours DOUBLE PRECISION, billable BOOLEAN, activity TEXT);
+CREATE INDEX IF NOT EXISTS idx_timesheets_owner ON timesheets (owner, engagement_id);
+CREATE TABLE IF NOT EXISTS expenses (
+    id TEXT PRIMARY KEY, owner TEXT NOT NULL, ts BIGINT, engagement_id TEXT,
+    consultant TEXT, category TEXT, amount DOUBLE PRECISION, billable BOOLEAN, status TEXT, note TEXT,
+    submit_role TEXT, approver_role TEXT, receipt TEXT, ocr_engine TEXT);
+CREATE INDEX IF NOT EXISTS idx_expenses_owner ON expenses (owner, engagement_id);
+"""
+
+if _USE_DB:
+    try:
+        with _ES._connect() as _c, _c.cursor() as _cur:
+            _cur.execute(_DDL)
+            _c.commit()
+        print("[firm_ops] Postgres backend active (timesheets, expenses).", flush=True)
+    except Exception as e:  # pragma: no cover
+        print(f"[firm_ops] Postgres init failed ({e}); using JSONL.", flush=True)
+        _USE_DB = False
+
+
+def _ts_rows(owner, eid=None):
+    if _USE_DB:
+        try:
+            with _ES._connect() as c, c.cursor(cursor_factory=_RDC) as cur:
+                if eid:
+                    cur.execute("SELECT * FROM timesheets WHERE owner=%s AND engagement_id=%s ORDER BY ts DESC", (owner, eid))
+                else:
+                    cur.execute("SELECT * FROM timesheets WHERE owner=%s ORDER BY ts DESC", (owner,))
+                return [dict(r) for r in cur.fetchall()]
+        except Exception as e:  # pragma: no cover
+            print(f"[firm_ops] ts read failed: {e}", flush=True)
+            return []
+    rows = [r for r in _read(_TS_PATH) if r.get("owner") == owner and (not eid or r.get("engagement_id") == eid)]
+    rows.sort(key=lambda r: r.get("ts", 0), reverse=True)
+    return rows
+
+
+def _ex_rows(owner, eid=None):
+    if _USE_DB:
+        try:
+            with _ES._connect() as c, c.cursor(cursor_factory=_RDC) as cur:
+                if eid:
+                    cur.execute("SELECT * FROM expenses WHERE owner=%s AND engagement_id=%s ORDER BY ts DESC", (owner, eid))
+                else:
+                    cur.execute("SELECT * FROM expenses WHERE owner=%s ORDER BY ts DESC", (owner,))
+                return [dict(r) for r in cur.fetchall()]
+        except Exception as e:  # pragma: no cover
+            print(f"[firm_ops] ex read failed: {e}", flush=True)
+            return []
+    rows = [r for r in _read(_EX_PATH) if r.get("owner") == owner and (not eid or r.get("engagement_id") == eid)]
+    rows.sort(key=lambda r: r.get("ts", 0), reverse=True)
+    return rows
+
+
+# ---------------------------------------------------------------------------
 # Timesheets
 # ---------------------------------------------------------------------------
 def add_timesheet(body):
@@ -148,16 +212,25 @@ def add_timesheet(body):
     }
     if rec["hours"] <= 0:
         return {"error": "hours must be > 0"}
-    _append(_TS_PATH, rec)
+    if _USE_DB:
+        try:
+            with _ES._connect() as c, c.cursor() as cur:
+                cur.execute("""INSERT INTO timesheets (id,owner,ts,engagement_id,consultant,role,date,hours,billable,activity)
+                               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO NOTHING""",
+                            (rec["id"], rec["owner"], rec["ts"], rec["engagement_id"], rec["consultant"], rec["role"],
+                             rec["date"], rec["hours"], rec["billable"], rec["activity"]))
+                c.commit()
+        except Exception as e:  # pragma: no cover
+            print(f"[firm_ops] ts insert failed: {e}", flush=True)
+            return {"error": "save failed"}
+    else:
+        _append(_TS_PATH, rec)
     return {"ok": True, "id": rec["id"], "entry": rec}
 
 
 def list_timesheets(owner, engagement_id=None):
     owner = _owner(owner)
-    rows = [r for r in _read(_TS_PATH) if r.get("owner") == owner]
-    if engagement_id:
-        rows = [r for r in rows if r.get("engagement_id") == engagement_id]
-    rows.sort(key=lambda r: r.get("ts", 0), reverse=True)
+    rows = _ts_rows(owner, engagement_id)
     bill = sum(r["hours"] for r in rows if r.get("billable"))
     nonbill = sum(r["hours"] for r in rows if not r.get("billable"))
     total = bill + nonbill
@@ -172,9 +245,106 @@ def list_timesheets(owner, engagement_id=None):
 # ---------------------------------------------------------------------------
 EXPENSE_CATEGORIES = ["Travel", "Accommodation", "Meals", "Software/Tools", "Subcontractor", "Other"]
 
+# Approval hierarchy: an expense is approved by the next role UP. Everyone files & needs
+# approval EXCEPT Partner / Senior Partner (top of chain → auto-approved).
+APPROVAL_CHAIN = ["junior_consultant", "consultant", "senior_consultant",
+                  "engagement_manager", "engagement_director", "partner", "senior_partner"]
+NO_APPROVAL_ROLES = {"partner", "senior_partner"}  # "everyone except partner"
+
+
+def _rank(role):
+    return APPROVAL_CHAIN.index(role) if role in APPROVAL_CHAIN else 0
+
+
+def _approver_for(submit_role):
+    """Next level up approves; partner+ need no approval."""
+    if submit_role in NO_APPROVAL_ROLES:
+        return None
+    i = _rank(submit_role)
+    return APPROVAL_CHAIN[i + 1] if i + 1 < len(APPROVAL_CHAIN) else "senior_partner"
+
+
+def can_approve(approver_role, required_role):
+    """An approver can sign off if their rank is >= the required approver rank."""
+    if not required_role:
+        return False
+    return _rank(approver_role) >= _rank(required_role)
+
+
+# ---------------------------------------------------------------------------
+# OCR — receipt parsing (AWS Textract at deploy; deterministic text parser now)
+# ---------------------------------------------------------------------------
+import re as _re
+
+_CAT_KW = {
+    "Travel": ["uber", "ola", "flight", "air", "indigo", "taxi", "cab", "train", "irctc", "fuel", "petrol", "toll"],
+    "Accommodation": ["hotel", "oyo", "stay", "resort", "lodge", "room", "marriott", "taj"],
+    "Meals": ["restaurant", "cafe", "food", "swiggy", "zomato", "meal", "lunch", "dinner", "coffee"],
+    "Software/Tools": ["aws", "saas", "subscription", "software", "license", "google", "microsoft", "zoom"],
+}
+
+
+def _textract(image_b64):
+    """Best-effort AWS Textract OCR; returns plain text or None. Guarded (boto3 optional)."""
+    try:
+        import base64
+        import boto3  # type: ignore
+        region = os.getenv("AWS_REGION", "").strip() or None
+        client = boto3.client("textract", region_name=region)
+        resp = client.detect_document_text(Document={"Bytes": base64.b64decode(image_b64)})
+        lines = [b["Text"] for b in resp.get("Blocks", []) if b.get("BlockType") == "LINE"]
+        return "\n".join(lines)
+    except Exception as e:  # pragma: no cover
+        print(f"[firm_ops] textract unavailable: {str(e)[:120]}", flush=True)
+        return None
+
+
+def ocr_receipt(body):
+    """Extract amount / date / merchant / category from a receipt.
+    Accepts image_base64 (-> Textract at deploy) or pre-extracted text. Always returns a
+    best-effort parse so the user can confirm/edit before submitting."""
+    body = body or {}
+    text = (body.get("text") or "").strip()
+    engine = "text"
+    if not text and body.get("image_base64"):
+        ocr = _textract(body["image_base64"])
+        if ocr:
+            text, engine = ocr, "textract"
+        else:
+            return {"ok": False, "engine": "none", "needs_provider": True,
+                    "note": "Receipt stored; automatic OCR (AWS Textract) is enabled at deploy. Enter the amount manually for now."}
+    if not text:
+        return {"ok": False, "error": "Provide a receipt image or its text."}
+    # amount: largest currency-like number
+    amounts = []
+    for m in _re.findall(r"(?:₹|rs\.?|inr)\s*([0-9][0-9,]*\.?[0-9]{0,2})", text, flags=_re.I):
+        try:
+            amounts.append(float(m.replace(",", "")))
+        except Exception:
+            pass
+    if not amounts:
+        for m in _re.findall(r"\b([0-9][0-9,]{2,}\.?[0-9]{0,2})\b", text):
+            try:
+                amounts.append(float(m.replace(",", "")))
+            except Exception:
+                pass
+    amount = max(amounts) if amounts else None
+    # date
+    dm = _re.search(r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}-\d{2}-\d{2})\b", text)
+    date = dm.group(1) if dm else ""
+    # merchant: first meaningful line
+    merchant = next((ln.strip() for ln in text.splitlines() if len(ln.strip()) > 2), "")[:60]
+    # category
+    tl = text.lower()
+    category = next((c for c, kws in _CAT_KW.items() if any(k in tl for k in kws)), "Other")
+    return {"ok": True, "engine": engine, "amount": amount, "date": date,
+            "merchant": merchant, "category": category, "raw_text": text[:1000]}
+
 
 def add_expense(body):
     owner = _owner(body.get("owner"))
+    submit_role = (body.get("role") or "consultant").strip()
+    approver_role = _approver_for(submit_role)
     rec = {
         "id": hashlib.sha1(f"ex:{owner}:{time.time()}".encode()).hexdigest()[:12],
         "owner": owner, "ts": int(time.time()),
@@ -183,12 +353,30 @@ def add_expense(body):
         "category": (body.get("category") or "Other").strip(),
         "amount": _num(body.get("amount")),
         "billable": bool(body.get("billable", True)),
-        "status": "Submitted",
+        "submit_role": submit_role,
+        "approver_role": approver_role or "",
+        # everyone needs approval EXCEPT partner / senior partner (auto-approved)
+        "status": "Approved" if approver_role is None else "Submitted",
         "note": (body.get("note") or "").strip(),
+        "receipt": (body.get("receipt") or "")[:200],   # receipt filename / ref (image stored client-side / S3 at deploy)
+        "ocr_engine": (body.get("ocr_engine") or "").strip(),
     }
     if rec["amount"] <= 0:
         return {"error": "amount must be > 0"}
-    _append(_EX_PATH, rec)
+    if _USE_DB:
+        try:
+            with _ES._connect() as c, c.cursor() as cur:
+                cur.execute("""INSERT INTO expenses (id,owner,ts,engagement_id,consultant,category,amount,billable,status,note,submit_role,approver_role,receipt,ocr_engine)
+                               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO NOTHING""",
+                            (rec["id"], rec["owner"], rec["ts"], rec["engagement_id"], rec["consultant"],
+                             rec["category"], rec["amount"], rec["billable"], rec["status"], rec["note"],
+                             rec["submit_role"], rec["approver_role"], rec["receipt"], rec["ocr_engine"]))
+                c.commit()
+        except Exception as e:  # pragma: no cover
+            print(f"[firm_ops] ex insert failed: {e}", flush=True)
+            return {"error": "save failed"}
+    else:
+        _append(_EX_PATH, rec)
     return {"ok": True, "id": rec["id"], "expense": rec}
 
 
@@ -196,6 +384,22 @@ def set_expense_status(body):
     owner = _owner(body.get("owner"))
     eid = (body.get("id") or "").strip()
     status = (body.get("status") or "Approved").strip()
+    approver_role = (body.get("approver_role") or "").strip()
+    # Authorisation: the approver's rank must be >= the expense's required approver rank.
+    if approver_role:
+        target = next((e for e in _ex_rows(owner) if e.get("id") == eid), None)
+        if target and target.get("approver_role") and not can_approve(approver_role, target.get("approver_role")):
+            return {"ok": False, "error": f"{approver_role.replace('_',' ')} is not authorised to approve this expense (needs {target['approver_role'].replace('_',' ')} or above)."}
+    if _USE_DB:
+        try:
+            with _ES._connect() as c, c.cursor() as cur:
+                cur.execute("UPDATE expenses SET status=%s WHERE id=%s AND owner=%s", (status, eid, owner))
+                changed = cur.rowcount
+                c.commit()
+            return {"ok": bool(changed), "changed": changed}
+        except Exception as e:  # pragma: no cover
+            print(f"[firm_ops] ex status failed: {e}", flush=True)
+            return {"ok": False}
     rows = _read(_EX_PATH)
     changed = 0
     for r in rows:
@@ -211,10 +415,7 @@ def set_expense_status(body):
 
 def list_expenses(owner, engagement_id=None):
     owner = _owner(owner)
-    rows = [r for r in _read(_EX_PATH) if r.get("owner") == owner]
-    if engagement_id:
-        rows = [r for r in rows if r.get("engagement_id") == engagement_id]
-    rows.sort(key=lambda r: r.get("ts", 0), reverse=True)
+    rows = _ex_rows(owner, engagement_id)
     bill = sum(r["amount"] for r in rows if r.get("billable"))
     nonbill = sum(r["amount"] for r in rows if not r.get("billable"))
     return {"owner": owner, "count": len(rows), "expenses": rows[:200], "categories": EXPENSE_CATEGORIES,
@@ -222,6 +423,16 @@ def list_expenses(owner, engagement_id=None):
             "nonbillable_amount": nonbill, "nonbillable_label": _inr(nonbill),
             "total_amount": bill + nonbill, "total_label": _inr(bill + nonbill),
             "pending_approval": sum(1 for r in rows if r.get("status") == "Submitted")}
+
+
+def approvals(owner, role):
+    """Expenses awaiting approval that this role is authorised to sign off (hierarchy)."""
+    owner = _owner(owner)
+    role = (role or "").strip()
+    queue = [e for e in _ex_rows(owner)
+             if e.get("status") == "Submitted" and can_approve(role, e.get("approver_role"))]
+    return {"owner": owner, "role": role, "count": len(queue), "queue": queue,
+            "can_approve": role not in ("junior_consultant",) and bool(role)}
 
 
 # ---------------------------------------------------------------------------
@@ -306,8 +517,12 @@ def cockpit(owner):
 def meta():
     return {"modules": [m["key"] for m in MODULES], "roles": list(ROLE_ACCESS.keys()),
             "expense_categories": EXPENSE_CATEGORIES,
+            "backend": "postgres" if _USE_DB else "jsonl",
+            "approval_chain": APPROVAL_CHAIN, "no_approval_roles": list(NO_APPROVAL_ROLES),
+            "ocr": "AWS Textract at deploy; deterministic text parser now",
             "endpoints": ["GET /firm/cockpit?owner=", "GET /firm/rbac", "GET|POST /firm/timesheets",
-                          "GET|POST /firm/expenses", "POST /firm/expenses/status"]}
+                          "GET|POST /firm/expenses", "POST /firm/expenses/status", "POST /firm/expenses/ocr",
+                          "GET /firm/approvals?owner=&role="]}
 
 
 def run_firm_tests():
@@ -330,6 +545,19 @@ def run_firm_tests():
     # cockpit returns a coherent shape (works even with no engagements)
     ck = cockpit(o)
     cases.append(("cockpit", "contracted_value" in ck and "cagr_pct" in ck and ck["utilization_pct"] == 80.0))
+    # approval workflow: consultant expense needs senior_consultant+; jr can't approve; partner auto-approved
+    ce = add_expense({"owner": o, "role": "consultant", "category": "Travel", "amount": 1200, "billable": True})
+    deny = set_expense_status({"owner": o, "id": ce["id"], "status": "Approved", "approver_role": "junior_consultant"})
+    allow = set_expense_status({"owner": o, "id": ce["id"], "status": "Approved", "approver_role": "engagement_manager"})
+    pe = add_expense({"owner": o, "role": "partner", "category": "Meals", "amount": 800})
+    cases.append(("approval_workflow", ce["expense"]["approver_role"] == "senior_consultant"
+                  and deny.get("ok") is False and allow.get("ok") is True
+                  and pe["expense"]["status"] == "Approved"))
+    aq = approvals(o, "engagement_director")
+    cases.append(("approvals_queue", "queue" in aq and isinstance(aq["count"], int)))
+    # OCR text parser extracts amount + category
+    oc = ocr_receipt({"text": "UBER INDIA\nTrip fare\nDate 14/06/2026\nTotal ₹1,250.00"})
+    cases.append(("ocr", oc.get("ok") and oc.get("amount") == 1250.0 and oc.get("category") == "Travel"))
     # cleanup timesheets/expenses for the test owner
     for path in (_TS_PATH, _EX_PATH):
         rows = [r for r in _read(path) if r.get("owner") != o]

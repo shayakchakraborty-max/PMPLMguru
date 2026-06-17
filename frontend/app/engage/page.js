@@ -537,6 +537,21 @@ function DeckGen({ report }) {
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
     a.download = `${(report.title || "engagement").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${out.kind}.md`; a.click();
   }
+  async function pptx() {
+    setBusy("pptx"); setOut(null);
+    try {
+      const r = await fetch("/api/deliverable", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ report, kind: "pptx" }) });
+      const d = await r.json();
+      if (d.pptx_base64) {
+        const bytes = Uint8Array.from(atob(d.pptx_base64), (c) => c.charCodeAt(0));
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" }));
+        a.download = d.filename || "engagement_deck.pptx"; a.click();
+        setOut({ kind: "pptx", slides: d.slide_count ? Array.from({ length: d.slide_count }, (_, i) => ({ n: i + 1, title: "Slide " + (i + 1) })) : null, _downloaded: true });
+      } else { setOut(d); }
+    } catch (e) { setOut({ error: e.message }); }
+    finally { setBusy(""); }
+  }
   return (
     <section className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-indigo-100 rounded-2xl p-5 mt-8">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -547,10 +562,13 @@ function DeckGen({ report }) {
         <div className="flex gap-2 no-print">
           <button onClick={() => gen("deck")} disabled={!!busy} className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500 disabled:opacity-50">{busy === "deck" ? "Drafting…" : "Generate board deck"}</button>
           <button onClick={() => gen("memo")} disabled={!!busy} className="px-4 py-2 rounded-xl border border-slate-300 bg-white font-semibold text-sm hover:border-indigo-300 disabled:opacity-50">{busy === "memo" ? "Drafting…" : "Exec memo"}</button>
+          <button onClick={pptx} disabled={!!busy} className="px-4 py-2 rounded-xl border border-slate-300 bg-white font-semibold text-sm hover:border-indigo-300 disabled:opacity-50">{busy === "pptx" ? "Building…" : "⬇ PPTX"}</button>
           {out?.markdown && <button onClick={download} className="px-4 py-2 rounded-xl border border-slate-300 bg-white font-semibold text-sm hover:border-indigo-300">⬇ .md</button>}
         </div>
       </div>
       {out?.error && <p className="text-rose-600 text-sm mt-3">{out.error}</p>}
+      {out?._downloaded && <p className="text-emerald-600 text-sm mt-3 font-semibold">✓ PPTX downloaded ({out.slides?.length} slides).</p>}
+      {out?.note && <p className="text-[12px] text-amber-600 mt-3">{out.note}</p>}
       {out?.slides && (
         <div className="mt-4 grid sm:grid-cols-2 gap-2">
           {out.slides.map((s) => (
