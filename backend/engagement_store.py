@@ -257,6 +257,22 @@ def delete_engagement(owner, sid):
     return {"ok": True, "removed": removed}
 
 
+def all_records(owner):
+    """Full records (incl. the report — for firm-level financial roll-ups). DB or JSONL."""
+    owner = _owner(owner)
+    if _USE_DB:
+        try:
+            with _connect() as c, c.cursor(cursor_factory=_RDC) as cur:
+                cur.execute("SELECT id, ts, title, sector, posture, report FROM engagements WHERE owner=%s AND NOT deleted ORDER BY ts", (owner,))
+                return [{**dict(r), "report": _as_obj(r["report"])} for r in cur.fetchall()]
+        except Exception as e:  # pragma: no cover
+            print(f"[engagement_store] db all_records failed: {e}", flush=True)
+            return []
+    rows = [r for r in _jsonl_read() if r.get("owner") == owner and not r.get("_deleted")]
+    rows.sort(key=lambda r: r.get("ts", 0))
+    return rows
+
+
 def portfolio(owner):
     """Cross-engagement analytics across an owner's saved digital twins."""
     owner = _owner(owner)

@@ -125,6 +125,18 @@ except Exception as _e:
     print(f"[engagement_types] not loaded: {_e}", flush=True)
 
 try:
+    import firm_ops as FIRM
+except Exception as _e:
+    FIRM = None
+    print(f"[firm_ops] not loaded: {_e}", flush=True)
+
+try:
+    import deliverables as DELIV
+except Exception as _e:
+    DELIV = None
+    print(f"[deliverables] not loaded: {_e}", flush=True)
+
+try:
     import llm_stack as LLM
 except Exception as _e:
     LLM = None
@@ -3547,6 +3559,10 @@ class Handler(BaseHTTPRequestHandler):
                                     "endpoints": ["GET /engagement360/meta", "GET /engagement360/tests"]} if DELIVERY else "not loaded"),
                 "engagement_types": ({"count": len(ETYPES.TYPES),
                                       "endpoints": ["GET /engagement-types", "GET /engagement-types/meta"]} if ETYPES else "not loaded"),
+                "firm_ops": ({"modules": len(FIRM.MODULES), "roles": len(FIRM.ROLE_ACCESS),
+                              "endpoints": ["GET /firm/cockpit", "GET /firm/rbac", "GET|POST /firm/timesheets",
+                                            "GET|POST /firm/expenses", "POST /firm/expenses/status"]} if FIRM else "not loaded"),
+                "deliverables": ({"kinds": ["deck", "memo"], "endpoints": ["POST /deliverable"]} if DELIV else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3782,6 +3798,22 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "engagement_types module not loaded"})
                 return
             self._send(200, ETYPES.run_type_tests())
+        elif path == "/firm/cockpit":
+            self._send(200, FIRM.cockpit(self._q("owner")) if FIRM else {"error": "firm_ops not loaded"})
+        elif path == "/firm/rbac":
+            self._send(200, FIRM.rbac() if FIRM else {"error": "firm_ops not loaded"})
+        elif path == "/firm/timesheets":
+            self._send(200, FIRM.list_timesheets(self._q("owner"), self._q("engagement_id") or None) if FIRM else {"error": "firm_ops not loaded"})
+        elif path == "/firm/expenses":
+            self._send(200, FIRM.list_expenses(self._q("owner"), self._q("engagement_id") or None) if FIRM else {"error": "firm_ops not loaded"})
+        elif path == "/firm/meta":
+            self._send(200, FIRM.meta() if FIRM else {"error": "firm_ops not loaded"})
+        elif path == "/firm/tests":
+            self._send(200, FIRM.run_firm_tests() if FIRM else {"error": "firm_ops not loaded"})
+        elif path == "/deliverable/meta":
+            self._send(200, DELIV.meta() if DELIV else {"error": "deliverables not loaded"})
+        elif path == "/deliverable/tests":
+            self._send(200, DELIV.run_deliverable_tests() if DELIV else {"error": "deliverables not loaded"})
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3863,6 +3895,14 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(200, {"error": "engagement_store module not loaded"})
                 else:
                     self._send(200, TWIN.delete_engagement(body.get("owner"), body.get("id")))
+            elif path in ("/firm/timesheets",):
+                self._send(200, FIRM.add_timesheet(body) if FIRM else {"error": "firm_ops not loaded"})
+            elif path in ("/firm/expenses",):
+                self._send(200, FIRM.add_expense(body) if FIRM else {"error": "firm_ops not loaded"})
+            elif path in ("/firm/expenses/status",):
+                self._send(200, FIRM.set_expense_status(body) if FIRM else {"error": "firm_ops not loaded"})
+            elif path in ("/deliverable", "/deliverable/generate"):
+                self._send(200, DELIV.generate(body) if DELIV else {"error": "deliverables not loaded"})
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:

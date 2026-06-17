@@ -399,6 +399,9 @@ function Report({ d, onBack }) {
         </Section>
       </div>
 
+      {/* AI deliverables — board deck / exec memo in top-firm format */}
+      <DeckGen report={d} />
+
       {/* Engagement 360 — delivery layer (team, AI workplan, hours, billing) */}
       {d.delivery && <Delivery d={d.delivery} />}
 
@@ -514,6 +517,55 @@ function Delivery({ d }) {
         </div>
       </Section>
     </div>
+  );
+}
+
+function DeckGen({ report }) {
+  const [out, setOut] = useState(null);
+  const [busy, setBusy] = useState("");
+  async function gen(kind) {
+    setBusy(kind); setOut(null);
+    try {
+      const r = await fetch("/api/deliverable", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ report, kind }) });
+      setOut(await r.json());
+    } catch (e) { setOut({ error: e.message }); }
+    finally { setBusy(""); }
+  }
+  function download() {
+    if (!out?.markdown) return;
+    const blob = new Blob([out.markdown], { type: "text/markdown" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = `${(report.title || "engagement").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${out.kind}.md`; a.click();
+  }
+  return (
+    <section className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-indigo-100 rounded-2xl p-5 mt-8">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h3 className="text-lg font-black tracking-tight">📑 AI deliverables</h3>
+          <p className="text-[13px] text-slate-500">On completion, the AI drafts a board-ready deck or an executive memo in top-firm format.</p>
+        </div>
+        <div className="flex gap-2 no-print">
+          <button onClick={() => gen("deck")} disabled={!!busy} className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500 disabled:opacity-50">{busy === "deck" ? "Drafting…" : "Generate board deck"}</button>
+          <button onClick={() => gen("memo")} disabled={!!busy} className="px-4 py-2 rounded-xl border border-slate-300 bg-white font-semibold text-sm hover:border-indigo-300 disabled:opacity-50">{busy === "memo" ? "Drafting…" : "Exec memo"}</button>
+          {out?.markdown && <button onClick={download} className="px-4 py-2 rounded-xl border border-slate-300 bg-white font-semibold text-sm hover:border-indigo-300">⬇ .md</button>}
+        </div>
+      </div>
+      {out?.error && <p className="text-rose-600 text-sm mt-3">{out.error}</p>}
+      {out?.slides && (
+        <div className="mt-4 grid sm:grid-cols-2 gap-2">
+          {out.slides.map((s) => (
+            <div key={s.n} className="bg-white rounded-xl border border-slate-200 p-3">
+              <div className="text-[10px] font-black text-slate-300">SLIDE {s.n}</div>
+              <div className="font-bold text-[13px] leading-snug">{s.title}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {out?.markdown && !out?.slides && (
+        <pre className="mt-4 bg-white border border-slate-200 rounded-xl p-3 text-[12px] whitespace-pre-wrap max-h-72 overflow-y-auto">{out.markdown}</pre>
+      )}
+      {out?.formats_pending && <p className="text-[11px] text-slate-400 mt-2">Download as Markdown today; native {out.formats_pending.join(", ")} export at deploy.</p>}
+    </section>
   );
 }
 
