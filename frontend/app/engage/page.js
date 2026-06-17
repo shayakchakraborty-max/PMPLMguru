@@ -182,10 +182,10 @@ export default function EngagePage() {
               <header className="bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-14">
                   <div className="inline-flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full text-[11px] font-bold mb-5">
-                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" /> Super-Agent · one orchestrated AI team for any MSME problem
+                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" /> AI-Native Engagement OS · staff · run · deliver · bill
                   </div>
-                  <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">Bring us your toughest problem.</h1>
-                  <p className="text-slate-300 mt-4 max-w-2xl">Describe the situation and our Managing-Partner agent assembles a multi-disciplinary team — finance, operations, risk, the routed specialist and more — then curates one research-grade, Big-4-style engagement report.</p>
+                  <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">Run the whole engagement with an AI team.</h1>
+                  <p className="text-slate-300 mt-4 max-w-2xl">Scope an engagement and the Managing-Partner agent staffs the team (Senior Partner → Junior Consultant), assembles the multi-disciplinary AI workstreams, and returns a research-grade report <b>plus</b> a full Engagement 360 — workplan, per-role task lists with AI support, hours and billing. AI agents do the heavy lifting; your people review and sign off.</p>
 
                   {/* ERP-style intake */}
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5 mt-7 space-y-3">
@@ -399,7 +399,120 @@ function Report({ d, onBack }) {
         </Section>
       </div>
 
+      {/* Engagement 360 — delivery layer (team, AI workplan, hours, billing) */}
+      {d.delivery && <Delivery d={d.delivery} />}
+
       <p className="text-[11px] text-slate-400 border-t border-slate-200 pt-4">{d.disclaimer}</p>
+    </div>
+  );
+}
+
+const PHASE_TINT = { mobilize: "bg-slate-100 text-slate-600", diagnose: "bg-indigo-100 text-indigo-700", design: "bg-violet-100 text-violet-700", validate: "bg-amber-100 text-amber-700", deliver: "bg-emerald-100 text-emerald-700" };
+
+function Delivery({ d }) {
+  const billable = (d.roles || []).filter((r) => r.billable);
+  const [role, setRole] = useState("all");
+  const e = d.economics || {};
+  const roleTitle = (k) => (d.roles || []).find((r) => r.key === k)?.title || k;
+  const tasks = role === "all" ? d.workplan : (d.workplan || []).filter((t) => t.owner_role === role);
+
+  return (
+    <div className="border-t-2 border-slate-200 pt-8 mt-8 space-y-8">
+      <div>
+        <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">🛰️ Engagement 360 <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">{d.ai_leverage_pct}% AI-led</span></h2>
+        <p className="text-sm text-slate-500 mt-1">The staffed team, the AI-supported workplan, hours and billing — AI agents do the heavy lifting; humans review &amp; sign off.</p>
+      </div>
+
+      {/* Billing tiles */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {[["Total effort", `${e.total_hours} hrs`], ["Duration", `${e.duration_weeks} wks`], ["T&M fee", e.tm_fee_label], ["Fixed fee", e.fixed_fee_label], ["Blended rate", `${e.blended_rate_label}/hr`]].map(([k, v], i) => (
+          <div key={i} className="bg-white rounded-2xl border border-slate-200 p-4">
+            <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold">{k}</div>
+            <div className="text-xl font-black mt-0.5">{v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Team */}
+      <Section title="Engagement team" icon="👔">
+        <div className="overflow-x-auto bg-white rounded-2xl border border-slate-200">
+          <table className="w-full text-sm">
+            <thead><tr className="bg-slate-50 text-left text-[11px] uppercase tracking-wide text-slate-500">
+              <th className="px-3 py-2.5 font-bold">Role</th><th className="px-3 py-2.5 font-bold">AI advisor</th><th className="px-3 py-2.5 font-bold text-right">Hours</th><th className="px-3 py-2.5 font-bold text-right">Rate</th><th className="px-3 py-2.5 font-bold">Mandate</th>
+            </tr></thead>
+            <tbody className="divide-y divide-slate-100">
+              {(d.team || []).map((m, i) => (
+                <tr key={i} className={m.client_side ? "bg-amber-50/40" : ""}>
+                  <td className="px-3 py-2.5 font-semibold whitespace-nowrap">{m.role}{m.client_side && <span className="ml-1 text-[9px] text-amber-600">client</span>}</td>
+                  <td className="px-3 py-2.5 text-[12px] text-violet-700">{m.ai_advisor || "—"}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">{m.allocated_hours || "—"}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-500">{m.rate_per_hour ? `₹${m.rate_per_hour.toLocaleString()}` : "—"}</td>
+                  <td className="px-3 py-2.5 text-[12px] text-slate-500 max-w-xs">{m.mandate}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      {/* Workplan + role switcher */}
+      <Section title="AI-supported workplan" icon="🗂️">
+        <div className="flex items-center gap-2 flex-wrap mb-3">
+          <span className="text-[11px] font-bold text-slate-500">View as:</span>
+          <button onClick={() => setRole("all")} className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${role === "all" ? "bg-slate-900 text-white border-slate-900" : "bg-white border-slate-200"}`}>Whole team</button>
+          {billable.map((r) => {
+            const n = (d.by_role_tasks?.[r.key] || []).length; if (!n) return null;
+            return <button key={r.key} onClick={() => setRole(r.key)} className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${role === r.key ? "bg-indigo-600 text-white border-indigo-600" : "bg-white border-slate-200 hover:border-indigo-300"}`}>{r.title} ({n})</button>;
+          })}
+        </div>
+        {role !== "all" && <p className="text-[12px] text-slate-500 mb-2">{roleTitle(role)}’s task list — each task has an AI agent doing the heavy lifting.</p>}
+        <div className="space-y-2">
+          {tasks.map((t) => (
+            <div key={t.id} className="bg-white rounded-xl border border-slate-200 p-3">
+              <div className="flex items-start gap-2 flex-wrap">
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${PHASE_TINT[t.phase] || "bg-slate-100"}`}>{t.phase}</span>
+                <span className="font-bold text-sm flex-1 min-w-[180px]">{t.title}</span>
+                <span className="text-[10px] text-slate-400 font-semibold">{roleTitle(t.owner_role)} · {t.est_hours}h</span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{t.ai_automation_pct}% AI</span>
+              </div>
+              <div className="text-[12px] text-slate-600 mt-1.5">🤖 {t.ai_support}</div>
+              <div className="flex items-center gap-2 mt-2 text-[11px]">
+                {t.ai_agent && <a href={`/advisor?agent=${t.ai_agent}`} className="px-2 py-0.5 rounded bg-violet-100 text-violet-700 font-semibold hover:bg-violet-200">▶ Run {t.ai_agent}</a>}
+                <span className="text-slate-400">Deliverable: {t.deliverable}</span>
+                {t.approver_role && <span className="ml-auto text-slate-400">✍ sign-off: {roleTitle(t.approver_role)}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Billing detail */}
+      <Section title="Hours & billing" icon="💳">
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="px-3 py-2 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500 font-bold">Effort & cost by role</div>
+            <table className="w-full text-sm"><tbody className="divide-y divide-slate-100">
+              {(e.by_role || []).map((r, i) => (
+                <tr key={i}><td className="px-3 py-2 font-semibold">{r.role}</td><td className="px-3 py-2 text-right tabular-nums text-slate-500">{r.hours}h × ₹{r.rate_per_hour.toLocaleString()}</td><td className="px-3 py-2 text-right tabular-nums font-bold">{r.amount_label}</td></tr>
+              ))}
+              <tr className="bg-slate-900 text-white font-bold"><td className="px-3 py-2">Total (T&amp;M)</td><td className="px-3 py-2 text-right">{e.total_hours}h</td><td className="px-3 py-2 text-right">{e.tm_fee_label}</td></tr>
+            </tbody></table>
+          </div>
+          <div className="space-y-3">
+            <div className="bg-white rounded-2xl border border-slate-200 p-4">
+              <div className="text-[11px] uppercase tracking-wide text-slate-500 font-bold mb-2">Fee options</div>
+              <ul className="text-sm space-y-1.5">
+                <li className="flex justify-between"><span>Time &amp; Materials</span><b>{e.tm_fee_label}</b></li>
+                <li className="flex justify-between"><span>Fixed Fee</span><b>{e.fixed_fee_label}</b></li>
+                <li className="flex justify-between"><span>Monthly Retainer</span><b>{e.monthly_retainer_label}</b></li>
+                <li className="flex justify-between text-slate-500"><span>Blended rate</span><b>{e.blended_rate_label}/hr</b></li>
+              </ul>
+              <div className="flex flex-wrap gap-1.5 mt-2">{(e.fee_models || []).map((f, i) => <span key={i} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold">{f}</span>)}</div>
+            </div>
+            <p className="text-[11px] text-slate-400">{e.note}</p>
+          </div>
+        </div>
+      </Section>
     </div>
   );
 }

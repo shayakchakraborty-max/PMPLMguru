@@ -23,6 +23,11 @@ try:
 except Exception:
     _C = None
 
+try:
+    import engagement_360 as _D
+except Exception:
+    _D = None
+
 
 def _live(a):
     return bool(_M and _M.MSME_AGENTS.get(a, {}).get("status") == "live")
@@ -221,7 +226,14 @@ def orchestrate(body):
             continue
     if not workstreams:
         return {"error": "No workstream could be run for this engagement."}
-    return synthesize(desc, cls, intake, workstreams, routed)
+    report = synthesize(desc, cls, intake, workstreams, routed)
+    # Delivery layer: staffed team + AI-supported workplan + hours + billing (Engagement 360).
+    if _D:
+        try:
+            report["delivery"] = _D.build_delivery(report)
+        except Exception:
+            report["delivery"] = None
+    return report
 
 
 def meta():

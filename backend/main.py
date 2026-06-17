@@ -113,6 +113,12 @@ except Exception as _e:
     print(f"[engagement_store] not loaded: {_e}", flush=True)
 
 try:
+    import engagement_360 as DELIVERY
+except Exception as _e:
+    DELIVERY = None
+    print(f"[engagement_360] not loaded: {_e}", flush=True)
+
+try:
     import llm_stack as LLM
 except Exception as _e:
     LLM = None
@@ -3531,6 +3537,8 @@ class Handler(BaseHTTPRequestHandler):
                                   "segments": sum(len(v) for v in MARKET.SEGMENTS.values()),
                                   "endpoints": ["GET /market/sectors", "GET /market/segments", "POST /market/lookup"]} if MARKET else "not loaded"),
                 "engagement_twin": ({**TWIN.meta()} if TWIN else "not loaded"),
+                "engagement_360": ({"roles": len(DELIVERY.ROLES), "phases": [p["name"] for p in DELIVERY.PHASES],
+                                    "endpoints": ["GET /engagement360/meta", "GET /engagement360/tests"]} if DELIVERY else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3741,6 +3749,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "engagement_store module not loaded"})
                 return
             self._send(200, TWIN.run_store_tests())
+        elif path == "/engagement360/meta":
+            if not DELIVERY:
+                self._send(200, {"error": "engagement_360 module not loaded"})
+                return
+            self._send(200, DELIVERY.meta())
+        elif path == "/engagement360/tests":
+            if not DELIVERY:
+                self._send(200, {"error": "engagement_360 module not loaded"})
+                return
+            self._send(200, DELIVERY.run_360_tests())
         else:
             self._send(404, {"error": "not found", "path": path})
 
