@@ -25,6 +25,11 @@ segments, Big 3/4 positioning, target architecture & toolchain, agent operating 
 deliverables, economics, pricing and governance), with an up-front **implementation-status table**
 mapping the blueprint to what is actually built in this repo today.
 
+See **[docs/CONSULTING-OS.md](docs/CONSULTING-OS.md)** — the best-in-class architecture review of the
+nine-layer "AI-Native ConsultingOS on AWS" vision: current-vs-target map, challenged assumptions,
+the 20 architecture outputs in curated form, and a pragmatic MVP → Phase 2 → Enterprise roadmap that
+bridges today's deterministic engine to the AWS-native, agentic target.
+
 ## Architecture
 
 - **Brain (backend)** — Python service in `backend/` (all agents, reports, blueprint,
