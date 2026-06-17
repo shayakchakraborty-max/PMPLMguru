@@ -20,21 +20,45 @@ const POSTURE = {
 };
 const LS = "pmguru_engagements";
 
+function ownerId() {
+  try {
+    let o = localStorage.getItem("pmguru_owner");
+    if (!o) { o = "u-" + Math.random().toString(36).slice(2, 11); localStorage.setItem("pmguru_owner", o); }
+    return o;
+  } catch { return "demo"; }
+}
+
 export default function EngagePage() {
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
+  const [activeReport, setActiveReport] = useState(null);
+  const [portfolio, setPortfolio] = useState(null);
   const [form, setForm] = useState({ company: "", sector: "", turnover_cr: "", headcount: "", city_tier: "Tier-2", description: "", top_challenges: "" });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [sits, setSits] = useState(null);
   const [filter, setFilter] = useState("All");
 
-  useEffect(() => {
+  async function loadServer() {
+    try {
+      const r = await fetch(`/api/twin?owner=${encodeURIComponent(ownerId())}`, { cache: "no-store" });
+      const d = await r.json();
+      if (!d.error) {
+        if (Array.isArray(d.engagements)) setThreads(d.engagements.map((e) => ({ ...e, report: null })));
+        if (d.portfolio) setPortfolio(d.portfolio);
+        return d;
+      }
+    } catch {}
+    // offline fallback to localStorage cache
     try { setThreads(JSON.parse(localStorage.getItem(LS) || "[]")); } catch {}
+    return null;
+  }
+
+  useEffect(() => {
+    loadServer();
     (async () => {
       try { const r = await fetch("/api/situations", { cache: "no-store" }); const d = await r.json(); if (!d.error) setSits(d); } catch {}
     })();
-    // Auto-run an engagement handed off from the Intelligence landing (/market).
     try {
       const pf = JSON.parse(localStorage.getItem("pmguru_prefill") || "null");
       if (pf?.description) { localStorage.removeItem("pmguru_prefill"); runEngagement({ description: pf.description, intake: pf.intake || {} }); }
@@ -42,8 +66,21 @@ export default function EngagePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function persist(next) { setThreads(next); try { localStorage.setItem(LS, JSON.stringify(next)); } catch {} }
-  const active = useMemo(() => threads.find((t) => t.id === activeId), [threads, activeId]);
+  const active = useMemo(() => (activeId ? { id: activeId, report: activeReport } : null), [activeId, activeReport]);
+
+  async function openThread(t) {
+    setActiveId(t.id);
+    if (t.report) { setActiveReport(t.report); }
+    else {
+      setActiveReport(null);
+      try {
+        const r = await fetch(`/api/twin?owner=${encodeURIComponent(ownerId())}&id=${encodeURIComponent(t.id)}`, { cache: "no-store" });
+        const d = await r.json();
+        setActiveReport(d.report || null);
+      } catch { setActiveReport(null); }
+    }
+    setTimeout(() => document.getElementById("report")?.scrollIntoView({ behavior: "smooth" }), 60);
+  }
 
   async function runEngagement(custom) {
     const intake = custom?.intake || {
@@ -52,15 +89,16 @@ export default function EngagePage() {
     };
     const description = (custom?.description ?? form.description).trim();
     if (!description) { setErr("Describe the business / situation first."); return; }
-    setErr(""); setLoading(true); setActiveId(null);
+    setErr(""); setLoading(true); setActiveId(null); setActiveReport(null);
     try {
-      const r = await fetch("/api/orchestrate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ description, intake, deep: true }) });
+      const r = await fetch("/api/orchestrate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ description, intake, owner: ownerId(), deep: true }) });
       const d = await r.json();
       if (d.error) { setErr(d.error); setLoading(false); return; }
-      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      const thread = { id, engagement_id: d.engagement_id, title: d.title, sector: d.sector, ts: new Date().toISOString(), report: d };
-      const next = [thread, ...threads].slice(0, 40);
-      persist(next); setActiveId(id);
+      const id = d.twin_id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const thread = { id, title: d.title, sector: d.sector, posture: d.diagnosis?.posture, ts: Math.floor(Date.now() / 1000), report: d };
+      setThreads((prev) => [thread, ...prev.filter((t) => t.id !== id)].slice(0, 50));
+      setActiveId(id); setActiveReport(d);
+      loadServer();  // refresh portfolio + server list (keeps report cached locally)
       setTimeout(() => document.getElementById("report")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
     } catch (e) { setErr(e.message); }
     finally { setLoading(false); }
@@ -71,8 +109,13 @@ export default function EngagePage() {
     runEngagement({ description: s.description, intake: s.intake });
   }
 
-  function newEngagement() { setActiveId(null); setErr(""); window.scrollTo({ top: 0, behavior: "smooth" }); }
-  function delThread(id, e) { e.stopPropagation(); const next = threads.filter((t) => t.id !== id); persist(next); if (activeId === id) setActiveId(null); }
+  function newEngagement() { setActiveId(null); setActiveReport(null); setErr(""); window.scrollTo({ top: 0, behavior: "smooth" }); }
+  function delThread(id, e) {
+    e.stopPropagation();
+    setThreads((prev) => prev.filter((t) => t.id !== id));
+    if (activeId === id) { setActiveId(null); setActiveReport(null); }
+    fetch("/api/twin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", owner: ownerId(), id }) }).then(() => loadServer()).catch(() => {});
+  }
 
   const sectors = sits ? ["All", ...sits.sectors] : ["All"];
   const visibleSits = sits ? sits.situations.filter((s) => filter === "All" || s.sector === filter) : [];
@@ -96,17 +139,36 @@ export default function EngagePage() {
         {/* Threads sidebar */}
         <aside className="hidden lg:block w-64 shrink-0 border-r border-slate-200 min-h-[calc(100vh-3.5rem)] p-3 no-print">
           <button onClick={newEngagement} className="w-full px-3 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500 mb-3">+ New engagement</button>
+
+          {portfolio?.total_engagements > 0 && (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3">
+              <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1.5">Portfolio</div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-black">{portfolio.total_engagements}</span>
+                <span className="text-[11px] text-slate-500">engagements</span>
+              </div>
+              {portfolio.at_risk > 0 && <div className="text-[11px] text-rose-600 font-semibold mt-0.5">{portfolio.at_risk} at risk (Critical/Elevated)</div>}
+              <div className="flex gap-1 mt-2">
+                {["Critical", "Elevated", "Watch", "Stable"].map((p) => {
+                  const n = portfolio.posture_mix?.[p] || 0; if (!n) return null;
+                  const c = { Critical: "bg-rose-500", Elevated: "bg-orange-500", Watch: "bg-amber-500", Stable: "bg-emerald-500" }[p];
+                  return <span key={p} title={`${p}: ${n}`} className={`h-1.5 rounded-full ${c}`} style={{ flex: n }} />;
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold px-1 mb-1">Engagement threads</div>
           {threads.length === 0 && <div className="text-xs text-slate-400 px-1 py-2">No engagements yet. Run one →</div>}
           <div className="space-y-1">
             {threads.map((t) => (
-              <button key={t.id} onClick={() => { setActiveId(t.id); setTimeout(() => document.getElementById("report")?.scrollIntoView({ behavior: "smooth" }), 50); }}
+              <button key={t.id} onClick={() => openThread(t)}
                 className={`w-full text-left px-2.5 py-2 rounded-lg text-sm group ${activeId === t.id ? "bg-indigo-50 border border-indigo-200" : "hover:bg-slate-100 border border-transparent"}`}>
                 <div className="flex items-center justify-between gap-1">
                   <span className="font-semibold truncate">{t.title}</span>
                   <span onClick={(e) => delThread(t.id, e)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 text-xs">✕</span>
                 </div>
-                <div className="text-[10px] text-slate-400">{t.sector} · {new Date(t.ts).toLocaleDateString()}</div>
+                <div className="text-[10px] text-slate-400">{t.sector}{t.posture ? ` · ${t.posture}` : ""} · {t.ts ? new Date(t.ts * 1000).toLocaleDateString() : ""}</div>
               </button>
             ))}
           </div>
@@ -198,7 +260,13 @@ export default function EngagePage() {
             </div>
           )}
 
-          {active && <Report d={active.report} onBack={newEngagement} />}
+          {active && !active.report && (
+            <div className="text-center text-slate-500 py-16">
+              <div className="inline-block w-7 h-7 border-[3px] border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
+              <p className="font-semibold">Loading engagement…</p>
+            </div>
+          )}
+          {active && active.report && <Report d={active.report} onBack={newEngagement} />}
         </main>
       </div>
     </div>

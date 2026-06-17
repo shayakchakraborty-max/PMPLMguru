@@ -107,6 +107,12 @@ except Exception as _e:
     print(f"[market_intel] not loaded: {_e}", flush=True)
 
 try:
+    import engagement_store as TWIN
+except Exception as _e:
+    TWIN = None
+    print(f"[engagement_store] not loaded: {_e}", flush=True)
+
+try:
     import llm_stack as LLM
 except Exception as _e:
     LLM = None
@@ -3439,6 +3445,14 @@ def llm_evaluate(text_to_evaluate, context):
 # ============================================================
 class Handler(BaseHTTPRequestHandler):
 
+    def _q(self, key, default=""):
+        """Read a single query-string param from the request path."""
+        try:
+            from urllib.parse import urlparse, parse_qs
+            return (parse_qs(urlparse(self.path).query).get(key, [default]) or [default])[0]
+        except Exception:
+            return default
+
     def _send(self, code, body):
         try:
             payload = json.dumps(body).encode("utf-8")
@@ -3516,6 +3530,7 @@ class Handler(BaseHTTPRequestHandler):
                 "market_intel": ({"sectors": len(MARKET.SECTORS),
                                   "segments": sum(len(v) for v in MARKET.SEGMENTS.values()),
                                   "endpoints": ["GET /market/sectors", "GET /market/segments", "POST /market/lookup"]} if MARKET else "not loaded"),
+                "engagement_twin": ({**TWIN.meta()} if TWIN else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3701,6 +3716,31 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "market_intel module not loaded"})
                 return
             self._send(200, MARKET.run_market_tests())
+        elif path == "/engagements":
+            if not TWIN:
+                self._send(200, {"error": "engagement_store module not loaded"})
+                return
+            self._send(200, TWIN.list_engagements(self._q("owner")))
+        elif path == "/engagement":
+            if not TWIN:
+                self._send(200, {"error": "engagement_store module not loaded"})
+                return
+            self._send(200, TWIN.get_engagement(self._q("owner"), self._q("id")))
+        elif path == "/portfolio":
+            if not TWIN:
+                self._send(200, {"error": "engagement_store module not loaded"})
+                return
+            self._send(200, TWIN.portfolio(self._q("owner")))
+        elif path == "/engagements/meta":
+            if not TWIN:
+                self._send(200, {"error": "engagement_store module not loaded"})
+                return
+            self._send(200, TWIN.meta())
+        elif path == "/engagements/tests":
+            if not TWIN:
+                self._send(200, {"error": "engagement_store module not loaded"})
+                return
+            self._send(200, TWIN.run_store_tests())
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3777,6 +3817,11 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(200, {"error": "market_intel module not loaded"})
                 else:
                     self._send(200, MARKET.lookup(body))
+            elif path in ("/engagements/delete",):
+                if not TWIN:
+                    self._send(200, {"error": "engagement_store module not loaded"})
+                else:
+                    self._send(200, TWIN.delete_engagement(body.get("owner"), body.get("id")))
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -4046,6 +4091,14 @@ class Handler(BaseHTTPRequestHandler):
                 self._orchestrate_brief(out)
             except Exception as e:
                 print(f"[orchestrate] brief failed: {str(e)[:160]}", flush=True)
+        # Persist the engagement as a server-side digital twin (owner-scoped).
+        if TWIN and not out.get("error") and body.get("persist", True):
+            try:
+                tid = TWIN.save_engagement(body.get("owner"), out)
+                if tid:
+                    out["twin_id"] = tid
+            except Exception as e:
+                print(f"[orchestrate] twin save failed: {str(e)[:160]}", flush=True)
         print(f"[orchestrate] {out.get('title','')[:40]} team={[w.get('agent') for w in out.get('workstreams',[])]}", flush=True)
         self._send(200, out)
 
