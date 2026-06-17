@@ -33,10 +33,13 @@ bridges today's deterministic engine to the AWS-native, agentic target.
 ## Architecture
 
 - **Brain (backend)** — Python service in `backend/` (all agents, reports, blueprint,
-  ERP workspace). Container-ready (`backend/Dockerfile`, binds `0.0.0.0:$PORT`).
-  Deployed on **Railway** (always-on). Pure-Python and deterministic — no LLM keys required.
-- **Frontend** — Next.js 14 app in `frontend/`, deployed on **Vercel**. It talks to the
-  brain via the `BRAIN_URL` environment variable.
+  ERP workspace). Container-ready (`backend/Dockerfile`, `ThreadingHTTPServer` binds
+  `0.0.0.0:$PORT`). Pure-Python and deterministic — no LLM keys required. Persists the
+  engagement digital twin to **Postgres** when `DATABASE_URL` is set (JSONL fallback otherwise).
+- **Frontend** — Next.js 14 standalone app in `frontend/` (`frontend/Dockerfile`). Talks to the
+  brain via the `BRAIN_URL` environment variable (server-side `/api/*` proxies).
+- **Deploy target: AWS** — both services on **App Runner** (or ECS Fargate) + **RDS/Aurora
+  Postgres**. See [DEPLOY.md](DEPLOY.md).
 
 ## Run locally
 
@@ -51,8 +54,10 @@ BRAIN_URL=http://localhost:8000 npm run dev                        # http://loca
 
 ## Deploy
 
-See **[DEPLOY.md](DEPLOY.md)** — deploy the brain on Railway (root directory `backend`,
-or the root `Dockerfile`), then set `BRAIN_URL` on Vercel to the Railway URL
-(with `https://`, no trailing slash) and redeploy the frontend.
+See **[DEPLOY.md](DEPLOY.md)** — full AWS runbook. Both services ship production
+`Dockerfile`s and App Runner `apprunner.yaml` source configs; `deploy/aws-deploy.sh`
+builds + pushes both images to ECR. Deploy the brain first, then set the web's `BRAIN_URL`
+to the brain's URL (`https://`, no trailing slash). Set `DATABASE_URL` on the brain for the
+Postgres twin store.
 
 Health check: `https://<brain>/health` should return `"msme_agents": {"total": 20, ...}`.

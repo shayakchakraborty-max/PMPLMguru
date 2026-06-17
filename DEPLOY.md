@@ -1,67 +1,103 @@
-# Deploying PMGuru
+# Deploying on AWS
 
-Two pieces:
+Two services + one database. No Railway, no Vercel.
 
-- **Brain (backend)** — the Python service in `backend/` (all the AI agents, reports,
-  blueprint, ERP workspace). Long-running web server; needs an always-on host.
-- **Frontend** — the Next.js app in `frontend/`, deployed on **Vercel**. It talks to
-  the brain through the `BRAIN_URL` environment variable.
-
-The brain is container-ready (`backend/Dockerfile`, binds `0.0.0.0:$PORT`, single
-dependency). Below are two always-on hosts — pick one. **Railway is the simplest.**
-
----
-
-## Option A — Railway (recommended, easiest)
-
-1. Go to <https://railway.app> → **New Project → Deploy from GitHub repo** → pick
-   `shayakchakraborty-max/PMPLMguru`.
-2. Open the service → **Settings**:
-   - **Root Directory**: `backend`
-   - Railway auto-detects `backend/railway.json` and builds the **Dockerfile**.
-   - No env vars are required (the agents are pure-Python; `GROQ/GEMINI` keys are
-     optional and only used by legacy LLM polish).
-3. **Deploy**. When it's live, open **Settings → Networking → Generate Domain** to get
-   a public URL like `https://pmguru-brain-production.up.railway.app`.
-4. Verify: open `https://<that-domain>/health` — you should see
-   `"msme_agents": {"total": 20, ...}`.
-5. **Point the frontend at it** (see "Wire the frontend" below).
-
-Railway's usage-based plan stays always-on, so there are no cold starts.
-
----
-
-## Option B — Fly.io (always-on, free allowance)
-
-Prereqs: install the CLI (`brew install flyctl`) and `fly auth login`.
-
-```bash
-cd backend
-fly launch --copy-config --no-deploy   # uses fly.toml + Dockerfile; pick an app name/region
-fly deploy
-fly status                              # confirm 1 machine running
+```
+                         ┌─────────────────────────┐
+   browser ───────────▶  │  App Runner: pmguru-web  │   (Next.js 14 standalone, :3000)
+                         │  env: BRAIN_URL          │
+                         └───────────┬──────────────┘
+                                     │  server-side /api/* proxy
+                                     ▼
+                         ┌─────────────────────────┐        ┌────────────────────────┐
+                         │ App Runner: pmguru-brain │ ─────▶ │  RDS / Aurora Postgres  │
+                         │ Python http.server :8000 │        │  (DATABASE_URL)         │
+                         │ env: GROQ_API_KEY,       │        └────────────────────────┘
+                         │      DATABASE_URL        │
+                         └─────────────────────────┘
 ```
 
-`fly.toml` sets `min_machines_running = 1` and `auto_stop_machines = false`, so it
-stays awake. Your URL is `https://<app-name>.fly.dev`. Verify `/health` as above.
+- **Brain (backend)** — `backend/`, a deterministic consulting engine (`ThreadingHTTPServer`,
+  binds `0.0.0.0:$PORT`). Pure-Python; needs **no** LLM key to work (Groq only polishes).
+- **Web (frontend)** — `frontend/`, Next.js 14 standalone. Talks to the brain via `BRAIN_URL`
+  (server-side `/api/*` proxies — the browser never calls the brain directly).
+- **Database** — RDS/Aurora PostgreSQL. Set `DATABASE_URL` on the brain and the Engagement
+  Digital Twin persists in Postgres automatically; unset and it falls back to a JSONL file.
+
+## Environment contract
+
+| Service | Var | Value | Notes |
+|---|---|---|---|
+| brain | `PORT` | `8000` | App Runner forwards this |
+| brain | `GROQ_API_KEY` | `<key>` | optional — deterministic core works without it |
+| brain | `DATABASE_URL` | `postgresql://user:pass@host:5432/pmguru` | enables Postgres twin store |
+| brain | `BRAIN_DATA_DIR` | `/data` | JSONL fallback (docs/learning); ephemeral unless EFS-mounted |
+| web | `BRAIN_URL` | `https://<brain-apprunner-url>` | **https, no trailing slash** |
+| web | `PORT` | `3000` | App Runner forwards this |
 
 ---
 
-## Wire the frontend (Vercel) to the brain
+## Path A — containers via ECR + App Runner (recommended, reproducible)
 
-1. Vercel → your project → **Settings → Environment Variables**:
-   - `BRAIN_URL` = the new brain URL (e.g. `https://pmguru-brain-production.up.railway.app`)
-   - **No trailing slash.**
-2. Vercel → **Settings → General → Root Directory** = `frontend` (if not already).
-3. **Redeploy** the frontend (Deployments → ⋯ → Redeploy, uncheck "use existing cache").
-4. Open `/advisor` — the 20 agents should load. Also check `/blueprint`, `/erp`,
-   `/report`, `/consulting`.
+Both services have production `Dockerfile`s (`backend/Dockerfile`, `frontend/Dockerfile`).
 
----
+```bash
+export AWS_REGION=ap-south-1
+export ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+export ECR=$ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com
 
-## Sanity checklist if something is "not working"
+# 1. ECR repos
+aws ecr create-repository --repository-name pmguru-backend  --region $AWS_REGION || true
+aws ecr create-repository --repository-name pmguru-frontend --region $AWS_REGION || true
+aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR
 
-- `https://<brain>/health` returns JSON with `"msme_agents"` → brain is current.
-- Vercel `BRAIN_URL` exactly matches the brain URL (no trailing slash).
-- Frontend redeployed **after** setting `BRAIN_URL`.
-- The Advisor now auto-retries and shows a clear message if the brain is unreachable.
+# 2. Build + push (run where Docker is available — local, EC2, or CodeBuild)
+docker build -t $ECR/pmguru-backend:latest  ./backend
+docker build -t $ECR/pmguru-frontend:latest ./frontend
+docker push $ECR/pmguru-backend:latest
+docker push $ECR/pmguru-frontend:latest
+```
+
+Then create the two App Runner services from the images (console or `aws apprunner
+create-service`), wiring the env vars above. The brain's health-check path is **`/health`**;
+the web's is **`/`**. Deploy the **brain first**, copy its URL into the web's `BRAIN_URL`.
+`deploy/aws-deploy.sh` automates the build/push (and prints next steps).
+
+> No Docker on the build host? Use **AWS CodeBuild** (a buildspec that runs the same
+> `docker build/push`), or use **Path B** below (App Runner builds from source, no Docker).
+
+## Path B — App Runner from source (no Docker)
+
+Each service ships an `apprunner.yaml` (managed runtime). In App Runner: *Create service →
+Source: this GitHub repo →* set **Source directory** to `backend` (brain) or `frontend` (web),
+keep "Use a configuration file", add the env vars, deploy. Brain first, then web with `BRAIN_URL`.
+
+## Database (RDS / Aurora Postgres)
+
+```bash
+aws rds create-db-instance \
+  --db-instance-identifier pmguru-pg --engine postgres --engine-version 15 \
+  --db-instance-class db.t3.micro --allocated-storage 20 \
+  --master-username pmguru --master-user-password '<STRONG_PW>' \
+  --db-name pmguru --region $AWS_REGION
+```
+
+Put the brain and RDS in the same VPC (App Runner VPC connector), then set
+`DATABASE_URL=postgresql://pmguru:<pw>@<rds-endpoint>:5432/pmguru` on the brain. The twin table
+is auto-created on first write. **Verify:** `GET /engagements/tests` reports `"backend": "postgres"`.
+
+## Verify the chain
+
+```bash
+curl https://<brain-url>/health     # → {"status":"ok", ... advertises all layers}
+# open https://<web-url>/engage  → run an engagement → it persists (twin_id) in Postgres
+```
+
+## Known production notes
+- The brain is `ThreadingHTTPServer` (handles concurrency). Fine for App Runner autoscaling;
+  revisit a WSGI/ASGI server only at high sustained load.
+- With `DATABASE_URL` set, the **twin** persists in Postgres. `doc_store` (RAG corpus) and the
+  `live_brain` learning log are still JSONL under `BRAIN_DATA_DIR` — mount **EFS** at `/data` to
+  persist them, or migrate them to Postgres/S3 next (see `docs/CONSULTING-OS.md`).
+- Secrets (`GROQ_API_KEY`, `DATABASE_URL`) → App Runner env or **AWS Secrets Manager**.
+- HTTPS/custom domain → App Runner custom domains; WAF/Cognito are the next hardening step.

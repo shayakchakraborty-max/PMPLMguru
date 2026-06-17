@@ -1,0 +1,17 @@
+# AWS App Runner source config (no-Docker path). Set Source directory = frontend.
+version: 1.0
+runtime: nodejs18
+build:
+  commands:
+    build:
+      - npm ci --legacy-peer-deps
+      - npm run build
+run:
+  runtime-version: 18.20.4
+  command: npx next start -p 3000
+  network:
+    port: 3000
+  env:
+    - name: PORT
+      value: "3000"
+  # Set BRAIN_URL (https, no trailing slash) as an App Runner service env var.

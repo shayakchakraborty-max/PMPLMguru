@@ -1,0 +1,18 @@
+# AWS App Runner source config (no-Docker path). Set Source directory = backend.
+version: 1.0
+runtime: python311
+build:
+  commands:
+    build:
+      - pip install -r requirements.txt
+run:
+  runtime-version: 3.11.9
+  command: python main.py
+  network:
+    port: 8000
+  env:
+    - name: PORT
+      value: "8000"
+    - name: BRAIN_DATA_DIR
+      value: "/tmp/brain_data"
+  # Set GROQ_API_KEY and DATABASE_URL as App Runner service env vars / secrets (not here).
