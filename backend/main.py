@@ -119,6 +119,12 @@ except Exception as _e:
     print(f"[engagement_360] not loaded: {_e}", flush=True)
 
 try:
+    import engagement_types as ETYPES
+except Exception as _e:
+    ETYPES = None
+    print(f"[engagement_types] not loaded: {_e}", flush=True)
+
+try:
     import llm_stack as LLM
 except Exception as _e:
     LLM = None
@@ -3539,6 +3545,8 @@ class Handler(BaseHTTPRequestHandler):
                 "engagement_twin": ({**TWIN.meta()} if TWIN else "not loaded"),
                 "engagement_360": ({"roles": len(DELIVERY.ROLES), "phases": [p["name"] for p in DELIVERY.PHASES],
                                     "endpoints": ["GET /engagement360/meta", "GET /engagement360/tests"]} if DELIVERY else "not loaded"),
+                "engagement_types": ({"count": len(ETYPES.TYPES),
+                                      "endpoints": ["GET /engagement-types", "GET /engagement-types/meta"]} if ETYPES else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3759,6 +3767,21 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "engagement_360 module not loaded"})
                 return
             self._send(200, DELIVERY.run_360_tests())
+        elif path in ("/engagement-types", "/engagement-types/list"):
+            if not ETYPES:
+                self._send(200, {"error": "engagement_types module not loaded"})
+                return
+            self._send(200, ETYPES.types())
+        elif path == "/engagement-types/meta":
+            if not ETYPES:
+                self._send(200, {"error": "engagement_types module not loaded"})
+                return
+            self._send(200, ETYPES.meta())
+        elif path == "/engagement-types/tests":
+            if not ETYPES:
+                self._send(200, {"error": "engagement_types module not loaded"})
+                return
+            self._send(200, ETYPES.run_type_tests())
         else:
             self._send(404, {"error": "not found", "path": path})
 

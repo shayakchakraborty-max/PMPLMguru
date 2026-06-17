@@ -28,6 +28,11 @@ try:
 except Exception:
     _D = None
 
+try:
+    import engagement_types as _ET
+except Exception:
+    _ET = None
+
 
 def _live(a):
     return bool(_M and _M.MSME_AGENTS.get(a, {}).get("status") == "live")
@@ -62,9 +67,13 @@ def _detect_towers(desc):
     return hits
 
 
-def select_workstreams(desc, cls):
-    """Pick the multi-disciplinary agent team for this engagement (like staffing a case)."""
+def select_workstreams(desc, cls, etype=None):
+    """Pick the multi-disciplinary agent team for this engagement (like staffing a case).
+    If a typed engagement (etype) is given, its end-to-end agent team leads, so the
+    standard scope is always fully staffed; routing/sector specialists augment it."""
     agents, routed = [], None
+    if etype and _ET:
+        agents += _ET.live_agents(etype)
     if _C:
         routed = _C.resolve(desc)
         if routed.get("matched") and routed.get("agent"):
@@ -214,7 +223,8 @@ def orchestrate(body):
     except Exception:
         cls = {"industry": "services", "size": "small", "is_export": False, "is_tech": False, "is_startup": False}
 
-    team, routed = select_workstreams(desc, cls)
+    etype = _ET.get(body.get("engagement_type")) if (_ET and body.get("engagement_type")) else None
+    team, routed = select_workstreams(desc, cls, etype)
     scenario = {"description": desc, "data": intake}
     workstreams = []
     for a in team:
@@ -227,6 +237,9 @@ def orchestrate(body):
     if not workstreams:
         return {"error": "No workstream could be run for this engagement."}
     report = synthesize(desc, cls, intake, workstreams, routed)
+    if etype:
+        report["engagement_type"] = {k: etype[k] for k in ("key", "name", "tower", "icon", "objective",
+                                                            "duration_weeks", "deliverables", "kpis", "value_levers")}
     # Delivery layer: staffed team + AI-supported workplan + hours + billing (Engagement 360).
     if _D:
         try:
