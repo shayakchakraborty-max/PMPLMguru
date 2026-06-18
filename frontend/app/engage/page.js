@@ -273,38 +273,96 @@ export default function EngagePage() {
   );
 }
 
+const PHASE_TINT = { mobilize: "bg-slate-100 text-slate-600", diagnose: "bg-indigo-100 text-indigo-700", design: "bg-violet-100 text-violet-700", validate: "bg-amber-100 text-amber-700", deliver: "bg-emerald-100 text-emerald-700" };
+const POSTURE_BADGE = { Critical: "bg-rose-500", Elevated: "bg-orange-500", Watch: "bg-amber-500", Stable: "bg-emerald-500" };
+const NAV = [["scope", "Scope"], ["summary", "Summary"], ["diagnosis", "Diagnosis"], ["timeline", "Timeline"], ["team", "Team"], ["findings", "Findings"], ["recommendations", "Recommendations"], ["risks", "Risks"], ["workplan", "Workplan"], ["billing", "Billing"], ["meetings", "Meetings"], ["deliverables", "Deliverables"]];
+
 function Report({ d, engagementKey, onBack }) {
   const grad = POSTURE[d.diagnosis?.posture] || POSTURE.Stable;
+  const e = d.delivery?.economics || {};
+  const dl = d.delivery || {};
+  const et = d.engagement_type;
+  const teamSize = (dl.team || []).filter((m) => !m.client_side).length;
+  const stats = [
+    ["Engagement value", e.tm_fee_label || "—"],
+    ["Duration", e.duration_weeks ? `${e.duration_weeks} wks` : "—"],
+    ["Team", teamSize ? `${teamSize}` : "—"],
+    ["AI-led", dl.ai_leverage_pct != null ? `${dl.ai_leverage_pct}%` : "—"],
+    ["Workstreams", d.workstreams?.length || 0],
+    ["Risks", `${d.diagnosis?.critical_risks || 0}C / ${d.diagnosis?.high_risks || 0}H`],
+  ];
   return (
-    <div id="report" className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div id="report" className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-7">
       <div className="flex items-center justify-between no-print">
         <button onClick={onBack} className="text-sm font-semibold text-slate-500 hover:text-slate-900">← New engagement</button>
         <button onClick={() => window.print()} className="px-4 py-2 rounded-xl border border-slate-300 text-sm font-semibold hover:bg-white">Print / Save PDF</button>
       </div>
 
-      {/* Cover */}
-      <div className={`rounded-3xl p-7 text-white bg-gradient-to-br ${grad} shadow-lg`}>
-        <div className="text-[11px] font-bold uppercase tracking-wider opacity-80">AI Consulting OS · Engagement report</div>
-        <h1 className="text-3xl sm:text-4xl font-black tracking-tight mt-1">{d.title}</h1>
-        <div className="flex flex-wrap items-center gap-3 mt-3 text-sm">
-          <span className="bg-white/20 px-2.5 py-1 rounded-full font-semibold">{d.sector}</span>
-          <span className="bg-white/20 px-2.5 py-1 rounded-full font-semibold">Risk posture: {d.diagnosis?.posture}</span>
-          <span className="bg-white/20 px-2.5 py-1 rounded-full font-semibold">{d.workstreams?.length} workstreams</span>
-          <span className="opacity-70 text-[12px]">#{d.engagement_id}</span>
+      {/* Dossier header */}
+      <div className={`rounded-3xl p-6 sm:p-7 text-white bg-gradient-to-br ${grad} shadow-lg`}>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider opacity-80">Engagement 360 · {et?.name || d.routed_to?.tower || "Advisory"}</div>
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tight mt-1">{d.title}</h1>
+            <div className="flex flex-wrap items-center gap-2 mt-2 text-[12px]">
+              <span className="bg-white/20 px-2.5 py-1 rounded-full font-semibold">{d.sector}</span>
+              {d.routed_to && <span className="bg-white/20 px-2.5 py-1 rounded-full font-semibold">{d.routed_to.icon} {d.routed_to.tower}</span>}
+              <span className="opacity-70">#{d.engagement_id}</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="inline-flex items-center gap-1.5 bg-white/15 px-3 py-1.5 rounded-full text-sm font-bold">
+              <span className={`w-2.5 h-2.5 rounded-full ${POSTURE_BADGE[d.diagnosis?.posture] || "bg-white"}`} /> {d.diagnosis?.posture} risk posture
+            </div>
+          </div>
         </div>
-        {d.routed_to && <div className="mt-3 text-[13px] opacity-90">Lead practice: <b>{d.routed_to.icon} {d.routed_to.tower}</b> · {d.routed_to.advisor}</div>}
+        {/* metric strip */}
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-5">
+          {stats.map(([k, v], i) => (
+            <div key={i} className="bg-white/10 rounded-xl px-3 py-2">
+              <div className="text-[9px] uppercase tracking-wide opacity-70 font-bold">{k}</div>
+              <div className="text-base font-black leading-tight mt-0.5">{v}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Managing partner brief */}
-      {d.managing_partner_brief?.narrative && (
-        <div className="bg-white rounded-2xl border-l-4 border-indigo-500 border-y border-r border-slate-200 p-5 shadow-sm">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-indigo-600 mb-1">🤝 Managing Partner’s brief</div>
-          <p className="text-[15px] leading-relaxed text-slate-800 font-medium">“{d.managing_partner_brief.narrative}”</p>
+      {/* Sticky section nav */}
+      <div className="sticky top-14 z-20 bg-slate-50/90 backdrop-blur -mx-4 px-4 py-2 border-y border-slate-200 no-print overflow-x-auto">
+        <div className="flex gap-1 min-w-max">
+          {NAV.map(([id, label]) => (
+            <a key={id} href={`#${id}`} className="px-2.5 py-1 rounded-lg text-[12px] font-semibold text-slate-500 hover:bg-white hover:text-indigo-600">{label}</a>
+          ))}
         </div>
-      )}
+      </div>
 
-      {/* Executive summary + team */}
-      <Section title="Executive summary" icon="📌">
+      {/* Scope & objective */}
+      <Section id="scope" title="Scope & objective" icon="🎯">
+        <div className="bg-white rounded-2xl border border-slate-200 p-5">
+          <p className="text-[15px] text-slate-800 font-medium">{et?.objective || d.business_context}</p>
+          {et && (
+            <div className="grid sm:grid-cols-2 gap-4 mt-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-slate-400 font-bold mb-1.5">Expected deliverables</div>
+                <ul className="space-y-1 text-[13px]">{(et.deliverables || []).map((x, i) => <li key={i} className="flex gap-1.5"><span className="text-indigo-500">▸</span>{x}</li>)}</ul>
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-slate-400 font-bold mb-1.5">Value levers</div>
+                <div className="flex flex-wrap gap-1.5">{(et.value_levers || []).map((x, i) => <span key={i} className="text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-1 rounded-lg font-semibold">{x}</span>)}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </Section>
+
+      {/* Executive summary + partner brief */}
+      <Section id="summary" title="Executive summary" icon="📌">
+        {d.managing_partner_brief?.narrative && (
+          <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-2xl border-l-4 border-indigo-500 p-4 mb-3">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-indigo-600 mb-1">🤝 Managing Partner’s brief</div>
+            <p className="text-[15px] leading-relaxed text-slate-800 font-medium">“{d.managing_partner_brief.narrative}”</p>
+          </div>
+        )}
         <p className="text-[15px] leading-relaxed text-slate-700">{d.executive_summary}</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {d.agents_engaged?.map((a, i) => (
@@ -313,8 +371,69 @@ function Report({ d, engagementKey, onBack }) {
         </div>
       </Section>
 
-      {/* Workstreams */}
-      <Section title="Workstream findings" icon="🧩">
+      {/* Diagnosis + KPI infographics */}
+      <Section id="diagnosis" title="Diagnosis & KPIs" icon="📊">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {(d.kpis || []).slice(0, 8).map((k, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-slate-200 p-3">
+              <div className="text-[11px] text-slate-400 font-semibold leading-tight">{k.kpi}</div>
+              <div className="text-lg font-black text-indigo-600 mt-1">{k.target}</div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Project timeline */}
+      {dl.timeline?.bars?.length > 0 && (
+        <Section id="timeline" title="Project timeline" icon="📅">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4">
+            <div className="text-[11px] text-slate-400 mb-3">{dl.timeline.total_weeks}-week plan · {dl.timeline.bars.length} phases</div>
+            <div className="space-y-2">
+              {dl.timeline.bars.map((b, i) => {
+                const tint = ["bg-slate-400", "bg-indigo-500", "bg-violet-500", "bg-amber-500", "bg-emerald-500"][i] || "bg-slate-400";
+                return (
+                  <div key={i} className="flex items-center gap-2 text-[12px]">
+                    <span className="w-20 shrink-0 font-semibold">{b.phase}</span>
+                    <div className="flex-1 bg-slate-100 rounded-full h-5 relative">
+                      <div className={`${tint} h-5 rounded-full absolute flex items-center justify-end pr-2`} style={{ left: `${((b.start_week - 1) / dl.timeline.total_weeks) * 100}%`, width: `${(b.weeks / dl.timeline.total_weeks) * 100}%` }}>
+                        <span className="text-[9px] font-bold text-white/90">{b.weeks}w</span>
+                      </div>
+                    </div>
+                    <span className="w-20 shrink-0 text-right text-slate-400">Wk {b.start_week}{b.weeks > 1 ? `–${b.end_week}` : ""}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {/* Engagement team */}
+      {dl.team?.length > 0 && (
+        <Section id="team" title="Engagement team" icon="👔">
+          <div className="overflow-x-auto bg-white rounded-2xl border border-slate-200">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-slate-50 text-left text-[11px] uppercase tracking-wide text-slate-500">
+                <th className="px-3 py-2.5 font-bold">Role</th><th className="px-3 py-2.5 font-bold">AI advisor</th><th className="px-3 py-2.5 font-bold text-right">Hours</th><th className="px-3 py-2.5 font-bold text-right">Rate</th><th className="px-3 py-2.5 font-bold">Mandate</th>
+              </tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {dl.team.map((m, i) => (
+                  <tr key={i} className={m.client_side ? "bg-amber-50/40" : ""}>
+                    <td className="px-3 py-2.5 font-semibold whitespace-nowrap">{m.role}{m.client_side && <span className="ml-1 text-[9px] text-amber-600">client</span>}</td>
+                    <td className="px-3 py-2.5 text-[12px] text-violet-700">{m.ai_advisor || "—"}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{m.allocated_hours || "—"}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-500">{m.rate_per_hour ? `₹${m.rate_per_hour.toLocaleString()}` : "—"}</td>
+                    <td className="px-3 py-2.5 text-[12px] text-slate-500 max-w-xs">{m.mandate}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
+
+      {/* Workstream findings */}
+      <Section id="findings" title="Workstream findings" icon="🧩">
         <div className="grid sm:grid-cols-2 gap-3">
           {d.workstreams?.map((w, i) => (
             <div key={i} className="bg-white rounded-2xl border border-slate-200 p-4">
@@ -329,7 +448,7 @@ function Report({ d, engagementKey, onBack }) {
       </Section>
 
       {/* Recommendations */}
-      <Section title="Prioritised recommendations" icon="🎯">
+      <Section id="recommendations" title="Prioritised recommendations" icon="✅">
         <ol className="space-y-2">
           {d.recommendations?.map((r, i) => (
             <li key={i} className="flex gap-3 bg-white rounded-xl border border-slate-200 p-3">
@@ -344,7 +463,7 @@ function Report({ d, engagementKey, onBack }) {
       </Section>
 
       {/* Risk register */}
-      <Section title="Risk register" icon="⚠️">
+      <Section id="risks" title="Risk register (RAID)" icon="⚠️">
         <div className="overflow-x-auto bg-white rounded-2xl border border-slate-200">
           <table className="w-full text-sm">
             <thead><tr className="bg-slate-50 text-left text-[11px] uppercase tracking-wide text-slate-500">
@@ -364,185 +483,104 @@ function Report({ d, engagementKey, onBack }) {
         </div>
       </Section>
 
-      {/* 90-day plan */}
-      <Section title="90-day action plan" icon="🗓️">
-        <div className="space-y-2">
-          {d.action_plan?.map((a, i) => (
-            <div key={i} className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 p-2.5">
-              <span className="shrink-0 text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded">{a.timeline || "—"}</span>
-              <span className="text-sm flex-1">{a.step}</span>
-              <span className="text-[11px] text-slate-400 font-semibold">{a.owner}</span>
-            </div>
+      {/* AI-supported workplan */}
+      {dl.workplan?.length > 0 && <Workplan dl={dl} />}
+
+      {/* Hours & billing */}
+      {e.total_hours != null && <Billing e={e} />}
+
+      {/* Meetings + MoM */}
+      <Meetings engagementKey={engagementKey} />
+
+      {/* AI deliverables */}
+      <div id="deliverables"><DeckGen report={d} /></div>
+
+      {/* Appendix */}
+      <Section title="Sources & citations" icon="📚">
+        <div className="flex flex-wrap gap-1.5">
+          {d.citations?.map((c, i) => (
+            <span key={i} className="text-[11px] bg-white border border-slate-200 px-2 py-1 rounded-lg" title={c.ref || ""}>
+              {c.title || c.key}{c.tier && <span className="ml-1 text-[9px] font-bold text-indigo-500">[{c.tier}]</span>}
+            </span>
           ))}
         </div>
       </Section>
-
-      {/* KPIs + citations */}
-      <div className="grid sm:grid-cols-2 gap-6">
-        <Section title="KPIs to monitor" icon="📊">
-          <ul className="space-y-1.5">
-            {d.kpis?.map((k, i) => (
-              <li key={i} className="text-sm bg-white rounded-lg border border-slate-200 px-3 py-2 flex items-center justify-between">
-                <span className="font-semibold">{k.kpi}</span><span className="text-slate-500 text-[12px]">→ {k.target}</span>
-              </li>
-            ))}
-          </ul>
-        </Section>
-        <Section title="Sources & citations" icon="📚">
-          <div className="flex flex-wrap gap-1.5">
-            {d.citations?.map((c, i) => (
-              <span key={i} className="text-[11px] bg-white border border-slate-200 px-2 py-1 rounded-lg" title={c.ref || ""}>
-                {c.title || c.key}{c.tier && <span className="ml-1 text-[9px] font-bold text-indigo-500">[{c.tier}]</span>}
-              </span>
-            ))}
-          </div>
-        </Section>
-      </div>
-
-      {/* AI deliverables — board deck / exec memo in top-firm format */}
-      <DeckGen report={d} />
-
-      {/* Engagement 360 — delivery layer (team, AI workplan, hours, billing) */}
-      {d.delivery && <Delivery d={d.delivery} />}
-
-      {/* Client / SME meetings — capture notes/recording, AI minutes */}
-      <Meetings engagementKey={engagementKey} />
 
       <p className="text-[11px] text-slate-400 border-t border-slate-200 pt-4">{d.disclaimer}</p>
     </div>
   );
 }
 
-const PHASE_TINT = { mobilize: "bg-slate-100 text-slate-600", diagnose: "bg-indigo-100 text-indigo-700", design: "bg-violet-100 text-violet-700", validate: "bg-amber-100 text-amber-700", deliver: "bg-emerald-100 text-emerald-700" };
-
-function Delivery({ d }) {
-  const billable = (d.roles || []).filter((r) => r.billable);
+function Workplan({ dl }) {
+  const billable = (dl.roles || []).filter((r) => r.billable);
   const [role, setRole] = useState("all");
-  const e = d.economics || {};
-  const roleTitle = (k) => (d.roles || []).find((r) => r.key === k)?.title || k;
-  const tasks = role === "all" ? d.workplan : (d.workplan || []).filter((t) => t.owner_role === role);
-
+  const roleTitle = (k) => (dl.roles || []).find((r) => r.key === k)?.title || k;
+  const tasks = role === "all" ? dl.workplan : (dl.workplan || []).filter((t) => t.owner_role === role);
   return (
-    <div className="border-t-2 border-slate-200 pt-8 mt-8 space-y-8">
-      <div>
-        <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">🛰️ Engagement 360 <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">{d.ai_leverage_pct}% AI-led</span></h2>
-        <p className="text-sm text-slate-500 mt-1">The staffed team, the AI-supported workplan, hours and billing — AI agents do the heavy lifting; humans review &amp; sign off.</p>
+    <Section id="workplan" title="AI-supported workplan" icon="🗂️">
+      <div className="flex items-center gap-2 flex-wrap mb-3 no-print">
+        <span className="text-[11px] font-bold text-slate-500">View as:</span>
+        <button onClick={() => setRole("all")} className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${role === "all" ? "bg-slate-900 text-white border-slate-900" : "bg-white border-slate-200"}`}>Whole team</button>
+        {billable.map((r) => {
+          const n = (dl.by_role_tasks?.[r.key] || []).length; if (!n) return null;
+          return <button key={r.key} onClick={() => setRole(r.key)} className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${role === r.key ? "bg-indigo-600 text-white border-indigo-600" : "bg-white border-slate-200 hover:border-indigo-300"}`}>{r.title} ({n})</button>;
+        })}
       </div>
-
-      {/* Billing tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {[["Total effort", `${e.total_hours} hrs`], ["Duration", `${e.duration_weeks} wks`], ["T&M fee", e.tm_fee_label], ["Fixed fee", e.fixed_fee_label], ["Blended rate", `${e.blended_rate_label}/hr`]].map(([k, v], i) => (
-          <div key={i} className="bg-white rounded-2xl border border-slate-200 p-4">
-            <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold">{k}</div>
-            <div className="text-xl font-black mt-0.5">{v}</div>
+      <div className="space-y-2">
+        {tasks.map((t) => (
+          <div key={t.id} className="bg-white rounded-xl border border-slate-200 p-3">
+            <div className="flex items-start gap-2 flex-wrap">
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${PHASE_TINT[t.phase] || "bg-slate-100"}`}>{t.phase}</span>
+              <span className="font-bold text-sm flex-1 min-w-[180px]">{t.title}</span>
+              <span className="text-[10px] text-slate-400 font-semibold">{roleTitle(t.owner_role)} · {t.est_hours}h</span>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{t.ai_automation_pct}% AI</span>
+            </div>
+            <div className="text-[12px] text-slate-600 mt-1.5">🤖 {t.ai_support}</div>
+            <div className="flex items-center gap-2 mt-2 text-[11px]">
+              {t.ai_agent && <a href={`/advisor?agent=${t.ai_agent}`} className="px-2 py-0.5 rounded bg-violet-100 text-violet-700 font-semibold hover:bg-violet-200">▶ Run {t.ai_agent}</a>}
+              <span className="text-slate-400">Deliverable: {t.deliverable}</span>
+              {t.approver_role && <span className="ml-auto text-slate-400">✍ sign-off: {roleTitle(t.approver_role)}</span>}
+            </div>
           </div>
         ))}
       </div>
+    </Section>
+  );
+}
 
-      {/* Project timeline */}
-      {d.timeline?.bars?.length > 0 && (
-        <Section title="Project timeline" icon="📅">
+function Billing({ e }) {
+  return (
+    <Section id="billing" title="Hours & billing" icon="💳">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+        {[["Total effort", `${e.total_hours} hrs`], ["Duration", `${e.duration_weeks} wks`], ["T&M fee", e.tm_fee_label], ["Fixed fee", e.fixed_fee_label], ["Blended", `${e.blended_rate_label}/hr`]].map(([k, v], i) => (
+          <div key={i} className="bg-white rounded-2xl border border-slate-200 p-3"><div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold">{k}</div><div className="text-lg font-black mt-0.5">{v}</div></div>
+        ))}
+      </div>
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="px-3 py-2 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500 font-bold">Effort & cost by role</div>
+          <table className="w-full text-sm"><tbody className="divide-y divide-slate-100">
+            {(e.by_role || []).map((r, i) => (
+              <tr key={i}><td className="px-3 py-2 font-semibold">{r.role}</td><td className="px-3 py-2 text-right tabular-nums text-slate-500">{r.hours}h × ₹{r.rate_per_hour.toLocaleString()}</td><td className="px-3 py-2 text-right tabular-nums font-bold">{r.amount_label}</td></tr>
+            ))}
+            <tr className="bg-slate-900 text-white font-bold"><td className="px-3 py-2">Total (T&amp;M)</td><td className="px-3 py-2 text-right">{e.total_hours}h</td><td className="px-3 py-2 text-right">{e.tm_fee_label}</td></tr>
+          </tbody></table>
+        </div>
+        <div className="space-y-3">
           <div className="bg-white rounded-2xl border border-slate-200 p-4">
-            <div className="text-[11px] text-slate-400 mb-2">{d.timeline.total_weeks}-week plan · 5 phases</div>
-            <div className="space-y-2">
-              {d.timeline.bars.map((b, i) => {
-                const tint = ["bg-slate-400", "bg-indigo-500", "bg-violet-500", "bg-amber-500", "bg-emerald-500"][i] || "bg-slate-400";
-                return (
-                  <div key={i} className="flex items-center gap-2 text-[12px]">
-                    <span className="w-20 shrink-0 font-semibold">{b.phase}</span>
-                    <div className="flex-1 bg-slate-100 rounded-full h-4 relative">
-                      <div className={`${tint} h-4 rounded-full absolute`} style={{ left: `${((b.start_week - 1) / d.timeline.total_weeks) * 100}%`, width: `${(b.weeks / d.timeline.total_weeks) * 100}%` }} />
-                    </div>
-                    <span className="w-24 shrink-0 text-right text-slate-400">Wk {b.start_week}{b.weeks > 1 ? `–${b.end_week}` : ""}</span>
-                  </div>
-                );
-              })}
-            </div>
+            <div className="text-[11px] uppercase tracking-wide text-slate-500 font-bold mb-2">Fee options</div>
+            <ul className="text-sm space-y-1.5">
+              <li className="flex justify-between"><span>Time &amp; Materials</span><b>{e.tm_fee_label}</b></li>
+              <li className="flex justify-between"><span>Fixed Fee</span><b>{e.fixed_fee_label}</b></li>
+              <li className="flex justify-between"><span>Monthly Retainer</span><b>{e.monthly_retainer_label}</b></li>
+              <li className="flex justify-between text-slate-500"><span>Blended rate</span><b>{e.blended_rate_label}/hr</b></li>
+            </ul>
+            <div className="flex flex-wrap gap-1.5 mt-2">{(e.fee_models || []).map((f, i) => <span key={i} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold">{f}</span>)}</div>
           </div>
-        </Section>
-      )}
-
-      {/* Team */}
-      <Section title="Engagement team" icon="👔">
-        <div className="overflow-x-auto bg-white rounded-2xl border border-slate-200">
-          <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 text-left text-[11px] uppercase tracking-wide text-slate-500">
-              <th className="px-3 py-2.5 font-bold">Role</th><th className="px-3 py-2.5 font-bold">AI advisor</th><th className="px-3 py-2.5 font-bold text-right">Hours</th><th className="px-3 py-2.5 font-bold text-right">Rate</th><th className="px-3 py-2.5 font-bold">Mandate</th>
-            </tr></thead>
-            <tbody className="divide-y divide-slate-100">
-              {(d.team || []).map((m, i) => (
-                <tr key={i} className={m.client_side ? "bg-amber-50/40" : ""}>
-                  <td className="px-3 py-2.5 font-semibold whitespace-nowrap">{m.role}{m.client_side && <span className="ml-1 text-[9px] text-amber-600">client</span>}</td>
-                  <td className="px-3 py-2.5 text-[12px] text-violet-700">{m.ai_advisor || "—"}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">{m.allocated_hours || "—"}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-500">{m.rate_per_hour ? `₹${m.rate_per_hour.toLocaleString()}` : "—"}</td>
-                  <td className="px-3 py-2.5 text-[12px] text-slate-500 max-w-xs">{m.mandate}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <p className="text-[11px] text-slate-400">{e.note}</p>
         </div>
-      </Section>
-
-      {/* Workplan + role switcher */}
-      <Section title="AI-supported workplan" icon="🗂️">
-        <div className="flex items-center gap-2 flex-wrap mb-3">
-          <span className="text-[11px] font-bold text-slate-500">View as:</span>
-          <button onClick={() => setRole("all")} className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${role === "all" ? "bg-slate-900 text-white border-slate-900" : "bg-white border-slate-200"}`}>Whole team</button>
-          {billable.map((r) => {
-            const n = (d.by_role_tasks?.[r.key] || []).length; if (!n) return null;
-            return <button key={r.key} onClick={() => setRole(r.key)} className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${role === r.key ? "bg-indigo-600 text-white border-indigo-600" : "bg-white border-slate-200 hover:border-indigo-300"}`}>{r.title} ({n})</button>;
-          })}
-        </div>
-        {role !== "all" && <p className="text-[12px] text-slate-500 mb-2">{roleTitle(role)}’s task list — each task has an AI agent doing the heavy lifting.</p>}
-        <div className="space-y-2">
-          {tasks.map((t) => (
-            <div key={t.id} className="bg-white rounded-xl border border-slate-200 p-3">
-              <div className="flex items-start gap-2 flex-wrap">
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${PHASE_TINT[t.phase] || "bg-slate-100"}`}>{t.phase}</span>
-                <span className="font-bold text-sm flex-1 min-w-[180px]">{t.title}</span>
-                <span className="text-[10px] text-slate-400 font-semibold">{roleTitle(t.owner_role)} · {t.est_hours}h</span>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{t.ai_automation_pct}% AI</span>
-              </div>
-              <div className="text-[12px] text-slate-600 mt-1.5">🤖 {t.ai_support}</div>
-              <div className="flex items-center gap-2 mt-2 text-[11px]">
-                {t.ai_agent && <a href={`/advisor?agent=${t.ai_agent}`} className="px-2 py-0.5 rounded bg-violet-100 text-violet-700 font-semibold hover:bg-violet-200">▶ Run {t.ai_agent}</a>}
-                <span className="text-slate-400">Deliverable: {t.deliverable}</span>
-                {t.approver_role && <span className="ml-auto text-slate-400">✍ sign-off: {roleTitle(t.approver_role)}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      {/* Billing detail */}
-      <Section title="Hours & billing" icon="💳">
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="px-3 py-2 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500 font-bold">Effort & cost by role</div>
-            <table className="w-full text-sm"><tbody className="divide-y divide-slate-100">
-              {(e.by_role || []).map((r, i) => (
-                <tr key={i}><td className="px-3 py-2 font-semibold">{r.role}</td><td className="px-3 py-2 text-right tabular-nums text-slate-500">{r.hours}h × ₹{r.rate_per_hour.toLocaleString()}</td><td className="px-3 py-2 text-right tabular-nums font-bold">{r.amount_label}</td></tr>
-              ))}
-              <tr className="bg-slate-900 text-white font-bold"><td className="px-3 py-2">Total (T&amp;M)</td><td className="px-3 py-2 text-right">{e.total_hours}h</td><td className="px-3 py-2 text-right">{e.tm_fee_label}</td></tr>
-            </tbody></table>
-          </div>
-          <div className="space-y-3">
-            <div className="bg-white rounded-2xl border border-slate-200 p-4">
-              <div className="text-[11px] uppercase tracking-wide text-slate-500 font-bold mb-2">Fee options</div>
-              <ul className="text-sm space-y-1.5">
-                <li className="flex justify-between"><span>Time &amp; Materials</span><b>{e.tm_fee_label}</b></li>
-                <li className="flex justify-between"><span>Fixed Fee</span><b>{e.fixed_fee_label}</b></li>
-                <li className="flex justify-between"><span>Monthly Retainer</span><b>{e.monthly_retainer_label}</b></li>
-                <li className="flex justify-between text-slate-500"><span>Blended rate</span><b>{e.blended_rate_label}/hr</b></li>
-              </ul>
-              <div className="flex flex-wrap gap-1.5 mt-2">{(e.fee_models || []).map((f, i) => <span key={i} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold">{f}</span>)}</div>
-            </div>
-            <p className="text-[11px] text-slate-400">{e.note}</p>
-          </div>
-        </div>
-      </Section>
-    </div>
+      </div>
+    </Section>
   );
 }
 
@@ -589,7 +627,7 @@ function Meetings({ engagementKey }) {
 
   const reg = data?.registers;
   return (
-    <section className="border-t-2 border-slate-200 pt-8 mt-8 space-y-5">
+    <section id="meetings" className="border-t-2 border-slate-200 pt-8 mt-8 space-y-5 scroll-mt-28">
       <div>
         <h2 className="text-2xl font-black tracking-tight">🎙️ Client &amp; SME meetings</h2>
         <p className="text-sm text-slate-500 mt-1">Keep the recording on or paste notes — AI writes the minutes (decisions, action items, risks) in firm format and rolls them into the engagement.</p>
@@ -720,9 +758,9 @@ function DeckGen({ report }) {
   );
 }
 
-function Section({ title, icon, children }) {
+function Section({ title, icon, children, id }) {
   return (
-    <section>
+    <section id={id} className={id ? "scroll-mt-28" : ""}>
       <h3 className="text-lg font-black tracking-tight flex items-center gap-2 mb-3"><span>{icon}</span>{title}</h3>
       {children}
     </section>
