@@ -41,6 +41,16 @@ export default function ClientsPage() {
   async function addContract() { if (!kf.client_id || !kf.contract_value) return; await post({ action: "add_contract", ...kf }); setKf({ ...kf, contract_value: "", letter_text: "" }); load(); }
   async function signContract(id) { await post({ action: "contract_status", id, status: "Signed", signed_date: new Date().toISOString().slice(0, 10) }); load(); }
   async function sendMail() { if (!mail.subject && !mail.body) return; await post({ action: "contract_email", id: mailFor, ...mail }); setMail({ subject: "", from: "", to: "", body: "" }); setMailFor(null); load(); }
+  async function attachDoc(contractId, file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const b64 = String(reader.result).split(",")[1] || "";
+      const up = await fetch("/api/blob", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner: ownerId(), scope: "contract", filename: file.name, content_base64: b64, content_type: file.type }) }).then((r) => r.json());
+      if (up.key) { await post({ action: "contract_email", id: contractId, subject: `📎 Document: ${file.name}`, from: "attachment", to: up.key, body: up.url || up.key }); load(); }
+    };
+    reader.readAsDataURL(file);
+  }
   async function open360(cid) { const d = await fetch(`/api/clients?view=client&owner=${encodeURIComponent(ownerId())}&id=${cid}`).then((r) => r.json()); setSel(d); }
 
   return (
@@ -135,6 +145,7 @@ export default function ClientsPage() {
               <div className="flex gap-1.5 mt-2">
                 {k.status !== "Signed" && k.status !== "Active" && <button onClick={() => signContract(k.id)} className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-bold">Mark signed</button>}
                 <button onClick={() => setMailFor(mailFor === k.id ? null : k.id)} className="text-[10px] bg-white border border-slate-200 px-2 py-0.5 rounded font-bold">Store letter mail</button>
+                <label className="text-[10px] bg-white border border-slate-200 px-2 py-0.5 rounded font-bold cursor-pointer">📎 Attach doc<input type="file" className="hidden" onChange={(e) => attachDoc(k.id, e.target.files?.[0])} /></label>
               </div>
               {mailFor === k.id && (
                 <div className="mt-2 bg-slate-50 rounded-lg p-2 space-y-1.5">

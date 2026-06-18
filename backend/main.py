@@ -143,6 +143,12 @@ except Exception as _e:
     print(f"[clients] not loaded: {_e}", flush=True)
 
 try:
+    import blob_store as BLOB
+except Exception as _e:
+    BLOB = None
+    print(f"[blob_store] not loaded: {_e}", flush=True)
+
+try:
     import llm_stack as LLM
 except Exception as _e:
     LLM = None
@@ -3572,6 +3578,7 @@ class Handler(BaseHTTPRequestHandler):
                 "clients_contracts": ({"backend": ("postgres" if getattr(CLIENTS, "_USE_DB", False) else "jsonl"),
                                        "endpoints": ["GET|POST /clients", "GET /client", "GET|POST /contracts",
                                                      "POST /contract/status", "POST /contract/email", "GET /billing/summary"]} if CLIENTS else "not loaded"),
+                "blob_store": (BLOB.meta() if BLOB else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3839,6 +3846,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, CLIENTS.meta() if CLIENTS else {"error": "clients not loaded"})
         elif path == "/clients/tests":
             self._send(200, CLIENTS.run_clients_tests() if CLIENTS else {"error": "clients not loaded"})
+        elif path == "/blob":
+            self._send(200, BLOB.get_blob(self._q("owner"), self._q("key")) if BLOB else {"error": "blob_store not loaded"})
+        elif path == "/blob/meta":
+            self._send(200, BLOB.meta() if BLOB else {"error": "blob_store not loaded"})
+        elif path == "/blob/tests":
+            self._send(200, BLOB.run_blob_tests() if BLOB else {"error": "blob_store not loaded"})
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3940,6 +3953,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, CLIENTS.set_contract_status(body) if CLIENTS else {"error": "clients not loaded"})
             elif path in ("/contract/email",):
                 self._send(200, CLIENTS.add_email(body) if CLIENTS else {"error": "clients not loaded"})
+            elif path in ("/blob",):
+                self._send(200, BLOB.put_blob(body) if BLOB else {"error": "blob_store not loaded"})
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:

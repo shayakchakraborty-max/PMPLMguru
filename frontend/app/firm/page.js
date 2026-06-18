@@ -50,14 +50,21 @@ export default function FirmPage() {
     const reader = new FileReader();
     reader.onload = async () => {
       const b64 = String(reader.result).split(",")[1] || "";
+      // 1) store the receipt document (S3 at deploy / local fallback)
+      let receiptRef = file.name;
+      try {
+        const up = await fetch("/api/blob", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner: ownerId(), scope: "receipt", filename: file.name, content_base64: b64, content_type: file.type }) }).then((r) => r.json());
+        if (up.key) receiptRef = up.key;
+      } catch {}
+      // 2) OCR to auto-fill the form
       try {
         const r = await fetch("/api/firm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "ocr", image_base64: b64 }) });
         const d = await r.json();
         if (d.ok) {
-          setExForm((f) => ({ ...f, amount: d.amount || f.amount, category: d.category || f.category, note: (d.merchant ? `${d.merchant}${d.date ? " · " + d.date : ""}` : f.note), receipt: file.name, ocr_engine: d.engine }));
-          setOcrMsg(`✓ OCR (${d.engine}): ₹${d.amount || "?"} · ${d.category}`);
-        } else { setExForm((f) => ({ ...f, receipt: file.name })); setOcrMsg(d.note || d.error || "Receipt attached — enter amount manually."); }
-      } catch (e) { setOcrMsg("OCR failed; enter manually."); }
+          setExForm((f) => ({ ...f, amount: d.amount || f.amount, category: d.category || f.category, note: (d.merchant ? `${d.merchant}${d.date ? " · " + d.date : ""}` : f.note), receipt: receiptRef, ocr_engine: d.engine }));
+          setOcrMsg(`✓ stored + OCR (${d.engine}): ₹${d.amount || "?"} · ${d.category}`);
+        } else { setExForm((f) => ({ ...f, receipt: receiptRef })); setOcrMsg(d.note || d.error || "Receipt stored — enter amount manually."); }
+      } catch (e) { setExForm((f) => ({ ...f, receipt: receiptRef })); setOcrMsg("Receipt stored; OCR unavailable — enter manually."); }
     };
     reader.readAsDataURL(file);
   }
