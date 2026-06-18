@@ -23,7 +23,10 @@ export async function GET(req) {
 export async function POST(req) {
   if (!BRAIN) return Response.json({ error: "BRAIN_URL not set in Vercel." }, { status: 200 });
   let body; try { body = await req.json(); } catch { return Response.json({ error: "bad json" }, { status: 200 }); }
-  const path = body.action === "analyze" ? "/meeting/analyze" : "/meetings";
+  const path = body.action === "analyze" ? "/meeting/analyze"
+    : body.action === "propose" ? "/meeting/propose"
+    : body.action === "schedule" ? "/meeting/schedule"
+    : "/meetings";
   try { const r = await fetch(`${BRAIN}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); return Response.json(await r.json(), { status: 200 }); }
   catch (e) { return Response.json({ error: `Action failed (${e.message}).` }, { status: 200 }); }
 }

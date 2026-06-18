@@ -36,21 +36,21 @@ TYPES = [
        "Set a 3-year growth strategy and market-entry plan with a quantified value-creation roadmap."),
     _t("finance_transformation", "Finance Transformation", "finance_transformation", "💰",
        "Modernise the finance function: FP&A, close, controls, cost and the operating model.", 12,
-       ["cfo_finance", "r2r_expert", "o2c_expert", "procurement_agent"],
+       ["cfo_finance", "fpa", "r2r_expert", "treasury", "o2c_expert"],
        ["Finance diagnostic & target operating model", "FP&A & MIS redesign", "Close & controls uplift", "Cost-out plan"],
        ["Days to close", "Forecast accuracy", "Cost-to-serve", "Finance FTE productivity"],
        ["Faster close", "Better forecasting", "Cost reduction", "Shared services / GBS"],
        "Stand up FP&A, a 5-day close and a finance operating model with a cost-out plan."),
     _t("working_capital", "Working Capital Optimization", "finance_transformation", "💧",
        "Release trapped cash end-to-end across the cash-conversion cycle (AR + AP + inventory).", 8,
-       ["cfo_finance", "o2c_expert", "procurement_agent", "inventory_agent"],
+       ["cfo_finance", "collections", "credit_management", "procurement_agent", "inventory_agent", "treasury"],
        ["Cash-conversion-cycle diagnostic", "Receivables & collections plan", "Payables & terms strategy", "Inventory optimisation", "Cash-release roadmap"],
        ["DSO", "DPO", "DIO", "Cash conversion cycle", "Cash released (₹)"],
        ["Collect faster (DSO)", "Pay smarter (DPO)", "Cut dead stock (DIO)", "Unlock blocked cash"],
        "Release cash end-to-end: cut DSO and dead stock, optimise payment terms, shorten the cash-conversion cycle."),
     _t("o2c_transformation", "Order-to-Cash (O2C) Transformation", "o2c", "🧾",
        "End-to-end O2C: credit, order, billing/e-invoicing, collections, cash application, deductions.", 10,
-       ["o2c_expert", "cfo_finance", "gst_compliance"],
+       ["o2c_expert", "credit_management", "collections", "cash_application", "deductions"],
        ["O2C value-stream diagnostic", "Credit & collections playbook", "Cash-application & deductions redesign", "DSO-improvement plan"],
        ["DSO", "Collection effectiveness", "Unapplied cash", "Revenue leakage %"],
        ["Collections cadence", "Auto cash application", "Deduction recovery", "Clean e-invoicing"],
@@ -171,9 +171,10 @@ def run_type_tests():
     cases.append(("agents_live", not bad))
     # each type has deliverables + kpis + value levers + a sample
     cases.append(("complete", all(t["deliverables"] and t["kpis"] and t["value_levers"] and t["sample"] for t in TYPES)))
-    # working_capital is the end-to-end cross-cut (AR+AP+inventory+cfo)
+    # working_capital is the end-to-end cross-cut (AR via collections/credit + AP + inventory + cfo)
     wc = get("working_capital")
-    cases.append(("working_capital_e2e", set(wc["agents"]) == {"cfo_finance", "o2c_expert", "procurement_agent", "inventory_agent"}))
+    cases.append(("working_capital_e2e", {"cfo_finance", "procurement_agent", "inventory_agent"}.issubset(set(wc["agents"]))
+                  and any(a in wc["agents"] for a in ("collections", "credit_management", "o2c_expert"))))
     passed = sum(1 for _, ok in cases if ok)
     return {"summary": {"total": len(cases), "passed": passed, "deployment_ready": passed == len(cases), "bad_agents": bad},
             "results": [{"case": n, "ok": ok} for n, ok in cases]}

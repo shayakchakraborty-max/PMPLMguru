@@ -3973,6 +3973,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, BLOB.put_blob(body) if BLOB else {"error": "blob_store not loaded"})
             elif path in ("/meetings", "/meeting/analyze"):
                 self.handle_meeting(body, analyze_only=(path == "/meeting/analyze"))
+            elif path in ("/meeting/propose",):
+                self._send(200, MEET.propose_meeting(body) if MEET else {"error": "meetings not loaded"})
+            elif path in ("/meeting/schedule",):
+                self._send(200, MEET.schedule_meeting(body) if MEET else {"error": "meetings not loaded"})
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:

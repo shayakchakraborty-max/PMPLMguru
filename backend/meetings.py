@@ -212,10 +212,106 @@ def get_meeting(owner, mid):
     return {"meeting": m} if m else {"error": "not found"}
 
 
+# ---------------------------------------------------------------------------
+# MS 365 meeting planning + scheduling (AI proposes, human approves, auto-schedule)
+# ---------------------------------------------------------------------------
+import datetime
+
+
+def _next_slots(n=3):
+    """Next n business days at 10:00 and 15:00 (ISO), as proposed slots."""
+    slots, d, added = [], datetime.date.today(), 0
+    while len(slots) < n and added < 14:
+        d = d + datetime.timedelta(days=1)
+        added += 1
+        if d.weekday() >= 5:  # skip weekends
+            continue
+        for hr in (10, 15):
+            slots.append(f"{d.isoformat()}T{hr:02d}:00:00")
+            if len(slots) >= n:
+                break
+    return slots
+
+
+def propose_meeting(body):
+    """AI drafts a meeting plan (agenda, attendees, slots) for human review — step 1
+    of the human-in-the-loop flow. Deterministic; the handler may Groq-polish the agenda."""
+    purpose = (body.get("purpose") or body.get("topic") or "engagement working session").strip()
+    etype = (body.get("engagement_type") or "").strip()
+    attendees = body.get("attendees") or []
+    if isinstance(attendees, str):
+        attendees = [a.strip() for a in attendees.split(",") if a.strip()]
+    agenda = [
+        f"Objectives & desired outcomes — {purpose}",
+        "Current-state walkthrough with the SME / process owner",
+        "Key data & evidence review",
+        "Findings, risks and open questions",
+        "Decisions required & action items (owners, dates)",
+        "Next steps & follow-up cadence",
+    ]
+    return {"ok": True, "status": "proposed", "title": (body.get("title") or f"{etype or 'Engagement'}: {purpose}")[:120],
+            "purpose": purpose, "type": (body.get("type") or "Working session"),
+            "attendees": attendees, "duration_min": int(body.get("duration_min") or 60),
+            "agenda": agenda, "proposed_slots": _next_slots(3),
+            "note": "Review/edit, then schedule — sends a Teams invite via MS 365 when connected."}
+
+
+def schedule_meeting(body):
+    """Step 2: create the calendar invite. Uses Microsoft Graph when MS365_TOKEN is set
+    (Teams online meeting), else returns a draft invite. Also stores the meeting record."""
+    owner = _owner(body.get("owner"))
+    slot = (body.get("slot") or "").strip()
+    title = (body.get("title") or "Engagement meeting").strip()
+    attendees = body.get("attendees") or []
+    if isinstance(attendees, str):
+        attendees = [a.strip() for a in attendees.split(",") if a.strip()]
+    duration = int(body.get("duration_min") or 60)
+    agenda = body.get("agenda") or []
+    token = os.getenv("MS365_TOKEN", "").strip()
+    backend, invite, join_url = "draft", None, None
+    if token and slot:
+        try:
+            import httpx
+            end = (datetime.datetime.fromisoformat(slot) + datetime.timedelta(minutes=duration)).isoformat()
+            payload = {
+                "subject": title,
+                "body": {"contentType": "HTML", "content": "<br>".join(["<b>Agenda</b>"] + [f"• {a}" for a in agenda])},
+                "start": {"dateTime": slot, "timeZone": os.getenv("MS365_TZ", "Asia/Kolkata")},
+                "end": {"dateTime": end, "timeZone": os.getenv("MS365_TZ", "Asia/Kolkata")},
+                "attendees": [{"emailAddress": {"address": a}, "type": "required"} for a in attendees if "@" in a],
+                "isOnlineMeeting": True, "onlineMeetingProvider": "teamsForBusiness",
+            }
+            r = httpx.post("https://graph.microsoft.com/v1.0/me/events",
+                           headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                           json=payload, timeout=15)
+            if r.status_code in (200, 201):
+                ev = r.json()
+                backend = "msgraph"
+                join_url = (ev.get("onlineMeeting") or {}).get("joinUrl")
+                invite = {"id": ev.get("id"), "webLink": ev.get("webLink"), "join_url": join_url}
+            else:
+                invite = {"error": f"Graph {r.status_code}", "detail": r.text[:200]}
+        except Exception as e:  # pragma: no cover
+            invite = {"error": str(e)[:160]}
+    if backend != "msgraph":
+        invite = {"draft": True, "title": title, "when": slot, "duration_min": duration, "attendees": attendees,
+                  "note": "MS 365 not connected — connect at deploy (MS365_TOKEN) to auto-send a Teams invite."}
+    # store the scheduled meeting (agenda as the pre-meeting MoM; notes captured later)
+    rec = add_meeting({"owner": owner, "engagement_id": body.get("engagement_id"), "title": title,
+                       "type": body.get("type") or "Working session", "attendees": attendees,
+                       "transcript": "", "engine": "scheduled",
+                       "mom": {"title": title, "date": slot, "attendees": attendees, "summary": "Scheduled — agenda set; minutes to follow.",
+                               "key_points": agenda, "decisions": [], "action_items": [], "risks_issues": [], "follow_ups": [],
+                               "scheduled": True, "slot": slot, "join_url": join_url}})
+    return {"ok": True, "backend": backend, "invite": invite, "slot": slot, "meeting_id": rec.get("id")}
+
+
 def meta():
     return {"types": MEETING_TYPES, "backend": "postgres" if _USE_DB else "jsonl",
             "transcription": "AWS Transcribe at deploy; paste transcript/notes now",
-            "endpoints": ["GET /meetings?owner=&engagement_id=", "GET /meeting", "POST /meetings", "POST /meeting/analyze"]}
+            "scheduling": "MS 365 / Microsoft Graph (Teams) when MS365_TOKEN set; draft otherwise",
+            "endpoints": ["GET /meetings?owner=&engagement_id=", "GET /meeting", "POST /meetings",
+                          "POST /meeting/analyze", "POST /meeting/propose", "POST /meeting/schedule"]}
 
 
 def run_meeting_tests():
@@ -237,6 +333,10 @@ def run_meeting_tests():
     cases.append(("list_registers", lst["count"] >= 1 and len(lst["registers"]["action_items"]) >= 2))
     g = get_meeting(o, add["id"])
     cases.append(("get", g.get("meeting", {}).get("title") == "Discovery"))
+    pr = propose_meeting({"purpose": "O2C diagnostic", "engagement_type": "Order-to-Cash", "attendees": "cfo@x.com"})
+    cases.append(("propose", pr.get("ok") and len(pr["agenda"]) >= 4 and len(pr["proposed_slots"]) == 3))
+    sc = schedule_meeting({"owner": o, "engagement_id": "E1", "title": "O2C kickoff", "slot": pr["proposed_slots"][0], "agenda": pr["agenda"], "attendees": ["cfo@x.com"]})
+    cases.append(("schedule", sc.get("ok") and sc.get("backend") in ("draft", "msgraph") and sc.get("meeting_id")))
     # cleanup
     if not _USE_DB:
         rows = [r for r in _read() if r.get("owner") != o]

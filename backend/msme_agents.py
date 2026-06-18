@@ -645,6 +645,60 @@ MSME_AGENTS = {
         "kpis_improved": ["Span of control", "Role clarity", "Goal attainment", "Attrition"],
         "example_scenario": "Founder-led firm at 60 staff where everything routes through the owner; needs an operating model, clear roles and an OKR cadence to scale.",
     },
+    "credit_management": {
+        "name": "Credit Management Agent", "icon": "📋", "status": "planned",
+        "purpose": "Customer credit risk, credit limits & policy, blocked-order rules and DSO impact (O2C).",
+        "business_types": ["wholesale", "distribution", "manufacturing", "all"],
+        "inputs_required": ["Customer ledger", "Credit terms", "Overdue exposure"],
+        "tools_connected": ["Credit scorecard", "Limit engine"], "erp_modules": ["customers", "receivables", "finance"],
+        "notion_databases": ["kpi_db", "risk_register"], "kpis_improved": ["Bad-debt %", "Credit exposure", "DSO"],
+        "example_scenario": "Distributor extending credit with no assessment; bad-debt and concentration rising.",
+    },
+    "collections": {
+        "name": "Collections Agent", "icon": "📞", "status": "planned",
+        "purpose": "Collections strategy, ageing prioritisation, dunning, promise-to-pay and TReDS discounting (O2C).",
+        "business_types": ["wholesale", "distribution", "manufacturing", "all"],
+        "inputs_required": ["AR ageing", "DSO", "Disputed invoices"],
+        "tools_connected": ["Ageing engine", "Dunning workflow"], "erp_modules": ["receivables", "customers", "finance"],
+        "notion_databases": ["kpi_db", "task_tracker"], "kpis_improved": ["DSO", "Collection effectiveness", "Overdue %"],
+        "example_scenario": "60% of receivables overdue; no structured collections cadence.",
+    },
+    "cash_application": {
+        "name": "Cash Application Agent", "icon": "🏦", "status": "planned",
+        "purpose": "Auto cash-application, UTR/UPI/remittance matching and unapplied-cash clearance (O2C).",
+        "business_types": ["wholesale", "distribution", "retail", "all"],
+        "inputs_required": ["Bank statements", "Open invoices", "Remittance advices"],
+        "tools_connected": ["Auto-match engine"], "erp_modules": ["receivables", "finance", "billing"],
+        "notion_databases": ["kpi_db"], "kpis_improved": ["Unapplied cash", "Auto-match rate", "Cash posting time"],
+        "example_scenario": "Lakhs in unapplied cash; payments not matched to invoices.",
+    },
+    "deductions": {
+        "name": "Deductions & Disputes Agent", "icon": "🧮", "status": "planned",
+        "purpose": "Deduction taxonomy, trade-promo/short-pay/chargeback disputes and recovery of invalid claims (O2C).",
+        "business_types": ["distribution", "wholesale", "d2c", "all"],
+        "inputs_required": ["Deductions log", "Trade-promo terms", "Returns data"],
+        "tools_connected": ["Dispute workflow", "Claim tracker"], "erp_modules": ["receivables", "sales", "customers"],
+        "notion_databases": ["kpi_db", "risk_register"], "kpis_improved": ["Deduction %", "Recovery rate", "Revenue leakage"],
+        "example_scenario": "Trade-promotion deductions and short-payments eroding realised revenue.",
+    },
+    "treasury": {
+        "name": "Treasury Agent", "icon": "💱", "status": "planned",
+        "purpose": "13-week cash forecast, liquidity, banking relationships, FX and working-capital facilities (CFO).",
+        "business_types": ["manufacturing", "export", "import_export_hybrid", "all"],
+        "inputs_required": ["Bank balances", "Cash forecast", "Facilities", "FX exposure"],
+        "tools_connected": ["13-week model", "Liquidity dashboard"], "erp_modules": ["finance", "payables", "receivables"],
+        "notion_databases": ["kpi_db", "ai_reco_log"], "kpis_improved": ["Liquidity buffer", "Cost of funds", "FX loss"],
+        "example_scenario": "Lumpy cash, tight runway and unhedged import FX exposure.",
+    },
+    "fpa": {
+        "name": "FP&A Agent", "icon": "📈", "status": "planned",
+        "purpose": "Budgeting, rolling forecast, variance analysis, scenario planning and management MIS (CFO).",
+        "business_types": ["all"],
+        "inputs_required": ["Budget", "Actuals", "Drivers", "MIS pack"],
+        "tools_connected": ["Forecast model", "Variance engine"], "erp_modules": ["finance", "sales", "master_data"],
+        "notion_databases": ["kpi_db", "founder_dashboard"], "kpis_improved": ["Forecast accuracy", "Budget variance", "MIS turnaround"],
+        "example_scenario": "No budget vs actuals; owner flies blind with no monthly MIS or forecast.",
+    },
     "cyber_dpdp": {
         "name": "Cyber & Data Protection Agent", "icon": "🔐", "status": "planned",
         "purpose": "Cybersecurity posture + India data-protection compliance (DPDP Act 2023, CERT-In) — consent & privacy, breach response, access controls, and a practical hardening plan for an MSME.",
@@ -2995,6 +3049,204 @@ def gen_org_change(scenario: dict, cls: dict) -> dict:
 
 
 # ============================================================
+# 13y. DOMAIN SPECIALIST GENERATORS (O2C + CFO sub-domains)
+# ============================================================
+def _spec_envelope(cls, ctx, assumptions, data, questions, analysis, risks, recs, actions,
+                   erp, notion, compliance, kpis, cites, approvals):
+    return {"business_context": ctx, "assumptions": assumptions, "required_data": data,
+            "clarifying_questions": questions, "analysis": analysis, "risks": risks,
+            "recommendations": recs, "action_plan": actions, "erp_impact": erp,
+            "notion_update": notion, "compliance_impact": compliance, "kpis_to_monitor": kpis,
+            "citations": cites, "human_approval_points": approvals}
+
+
+def gen_credit_management(scenario, cls):
+    b = f"{cls['size'].title()} {cls['industry'].replace('_',' ')} business — tightening customer credit risk, limits and policy."
+    risks = [
+        {"risk": "Credit extended with no assessment → bad debt & concentration", "severity": "High", "likelihood": "High",
+         "control": "Credit scorecard + per-customer limits; block orders over limit.", "owner": "Credit", "cite": "rbi_msme"},
+        {"risk": "Overdue exposure on top customers not monitored", "severity": "High", "likelihood": "Medium",
+         "control": "Weekly credit review of top-20 exposures; dynamic limit re-rating.", "owner": "Credit", "cite": "benchmark_ar"}]
+    return _spec_envelope(cls,
+        b,
+        ["Credit policy is graded by customer risk, tenure and payment history.", "Limits are enforced at order entry, not after."],
+        [{"item": "Customer ledger + payment history", "have": False, "why": "Score creditworthiness."},
+         {"item": "Current credit terms & limits", "have": False, "why": "Spot un-assessed exposure."}],
+        ["What are your standard credit terms and who sets limits today?", "Which customers carry the largest overdue exposure?"],
+        {"framework": "Credit scorecard (risk grade × limit) + order-block rules + periodic review.",
+         "levers": ["Risk-graded limits", "Order-block enforcement", "Periodic re-rating", "Security/advance for high-risk"]},
+        risks,
+        ["Introduce a credit scorecard with per-customer limits and auto-block over-limit orders.",
+         "Run a weekly credit review of the top-20 exposures and re-rate limits.",
+         "Take advances/security from high-risk accounts; tighten terms on chronic late payers."],
+        [{"step": "Build credit scorecard + assign limits", "owner": "Credit", "timeline": "Week 1-2", "system": "customers"},
+         {"step": "Enable order-block over limit", "owner": "ERP admin", "timeline": "Week 2", "system": "approvals"}],
+        [{"module": "customers", "change": "Credit limit, risk grade and terms per customer; block over-limit orders."},
+         {"module": "receivables", "change": "Exposure & overdue tracking feeding limit re-rating."}],
+        [{"database": "kpi_db", "entry": "Bad-debt %, credit exposure, DSO."},
+         {"database": "risk_register", "entries": [r["risk"] for r in risks]}],
+        "Sound credit control reduces bad-debt provisioning and, with the MSMED Act 45-day rule, protects both cash and tax position.",
+        [{"kpi": "Bad-debt %", "current": "TBD", "target": "< 1%", "source": "AR"},
+         {"kpi": "Over-limit orders", "current": "TBD", "target": "0", "source": "ERP"}],
+        _cite(*(["rbi_msme", "sec_43b_h", "benchmark_ar"] + compliance_for(cls))),
+        ["Owner sign-off on the credit policy and customer limits."])
+
+
+def gen_collections(scenario, cls):
+    data = scenario.get("data", {})
+    try:
+        dso = float(str(data.get("dso_days") or 0).replace(",", "").strip())
+    except Exception:
+        dso = 0
+    risks = [
+        {"risk": "Receivables overdue beyond terms → cash trapped", "severity": "Critical" if dso >= 60 else "High", "likelihood": "High",
+         "control": "Ageing-driven collections cadence; chase oldest/largest 20% first.", "owner": "Collections", "cite": "sec_43b_h"},
+        {"risk": "No promise-to-pay tracking → broken commitments unmanaged", "severity": "Medium", "likelihood": "High",
+         "control": "Promise-to-pay log with follow-up reminders and escalation.", "owner": "Collections", "cite": "benchmark_ar"}]
+    return _spec_envelope(cls,
+        f"{cls['size'].title()} {cls['industry'].replace('_',' ')} business — building a structured collections engine (DSO {('%.0f days' % dso) if dso else 'high'}).",
+        ["Collections is run on an ageing-prioritised cadence, not ad hoc.", "Fastest cash is from the oldest, largest invoices."],
+        [{"item": "AR ageing by customer", "have": bool(data), "why": "Prioritise the chase."},
+         {"item": "Dispute/deduction reasons", "have": False, "why": "Separate can't-pay from won't-pay."}],
+        ["What is the average days-to-collect vs terms?", "What share of overdue is genuinely disputed?"],
+        {"framework": "Ageing buckets → cadence (reminders/calls/escalation) → promise-to-pay → TReDS for large dues.",
+         "levers": ["Oldest-first chase", "Dunning automation", "Promise-to-pay", "TReDS discounting"], "dso": dso or "unknown"},
+        risks,
+        ["Stand up an ageing-driven cadence and chase the oldest, largest 20% of invoices first.",
+         "Automate reminders and log promise-to-pay with escalation on breach.",
+         "Discount large receivables on TReDS to release cash now."],
+        [{"step": "Segment ageing; set cadence", "owner": "Collections", "timeline": "Week 1", "system": "receivables"},
+         {"step": "Promise-to-pay + escalation workflow", "owner": "Collections", "timeline": "Week 1-2", "system": "receivables"}],
+        [{"module": "receivables", "change": "Ageing buckets, dunning steps, promise-to-pay and escalation."},
+         {"module": "customers", "change": "Collection notes + risk flags per customer."}],
+        [{"database": "kpi_db", "entry": "DSO, collection effectiveness, overdue %."},
+         {"database": "task_tracker", "entry": "Daily collection worklist."}],
+        "Tighter collections plus the MSMED Act 45-day rule and Sec 43B(h) make receivables both a cash and a tax priority.",
+        [{"kpi": "DSO", "current": dso or "TBD", "target": "< 45 days", "source": "AR ageing"},
+         {"kpi": "Collection effectiveness", "current": "TBD", "target": "> 90%", "source": "Collections"}],
+        _cite(*(["sec_43b_h", "msmed_act", "benchmark_ar"] + compliance_for(cls))),
+        ["Owner sign-off on write-off of any uncollectible balances."])
+
+
+def gen_cash_application(scenario, cls):
+    risks = [
+        {"risk": "Large unapplied / on-account cash → AR overstated, collections chase wrong accounts", "severity": "High", "likelihood": "High",
+         "control": "Auto cash-application (UTR/UPI/remittance match); daily unapplied clearance.", "owner": "Cash App", "cite": "benchmark_ar"}]
+    return _spec_envelope(cls,
+        f"{cls['size'].title()} {cls['industry'].replace('_',' ')} business — automating cash application and clearing unapplied cash.",
+        ["Payments are matched to invoices by UTR/UPI ref and remittance advice.", "Unapplied cash is cleared daily, not monthly."],
+        [{"item": "Bank statements + payment refs", "have": False, "why": "Auto-match to invoices."},
+         {"item": "Open-invoice file", "have": False, "why": "Matching base."}],
+        ["How much cash is unapplied/on-account right now?", "Do customers send remittance advices?"],
+        {"framework": "Auto-match (exact/fuzzy on ref+amount) → exception queue → daily unapplied clearance.",
+         "levers": ["UTR/UPI matching", "Remittance parsing", "Exception workflow", "Daily clearance"]},
+        risks,
+        ["Deploy auto cash-application matching on UTR/UPI ref + amount and clear unapplied cash daily.",
+         "Parse remittance advices to split lump-sum payments across invoices.",
+         "Stand up an exception queue so unmatched cash is resolved within 24h."],
+        [{"step": "Configure auto-match rules", "owner": "Cash App", "timeline": "Week 1-2", "system": "receivables"},
+         {"step": "Daily unapplied-cash clearance", "owner": "Cash App", "timeline": "Daily", "system": "finance"}],
+        [{"module": "receivables", "change": "Auto-match, remittance split and exception queue."},
+         {"module": "finance", "change": "Daily unapplied-cash reconciliation."}],
+        [{"database": "kpi_db", "entry": "Unapplied cash, auto-match rate, posting time."}],
+        "Accurate cash application keeps AR ageing reliable for GST/e-invoicing reconciliation and collections.",
+        [{"kpi": "Unapplied cash", "current": "TBD", "target": "~0", "source": "Cash application"},
+         {"kpi": "Auto-match rate", "current": "TBD", "target": "> 85%", "source": "ERP"}],
+        _cite(*(["einvoice", "benchmark_ar"] + compliance_for(cls))),
+        ["Finance sign-off before writing off small unmatched residuals."])
+
+
+def gen_deductions(scenario, cls):
+    risks = [
+        {"risk": "Trade-promo / short-pay / chargeback deductions erode realised revenue", "severity": "High", "likelihood": "High",
+         "control": "Deduction taxonomy + dispute workflow; recover invalid claims; root-cause repeats.", "owner": "AR/Sales", "cite": "benchmark_ar"}]
+    return _spec_envelope(cls,
+        f"{cls['size'].title()} {cls['industry'].replace('_',' ')} business — plugging revenue leakage from deductions & disputes.",
+        ["Every deduction is coded to a reason and validated before acceptance.", "Invalid deductions are disputed and recovered."],
+        [{"item": "Deductions log by reason", "have": False, "why": "Size the leakage."},
+         {"item": "Trade-promotion terms", "have": False, "why": "Validate promo claims."}],
+        ["What % of invoiced revenue is lost to deductions/short-pay?", "Which deduction reasons recur most?"],
+        {"framework": "Deduction taxonomy → validity check → dispute/recover → root-cause repeat deductions.",
+         "levers": ["Reason coding", "Validity rules", "Dispute recovery", "Root-cause fixes"]},
+        risks,
+        ["Build a deduction taxonomy and validity rules; auto-route invalid claims to a dispute workflow.",
+         "Recover invalid deductions and chargebacks; track recovery rate.",
+         "Root-cause repeat deductions (pricing, delivery, promo) and fix at source."],
+        [{"step": "Stand up deduction taxonomy + dispute workflow", "owner": "AR", "timeline": "Week 1-3", "system": "receivables"},
+         {"step": "Recovery drive on invalid claims", "owner": "AR/Sales", "timeline": "Month 1-2", "system": "sales"}],
+        [{"module": "receivables", "change": "Deduction reason codes + dispute/recovery workflow."},
+         {"module": "sales", "change": "Trade-promo accruals validated against claims."}],
+        [{"database": "kpi_db", "entry": "Deduction %, recovery rate, revenue leakage."},
+         {"database": "risk_register", "entries": [r["risk"] for r in risks]}],
+        "Clean deduction handling protects realised revenue and keeps GST output reconciled to actual collections.",
+        [{"kpi": "Deduction %", "current": "TBD", "target": "< 1%", "source": "Deductions log"},
+         {"kpi": "Recovery rate", "current": "TBD", "target": "> 60%", "source": "Disputes"}],
+        _cite(*(["benchmark_ar", "consumer_protection"] + compliance_for(cls))),
+        ["Sales/Owner sign-off on writing off genuinely valid deductions."])
+
+
+def gen_treasury(scenario, cls):
+    risks = [
+        {"risk": "Lumpy cash & thin runway with no forecast → liquidity crunch", "severity": "High", "likelihood": "High",
+         "control": "13-week rolling cash forecast; liquidity buffer; pre-arranged WC facility.", "owner": "Treasury", "cite": "rbi_msme"}]
+    if cls.get("is_import") or cls.get("is_export"):
+        risks.append({"risk": "Unhedged FX exposure on trade flows", "severity": "High", "likelihood": "Medium",
+                      "control": "Forward cover / natural hedging policy on net exposure.", "owner": "Treasury", "cite": "rbi_msme"})
+    return _spec_envelope(cls,
+        f"{cls['size'].title()} {cls['industry'].replace('_',' ')} business — treasury: liquidity, banking, FX and facilities.",
+        ["A 13-week rolling cash forecast is the core treasury instrument.", "Maintain a minimum liquidity buffer; pre-arrange facilities before they're needed."],
+        [{"item": "Bank balances + facility limits", "have": False, "why": "Liquidity position."},
+         {"item": "Cash inflow/outflow schedule", "have": False, "why": "13-week forecast."}],
+        ["What's the current runway and liquidity buffer?", "What FX exposure (import/export) is unhedged?"],
+        {"framework": "13-week cash forecast → liquidity buffer → facility mix (CC/OD/TReDS/CGTMSE) → FX policy.",
+         "levers": ["Cash forecasting", "Facility optimisation", "FX hedging", "Surplus deployment"]},
+        risks,
+        ["Build a 13-week rolling cash forecast and hold a defined minimum liquidity buffer.",
+         "Optimise the facility mix (CC/OD, TReDS, CGTMSE-backed WC) and pre-arrange headroom.",
+         ("Hedge net FX exposure with forward cover / natural hedging." if (cls.get('is_import') or cls.get('is_export')) else "Deploy idle surplus into liquid, safe instruments.")],
+        [{"step": "Stand up 13-week cash forecast", "owner": "Treasury", "timeline": "Week 1-2", "system": "finance"},
+         {"step": "Review facilities + FX policy", "owner": "Treasury", "timeline": "Week 2-4", "system": "payables"}],
+        [{"module": "finance", "change": "13-week forecast, liquidity buffer and facility tracking."},
+         {"module": "payables", "change": "Payment timing aligned to the cash forecast."}],
+        [{"database": "kpi_db", "entry": "Liquidity buffer, cost of funds, FX loss."},
+         {"database": "ai_reco_log", "entry": "Treasury actions + outcomes."}],
+        "Disciplined treasury reduces cost of funds and liquidity risk; CGTMSE/TReDS are India-specific WC levers.",
+        [{"kpi": "Liquidity buffer (weeks)", "current": "TBD", "target": "> 6", "source": "Cash forecast"},
+         {"kpi": "Cost of funds", "current": "TBD", "target": "↓", "source": "Treasury"}],
+        _cite(*(["rbi_msme", "sec_43b_h", "benchmark_ar"] + compliance_for(cls))),
+        ["Owner/board sign-off on facility drawdowns and FX hedging policy."])
+
+
+def gen_fpa(scenario, cls):
+    risks = [
+        {"risk": "No budget vs actuals / forecast → decisions on gut, surprises late", "severity": "High", "likelihood": "High",
+         "control": "Driver-based budget + rolling forecast + monthly variance review.", "owner": "FP&A", "cite": "benchmark_ar"}]
+    return _spec_envelope(cls,
+        f"{cls['size'].title()} {cls['industry'].replace('_',' ')} business — standing up FP&A: budget, forecast, variance and MIS.",
+        ["Forecasts are driver-based (volume × price × cost), not last-year-plus-x.", "A monthly MIS within 5 days drives decisions."],
+        [{"item": "Budget + actuals", "have": False, "why": "Variance analysis."},
+         {"item": "Key business drivers", "have": False, "why": "Driver-based forecast."}],
+        ["Do you have a budget and a rolling forecast today?", "How soon after month-end do you get MIS?"],
+        {"framework": "Driver-based budget → rolling forecast → variance (price/volume/cost) → scenario → MIS.",
+         "levers": ["Driver-based forecast", "Variance bridges", "Scenario planning", "Decision-useful MIS"]},
+        risks,
+        ["Build a driver-based annual budget and a monthly rolling forecast.",
+         "Run monthly variance analysis (price/volume/cost bridges) with corrective actions.",
+         "Publish a standard MIS pack (P&L, cash, KPIs) within 5 working days of close."],
+        [{"step": "Build budget + driver model", "owner": "FP&A", "timeline": "Week 1-3", "system": "finance"},
+         {"step": "Monthly variance + MIS cadence", "owner": "FP&A", "timeline": "Monthly", "system": "finance"}],
+        [{"module": "finance", "change": "Budget, forecast, variance and the MIS pack."},
+         {"module": "sales", "change": "Volume/price drivers feed the forecast."}],
+        [{"database": "kpi_db", "entry": "Forecast accuracy, budget variance, MIS turnaround."},
+         {"database": "founder_dashboard", "entry": "Monthly MIS highlights."}],
+        "A reliable budget/forecast underpins lender/investor conversations and disciplined capital allocation.",
+        [{"kpi": "Forecast accuracy", "current": "TBD", "target": "> 90%", "source": "FP&A"},
+         {"kpi": "MIS turnaround", "current": "TBD", "target": "< 5 days", "source": "Finance"}],
+        _cite(*(["companies_act", "benchmark_ar"] + compliance_for(cls))),
+        ["Owner sign-off on the budget and forecast assumptions."])
+
+
+# ============================================================
 # 14. WIRE GENERATORS → REGISTRY + DISPATCHER
 # ============================================================
 _GENERATORS = {
@@ -3024,6 +3276,12 @@ _GENERATORS = {
     "r2r_expert": gen_r2r_expert,
     "marketing_agent": gen_marketing,
     "org_change": gen_org_change,
+    "credit_management": gen_credit_management,
+    "collections": gen_collections,
+    "cash_application": gen_cash_application,
+    "deductions": gen_deductions,
+    "treasury": gen_treasury,
+    "fpa": gen_fpa,
 }
 for _k, _fn in _GENERATORS.items():
     MSME_AGENTS[_k]["generator"] = _fn
@@ -3060,6 +3318,12 @@ AGENT_UX = {
     "r2r_expert":         {"category": "Finance & Compliance",  "modes": ["existing"],            "service_line": "Finance, Risk & Resilience"},
     "marketing_agent":    {"category": "Strategy & Growth",     "modes": ["startup", "existing"], "service_line": "Customer & Commercial"},
     "org_change":         {"category": "Strategy & Growth",     "modes": ["existing"],            "service_line": "People & Organisation"},
+    "credit_management":  {"category": "Finance & Compliance",  "modes": ["existing"],            "service_line": "Finance, Risk & Resilience"},
+    "collections":        {"category": "Finance & Compliance",  "modes": ["existing"],            "service_line": "Finance, Risk & Resilience"},
+    "cash_application":   {"category": "Finance & Compliance",  "modes": ["existing"],            "service_line": "Finance, Risk & Resilience"},
+    "deductions":         {"category": "Finance & Compliance",  "modes": ["existing"],            "service_line": "Finance, Risk & Resilience"},
+    "treasury":           {"category": "Finance & Compliance",  "modes": ["existing"],            "service_line": "Finance, Risk & Resilience"},
+    "fpa":                {"category": "Finance & Compliance",  "modes": ["startup", "existing"], "service_line": "Finance, Risk & Resilience"},
 }
 
 # The nine consulting service-line families from the Big 3 / Big 4 practice taxonomy.
@@ -3402,6 +3666,48 @@ SCENARIO_TESTS = [
         "scenario": {"description": "Founder-led firm at 60 staff where everything routes through the owner, needs an operating model, clear roles and an OKR cadence", "data": {"headcount": 60}},
         "expect_keywords": ["operating model", "raci", "okr", "delegat", "accountab"],
         "expect_citations": ["companies_act", "labour_codes"],
+        "expect_severity": "High",
+    },
+    {
+        "agent": "credit_management",
+        "scenario": {"description": "Distributor extending credit with no assessment; bad debt and concentration rising"},
+        "expect_keywords": ["credit", "limit", "scorecard", "exposure"],
+        "expect_citations": ["rbi_msme", "sec_43b_h"],
+        "expect_severity": "High",
+    },
+    {
+        "agent": "collections",
+        "scenario": {"description": "60% of receivables overdue with no structured collections cadence", "data": {"dso_days": 72}},
+        "expect_keywords": ["ageing", "collection", "promise-to-pay", "dso"],
+        "expect_citations": ["sec_43b_h", "msmed_act"],
+        "expect_severity": "Critical",
+    },
+    {
+        "agent": "cash_application",
+        "scenario": {"description": "Lakhs in unapplied cash; payments not matched to invoices"},
+        "expect_keywords": ["unapplied", "match", "remittance"],
+        "expect_citations": ["einvoice", "benchmark_ar"],
+        "expect_severity": "High",
+    },
+    {
+        "agent": "deductions",
+        "scenario": {"description": "Trade-promotion deductions and short-payments eroding realised revenue"},
+        "expect_keywords": ["deduction", "dispute", "recover", "leakage"],
+        "expect_citations": ["benchmark_ar", "consumer_protection"],
+        "expect_severity": "High",
+    },
+    {
+        "agent": "treasury",
+        "scenario": {"description": "Lumpy cash, tight runway and unhedged import FX exposure on a trading business that imports"},
+        "expect_keywords": ["13-week", "liquidity", "facility", "fx"],
+        "expect_citations": ["rbi_msme"],
+        "expect_severity": "High",
+    },
+    {
+        "agent": "fpa",
+        "scenario": {"description": "No budget vs actuals; owner flies blind with no monthly MIS or forecast"},
+        "expect_keywords": ["budget", "forecast", "variance", "mis"],
+        "expect_citations": ["companies_act", "benchmark_ar"],
         "expect_severity": "High",
     },
 ]

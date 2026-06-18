@@ -584,6 +584,59 @@ function Billing({ e }) {
   );
 }
 
+function MeetingPlanner({ engagementKey, onScheduled }) {
+  const [purpose, setPurpose] = useState("");
+  const [attendees, setAttendees] = useState("");
+  const [plan, setPlan] = useState(null);
+  const [slot, setSlot] = useState("");
+  const [busy, setBusy] = useState("");
+  const [result, setResult] = useState(null);
+
+  async function propose() {
+    if (!purpose.trim()) return;
+    setBusy("propose"); setPlan(null); setResult(null);
+    try {
+      const r = await fetch("/api/meetings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "propose", purpose, attendees }) });
+      const d = await r.json(); setPlan(d); setSlot(d.proposed_slots?.[0] || "");
+    } catch {} finally { setBusy(""); }
+  }
+  async function schedule() {
+    setBusy("schedule");
+    try {
+      const r = await fetch("/api/meetings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "schedule", owner: ownerId(), engagement_id: engagementKey, title: plan.title, type: plan.type, attendees, agenda: plan.agenda, duration_min: plan.duration_min, slot }) });
+      const d = await r.json(); setResult(d); setPlan(null); onScheduled?.();
+    } catch {} finally { setBusy(""); }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-4 no-print">
+      <div className="text-[11px] uppercase tracking-wide text-slate-500 font-bold mb-2">📆 Plan a meeting (AI · MS 365, human-in-the-loop)</div>
+      <div className="flex gap-2 flex-wrap">
+        <input value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="Purpose (e.g. O2C diagnostic with CFO)" className="flex-1 min-w-[200px] border border-slate-200 rounded-lg px-2 py-1.5 text-sm" />
+        <input value={attendees} onChange={(e) => setAttendees(e.target.value)} placeholder="Attendees (emails)" className="flex-1 min-w-[160px] border border-slate-200 rounded-lg px-2 py-1.5 text-sm" />
+        <button onClick={propose} disabled={!!busy} className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500 disabled:opacity-50">{busy === "propose" ? "Drafting…" : "AI: draft agenda & slots"}</button>
+      </div>
+      {plan?.ok && (
+        <div className="mt-3 bg-slate-50 rounded-xl p-3">
+          <div className="font-bold text-sm">{plan.title}</div>
+          <ul className="text-[12px] text-slate-600 mt-1 list-disc pl-5">{plan.agenda.map((a, i) => <li key={i}>{a}</li>)}</ul>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <select value={slot} onChange={(e) => setSlot(e.target.value)} className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm">
+              {plan.proposed_slots.map((s) => <option key={s} value={s}>{new Date(s).toLocaleString()}</option>)}
+            </select>
+            <button onClick={schedule} disabled={busy === "schedule"} className="px-4 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-500 disabled:opacity-50">{busy === "schedule" ? "Scheduling…" : "✓ Approve & schedule"}</button>
+          </div>
+        </div>
+      )}
+      {result?.ok && (
+        <div className="mt-2 text-[12px] font-semibold text-emerald-700">
+          {result.backend === "msgraph" ? <>✓ Teams invite sent · <a className="underline" href={result.invite?.join_url} target="_blank" rel="noreferrer">join link</a></> : "✓ Meeting scheduled (draft invite — connect MS 365 at deploy to auto-send Teams invite)."}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Meetings({ engagementKey }) {
   const [data, setData] = useState(null);
   const [form, setForm] = useState({ title: "", date: "", type: "Client site visit", attendees: "", transcript: "" });
@@ -630,8 +683,10 @@ function Meetings({ engagementKey }) {
     <section id="meetings" className="border-t-2 border-slate-200 pt-8 mt-8 space-y-5 scroll-mt-28">
       <div>
         <h2 className="text-2xl font-black tracking-tight">🎙️ Client &amp; SME meetings</h2>
-        <p className="text-sm text-slate-500 mt-1">Keep the recording on or paste notes — AI writes the minutes (decisions, action items, risks) in firm format and rolls them into the engagement.</p>
+        <p className="text-sm text-slate-500 mt-1">Plan &amp; schedule via MS 365 (AI proposes, you approve), keep the recording on or paste notes — AI writes the minutes and rolls them into the engagement.</p>
       </div>
+
+      <MeetingPlanner engagementKey={engagementKey} onScheduled={load} />
 
       <div className="grid md:grid-cols-2 gap-4">
         <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-2 no-print">
