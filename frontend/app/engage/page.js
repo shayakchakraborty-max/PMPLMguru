@@ -266,14 +266,14 @@ export default function EngagePage() {
               <p className="font-semibold">Loading engagement…</p>
             </div>
           )}
-          {active && active.report && <Report d={active.report} onBack={newEngagement} />}
+          {active && active.report && <Report d={active.report} engagementKey={active.id} onBack={newEngagement} />}
         </main>
       </div>
     </div>
   );
 }
 
-function Report({ d, onBack }) {
+function Report({ d, engagementKey, onBack }) {
   const grad = POSTURE[d.diagnosis?.posture] || POSTURE.Stable;
   return (
     <div id="report" className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
@@ -405,6 +405,9 @@ function Report({ d, onBack }) {
       {/* Engagement 360 — delivery layer (team, AI workplan, hours, billing) */}
       {d.delivery && <Delivery d={d.delivery} />}
 
+      {/* Client / SME meetings — capture notes/recording, AI minutes */}
+      <Meetings engagementKey={engagementKey} />
+
       <p className="text-[11px] text-slate-400 border-t border-slate-200 pt-4">{d.disclaimer}</p>
     </div>
   );
@@ -435,6 +438,29 @@ function Delivery({ d }) {
           </div>
         ))}
       </div>
+
+      {/* Project timeline */}
+      {d.timeline?.bars?.length > 0 && (
+        <Section title="Project timeline" icon="📅">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4">
+            <div className="text-[11px] text-slate-400 mb-2">{d.timeline.total_weeks}-week plan · 5 phases</div>
+            <div className="space-y-2">
+              {d.timeline.bars.map((b, i) => {
+                const tint = ["bg-slate-400", "bg-indigo-500", "bg-violet-500", "bg-amber-500", "bg-emerald-500"][i] || "bg-slate-400";
+                return (
+                  <div key={i} className="flex items-center gap-2 text-[12px]">
+                    <span className="w-20 shrink-0 font-semibold">{b.phase}</span>
+                    <div className="flex-1 bg-slate-100 rounded-full h-4 relative">
+                      <div className={`${tint} h-4 rounded-full absolute`} style={{ left: `${((b.start_week - 1) / d.timeline.total_weeks) * 100}%`, width: `${(b.weeks / d.timeline.total_weeks) * 100}%` }} />
+                    </div>
+                    <span className="w-24 shrink-0 text-right text-slate-400">Wk {b.start_week}{b.weeks > 1 ? `–${b.end_week}` : ""}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Section>
+      )}
 
       {/* Team */}
       <Section title="Engagement team" icon="👔">
@@ -517,6 +543,113 @@ function Delivery({ d }) {
         </div>
       </Section>
     </div>
+  );
+}
+
+function Meetings({ engagementKey }) {
+  const [data, setData] = useState(null);
+  const [form, setForm] = useState({ title: "", date: "", type: "Client site visit", attendees: "", transcript: "" });
+  const [busy, setBusy] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const recRef = useState({ rec: null, chunks: [] })[0];
+  const TYPES = ["Client site visit", "SME workshop", "Steering committee", "Kickoff", "Working session", "Interview", "Internal"];
+
+  async function load() {
+    try { const r = await fetch(`/api/meetings?owner=${encodeURIComponent(ownerId())}&engagement_id=${encodeURIComponent(engagementKey || "")}`, { cache: "no-store" }); const d = await r.json(); if (!d.error) setData(d); } catch {}
+  }
+  useEffect(() => { load(); }, [engagementKey]); // eslint-disable-line
+
+  async function capture() {
+    if (!form.transcript.trim()) return;
+    setBusy(true);
+    try {
+      await fetch("/api/meetings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "add", owner: ownerId(), engagement_id: engagementKey, ...form }) });
+      setForm({ title: "", date: "", type: form.type, attendees: "", transcript: "" }); load();
+    } catch {}
+    finally { setBusy(false); }
+  }
+
+  // Browser recording -> store audio blob (transcription via AWS Transcribe at deploy)
+  async function toggleRec() {
+    if (recording) { recRef.rec?.stop(); setRecording(false); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rec = new MediaRecorder(stream); recRef.rec = rec; recRef.chunks = [];
+      rec.ondataavailable = (e) => recRef.chunks.push(e.data);
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(recRef.chunks, { type: "audio/webm" });
+        const b64 = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1] || ""); r.readAsDataURL(blob); });
+        const up = await fetch("/api/blob", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner: ownerId(), scope: "recording", filename: `meeting-${Date.now()}.webm`, content_base64: b64, content_type: "audio/webm" }) }).then((r) => r.json());
+        setForm((f) => ({ ...f, transcript: f.transcript + (f.transcript ? "\n" : "") + `[recording stored: ${up.key || "audio"} — transcription via AWS Transcribe at deploy]` }));
+      };
+      rec.start(); setRecording(true);
+    } catch { alert("Microphone unavailable — paste the notes/transcript instead."); }
+  }
+
+  const reg = data?.registers;
+  return (
+    <section className="border-t-2 border-slate-200 pt-8 mt-8 space-y-5">
+      <div>
+        <h2 className="text-2xl font-black tracking-tight">🎙️ Client &amp; SME meetings</h2>
+        <p className="text-sm text-slate-500 mt-1">Keep the recording on or paste notes — AI writes the minutes (decisions, action items, risks) in firm format and rolls them into the engagement.</p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-2 no-print">
+          <div className="flex gap-2">
+            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Meeting title" className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-sm" />
+            <input value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} placeholder="Date" className="w-28 border border-slate-200 rounded-lg px-2 py-1.5 text-sm" />
+          </div>
+          <div className="flex gap-2">
+            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-sm">{TYPES.map((t) => <option key={t}>{t}</option>)}</select>
+            <input value={form.attendees} onChange={(e) => setForm({ ...form, attendees: e.target.value })} placeholder="Attendees (CFO, SME…)" className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-sm" />
+          </div>
+          <textarea value={form.transcript} onChange={(e) => setForm({ ...form, transcript: e.target.value })} rows={5} placeholder="Paste notes / transcript, or hit Record…" className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm" />
+          <div className="flex items-center gap-2">
+            <button onClick={toggleRec} className={`px-3 py-2 rounded-lg font-bold text-sm ${recording ? "bg-rose-600 text-white animate-pulse" : "bg-white border border-slate-300"}`}>{recording ? "⏺ Stop recording" : "🎙️ Record"}</button>
+            <button onClick={capture} disabled={busy} className="flex-1 px-3 py-2 rounded-lg bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-500 disabled:opacity-50">{busy ? "AI writing minutes…" : "Capture & write minutes (AI)"}</button>
+          </div>
+        </div>
+
+        {/* Registers rolled from meetings */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4">
+          <div className="text-[11px] uppercase tracking-wide text-slate-500 font-bold mb-2">Registers (from all meetings)</div>
+          {!reg || (reg.action_items.length + reg.decisions.length + reg.risks_issues.length) === 0 ? (
+            <p className="text-[12px] text-slate-400">Capture a meeting to populate decisions, actions and risks.</p>
+          ) : (
+            <div className="space-y-2 text-[12px] max-h-56 overflow-y-auto">
+              {reg.action_items.length > 0 && <div><b className="text-indigo-700">Actions</b>{reg.action_items.slice(0, 8).map((a, i) => <div key={i} className="flex justify-between border-b border-slate-50 py-0.5"><span>{a.action}</span><span className="text-slate-400 shrink-0 ml-2">{a.owner}{a.due ? ` · ${a.due}` : ""}</span></div>)}</div>}
+              {reg.decisions.length > 0 && <div className="pt-1"><b className="text-emerald-700">Decisions</b>{reg.decisions.slice(0, 5).map((d, i) => <div key={i} className="py-0.5">• {d.decision}</div>)}</div>}
+              {reg.risks_issues.length > 0 && <div className="pt-1"><b className="text-rose-700">Risks/Issues</b>{reg.risks_issues.slice(0, 5).map((r, i) => <div key={i} className="py-0.5">• {r.risk}</div>)}</div>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Past meetings with MoM */}
+      {data?.meetings?.length > 0 && (
+        <div className="space-y-2">
+          {data.meetings.map((m) => {
+            const mom = m.mom || {};
+            return (
+              <div key={m.id} className="bg-white rounded-2xl border border-slate-200 p-4">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <div className="font-black text-sm">{m.title} <span className="text-[10px] font-semibold text-slate-400">· {m.type}{m.date ? ` · ${m.date}` : ""}</span></div>
+                  <span className="text-[10px] text-slate-400">{(m.attendees || []).join(", ")} · {m.engine === "groq" ? "AI (Groq)" : "AI"}</span>
+                </div>
+                {mom.summary && <p className="text-[12px] text-slate-600 mt-1.5"><b>Summary:</b> {mom.summary}</p>}
+                <div className="grid sm:grid-cols-3 gap-3 mt-2 text-[12px]">
+                  <div><b className="text-emerald-700">Decisions</b>{(mom.decisions || []).map((d, i) => <div key={i}>• {d}</div>) || null}{(!mom.decisions || mom.decisions.length === 0) && <div className="text-slate-300">—</div>}</div>
+                  <div><b className="text-indigo-700">Action items</b>{(mom.action_items || []).map((a, i) => <div key={i}>• {a.action} <span className="text-slate-400">[{a.owner}{a.due ? `, ${a.due}` : ""}]</span></div>)}{(!mom.action_items || mom.action_items.length === 0) && <div className="text-slate-300">—</div>}</div>
+                  <div><b className="text-rose-700">Risks/Issues</b>{(mom.risks_issues || []).map((r, i) => <div key={i}>• {r}</div>)}{(!mom.risks_issues || mom.risks_issues.length === 0) && <div className="text-slate-300">—</div>}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 

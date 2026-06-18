@@ -149,6 +149,12 @@ except Exception as _e:
     print(f"[blob_store] not loaded: {_e}", flush=True)
 
 try:
+    import meetings as MEET
+except Exception as _e:
+    MEET = None
+    print(f"[meetings] not loaded: {_e}", flush=True)
+
+try:
     import llm_stack as LLM
 except Exception as _e:
     LLM = None
@@ -3579,6 +3585,8 @@ class Handler(BaseHTTPRequestHandler):
                                        "endpoints": ["GET|POST /clients", "GET /client", "GET|POST /contracts",
                                                      "POST /contract/status", "POST /contract/email", "GET /billing/summary"]} if CLIENTS else "not loaded"),
                 "blob_store": (BLOB.meta() if BLOB else "not loaded"),
+                "meetings": ({"types": len(MEET.MEETING_TYPES),
+                              "endpoints": ["GET /meetings", "POST /meetings", "POST /meeting/analyze"]} if MEET else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3852,6 +3860,14 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, BLOB.meta() if BLOB else {"error": "blob_store not loaded"})
         elif path == "/blob/tests":
             self._send(200, BLOB.run_blob_tests() if BLOB else {"error": "blob_store not loaded"})
+        elif path == "/meetings":
+            self._send(200, MEET.list_meetings(self._q("owner"), self._q("engagement_id") or None) if MEET else {"error": "meetings not loaded"})
+        elif path == "/meeting":
+            self._send(200, MEET.get_meeting(self._q("owner"), self._q("id")) if MEET else {"error": "meetings not loaded"})
+        elif path == "/meetings/meta":
+            self._send(200, MEET.meta() if MEET else {"error": "meetings not loaded"})
+        elif path == "/meetings/tests":
+            self._send(200, MEET.run_meeting_tests() if MEET else {"error": "meetings not loaded"})
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3955,6 +3971,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, CLIENTS.add_email(body) if CLIENTS else {"error": "clients not loaded"})
             elif path in ("/blob",):
                 self._send(200, BLOB.put_blob(body) if BLOB else {"error": "blob_store not loaded"})
+            elif path in ("/meetings", "/meeting/analyze"):
+                self.handle_meeting(body, analyze_only=(path == "/meeting/analyze"))
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:
@@ -4250,6 +4268,65 @@ class Handler(BaseHTTPRequestHandler):
             if res.get("text"):
                 brief, engine = res["text"].strip(), f"groq:{res.get('provider','llm')}"
         out["managing_partner_brief"] = {"engine": engine, "narrative": brief}
+
+    def handle_meeting(self, body, analyze_only=False):
+        """Capture a client/SME meeting and turn the recording/notes into AI minutes
+        (MoM). Deterministic extraction + optional Groq pass; rolls actions/decisions/
+        risks into the Engagement 360. analyze_only=True returns the MoM without saving."""
+        if not MEET:
+            self._send(200, {"error": "meetings module not loaded"})
+            return
+        transcript = (body.get("transcript") or body.get("notes") or "").strip()
+        attendees = body.get("attendees") or []
+        if isinstance(attendees, str):
+            attendees = [a.strip() for a in attendees.split(",") if a.strip()]
+        mom = MEET.analyze_meeting(transcript, attendees, body.get("title", "Meeting"), body.get("date", "")) if transcript else {}
+        engine = "deterministic"
+        if transcript and body.get("deep", True):
+            try:
+                ai = self._meeting_ai(transcript, mom)
+                if ai:
+                    mom, engine = ai, "groq"
+            except Exception as e:
+                print(f"[meeting] AI MoM failed: {str(e)[:140]}", flush=True)
+        if analyze_only:
+            self._send(200, {"mom": mom, "engine": engine})
+            return
+        body["mom"] = mom
+        body["engine"] = engine
+        self._send(200, MEET.add_meeting(body))
+
+    def _meeting_ai(self, transcript, fallback):
+        """Best-effort Groq pass that returns a structured MoM JSON; else None."""
+        if not (LLM and LLM.available()):
+            return None
+        system = ("You are a Big-4 engagement manager writing minutes of meeting. Return ONLY JSON with keys: "
+                  "summary (string), key_points (string[]), decisions (string[]), "
+                  "action_items (array of {action, owner, due}), risks_issues (string[]), follow_ups (string[]). "
+                  "Extract owners and due dates where stated. Be concise and faithful to the transcript.")
+        out = LLM.augment(system, f"TRANSCRIPT / NOTES:\n{transcript[:6000]}\n\nReturn the MoM JSON.", max_tokens=900)
+        txt = (out.get("text") or "").strip()
+        if not txt:
+            return None
+        m = re.search(r"\{.*\}", txt, re.S)
+        if not m:
+            return None
+        try:
+            data = json.loads(m.group(0))
+        except Exception:
+            return None
+        # normalise + keep counts
+        data.setdefault("title", fallback.get("title", "Meeting"))
+        data.setdefault("attendees", fallback.get("attendees", []))
+        ai = []
+        for a in (data.get("action_items") or []):
+            if isinstance(a, dict):
+                ai.append({"action": a.get("action", ""), "owner": a.get("owner", "Unassigned"), "due": a.get("due", "")})
+            elif isinstance(a, str):
+                ai.append({"action": a, "owner": "Unassigned", "due": ""})
+        data["action_items"] = ai
+        data["counts"] = {"decisions": len(data.get("decisions") or []), "actions": len(ai), "risks": len(data.get("risks_issues") or [])}
+        return data
 
     def handle_catalog_resolve(self, body):
         """Route a free-text consulting need to the right tower / service line / workflow

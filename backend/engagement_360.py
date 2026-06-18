@@ -231,10 +231,14 @@ def build_delivery(report):
     team = _build_team(tasks, report)
     econ = _build_economics(tasks)
     phases = []
+    wk = 1
     for p in PHASES:
         pt = [t for t in tasks if t["phase"] == p["key"]]
         phases.append({"key": p["key"], "name": p["name"], "weeks": p["weeks"],
+                       "start_week": wk, "end_week": wk + p["weeks"] - 1,
                        "task_ids": [t["id"] for t in pt], "hours": sum(t["est_hours"] for t in pt)})
+        wk += p["weeks"]
+    total_weeks = wk - 1
     # role -> their task list (so each person sees "my tasks" with AI support)
     by_role_tasks = {}
     for t in tasks:
@@ -242,6 +246,8 @@ def build_delivery(report):
     return {
         "team": team,
         "phases": phases,
+        "timeline": {"total_weeks": total_weeks,
+                     "bars": [{"phase": p["name"], "start_week": p["start_week"], "end_week": p["end_week"], "weeks": p["weeks"]} for p in phases]},
         "workplan": tasks,
         "task_count": len(tasks),
         "by_role_tasks": by_role_tasks,
