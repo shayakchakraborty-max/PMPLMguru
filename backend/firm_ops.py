@@ -27,6 +27,11 @@ try:
 except Exception:
     _ES = None
 
+try:
+    import clients as _CLIENTS
+except Exception:
+    _CLIENTS = None
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _DATA_DIR = os.getenv("BRAIN_DATA_DIR", "").strip() or os.path.join(_HERE, "brain_data")
 _TS_PATH = os.path.join(_DATA_DIR, "timesheets.jsonl")
@@ -38,6 +43,8 @@ _EX_PATH = os.path.join(_DATA_DIR, "expenses.jsonl")
 # ---------------------------------------------------------------------------
 MODULES = [
     {"key": "firm_cockpit",  "name": "Firm Cockpit",      "icon": "📊", "desc": "Firm-wide P&L, CAGR, utilization, pipeline"},
+    {"key": "clients",       "name": "Clients",           "icon": "🏢", "desc": "Client master data + 360"},
+    {"key": "contracts",     "name": "Contracts",         "icon": "📜", "desc": "MSA/SOW/Engagement letters + billing wiring"},
     {"key": "engagements",   "name": "Engagements",       "icon": "🛰️", "desc": "Run & view engagements (Engagement 360)"},
     {"key": "workplan",      "name": "Workplan & Tasks",  "icon": "🗂️", "desc": "Per-engagement AI-supported task lists"},
     {"key": "timesheets",    "name": "Timesheets",        "icon": "⏱️", "desc": "Billable / non-billable hours"},
@@ -54,13 +61,13 @@ _ALL = [m["key"] for m in MODULES]
 # Role -> modules it can access. (Roles mirror engagement_360 hierarchy + firm admin.)
 ROLE_ACCESS = {
     "senior_partner":     _ALL,  # sees everything, firm-wide
-    "partner":            ["firm_cockpit", "engagements", "workplan", "timesheets", "billing", "finance", "expenses", "resourcing", "catalog", "deliverables"],
-    "engagement_director":["firm_cockpit", "engagements", "workplan", "timesheets", "billing", "expenses", "resourcing", "catalog", "deliverables"],
-    "engagement_manager": ["engagements", "workplan", "timesheets", "billing", "expenses", "resourcing", "catalog", "deliverables"],
-    "senior_consultant":  ["engagements", "workplan", "timesheets", "expenses", "catalog", "deliverables"],
+    "partner":            ["firm_cockpit", "clients", "contracts", "engagements", "workplan", "timesheets", "billing", "finance", "expenses", "resourcing", "catalog", "deliverables"],
+    "engagement_director":["firm_cockpit", "clients", "contracts", "engagements", "workplan", "timesheets", "billing", "expenses", "resourcing", "catalog", "deliverables"],
+    "engagement_manager": ["clients", "contracts", "engagements", "workplan", "timesheets", "billing", "expenses", "resourcing", "catalog", "deliverables"],
+    "senior_consultant":  ["clients", "engagements", "workplan", "timesheets", "expenses", "catalog", "deliverables"],
     "consultant":         ["engagements", "workplan", "timesheets", "expenses", "catalog", "deliverables"],
     "junior_consultant":  ["workplan", "timesheets", "expenses", "catalog"],
-    "finance_admin":      ["firm_cockpit", "billing", "finance", "expenses", "timesheets", "admin"],
+    "finance_admin":      ["firm_cockpit", "clients", "contracts", "billing", "finance", "expenses", "timesheets", "admin"],
     "client_sponsor":     ["engagements", "deliverables"],
 }
 
@@ -493,9 +500,18 @@ def cockpit(owner):
     recognised = round(ts["billable_hours"] * blended)
     margin_pct = round((1 - ex["billable_amount"] / recognised) * 100, 1) if recognised else None
 
+    # Contracts wired into billing: signed value + pipeline + by-client.
+    contracts = None
+    if _CLIENTS:
+        try:
+            contracts = _CLIENTS.billing_summary(owner)
+        except Exception:
+            contracts = None
+
     return {
         "owner": owner,
         "engagements": n,
+        "contracts_billing": contracts,
         "contracted_value": total_contracted, "contracted_label": _inr(total_contracted),
         "recognised_revenue": recognised, "recognised_label": _inr(recognised),
         "avg_engagement_value": _inr(total_contracted / n) if n else "₹0",

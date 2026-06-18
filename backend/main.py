@@ -137,6 +137,12 @@ except Exception as _e:
     print(f"[deliverables] not loaded: {_e}", flush=True)
 
 try:
+    import clients as CLIENTS
+except Exception as _e:
+    CLIENTS = None
+    print(f"[clients] not loaded: {_e}", flush=True)
+
+try:
     import llm_stack as LLM
 except Exception as _e:
     LLM = None
@@ -3562,7 +3568,10 @@ class Handler(BaseHTTPRequestHandler):
                 "firm_ops": ({"modules": len(FIRM.MODULES), "roles": len(FIRM.ROLE_ACCESS),
                               "endpoints": ["GET /firm/cockpit", "GET /firm/rbac", "GET|POST /firm/timesheets",
                                             "GET|POST /firm/expenses", "POST /firm/expenses/status"]} if FIRM else "not loaded"),
-                "deliverables": ({"kinds": ["deck", "memo"], "endpoints": ["POST /deliverable"]} if DELIV else "not loaded"),
+                "deliverables": ({"kinds": ["deck", "memo", "pptx"], "endpoints": ["POST /deliverable"]} if DELIV else "not loaded"),
+                "clients_contracts": ({"backend": ("postgres" if getattr(CLIENTS, "_USE_DB", False) else "jsonl"),
+                                       "endpoints": ["GET|POST /clients", "GET /client", "GET|POST /contracts",
+                                                     "POST /contract/status", "POST /contract/email", "GET /billing/summary"]} if CLIENTS else "not loaded"),
                 "simulations": ({"total": SIM.TOTAL, "per_type": SIM.PER_TYPE} if SIM else "not loaded"),
                 "llm_stack": (LLM.available() if LLM else "not loaded"),
             })
@@ -3816,6 +3825,20 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, DELIV.meta() if DELIV else {"error": "deliverables not loaded"})
         elif path == "/deliverable/tests":
             self._send(200, DELIV.run_deliverable_tests() if DELIV else {"error": "deliverables not loaded"})
+        elif path == "/clients":
+            self._send(200, CLIENTS.list_clients(self._q("owner")) if CLIENTS else {"error": "clients not loaded"})
+        elif path == "/client":
+            self._send(200, CLIENTS.get_client(self._q("owner"), self._q("id")) if CLIENTS else {"error": "clients not loaded"})
+        elif path == "/contracts":
+            self._send(200, CLIENTS.list_contracts(self._q("owner"), self._q("client_id") or None) if CLIENTS else {"error": "clients not loaded"})
+        elif path == "/contract":
+            self._send(200, CLIENTS.get_contract(self._q("owner"), self._q("id")) if CLIENTS else {"error": "clients not loaded"})
+        elif path == "/billing/summary":
+            self._send(200, CLIENTS.billing_summary(self._q("owner")) if CLIENTS else {"error": "clients not loaded"})
+        elif path == "/clients/meta":
+            self._send(200, CLIENTS.meta() if CLIENTS else {"error": "clients not loaded"})
+        elif path == "/clients/tests":
+            self._send(200, CLIENTS.run_clients_tests() if CLIENTS else {"error": "clients not loaded"})
         else:
             self._send(404, {"error": "not found", "path": path})
 
@@ -3907,6 +3930,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, FIRM.ocr_receipt(body) if FIRM else {"error": "firm_ops not loaded"})
             elif path in ("/deliverable", "/deliverable/generate"):
                 self._send(200, DELIV.generate(body) if DELIV else {"error": "deliverables not loaded"})
+            elif path in ("/clients",):
+                self._send(200, CLIENTS.add_client(body) if CLIENTS else {"error": "clients not loaded"})
+            elif path in ("/client/update",):
+                self._send(200, CLIENTS.update_client(body) if CLIENTS else {"error": "clients not loaded"})
+            elif path in ("/contracts",):
+                self._send(200, CLIENTS.add_contract(body) if CLIENTS else {"error": "clients not loaded"})
+            elif path in ("/contract/status",):
+                self._send(200, CLIENTS.set_contract_status(body) if CLIENTS else {"error": "clients not loaded"})
+            elif path in ("/contract/email",):
+                self._send(200, CLIENTS.add_email(body) if CLIENTS else {"error": "clients not loaded"})
             else:
                 self._send(404, {"error": "unknown endpoint", "path": path})
         except Exception as e:

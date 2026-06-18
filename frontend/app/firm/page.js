@@ -88,6 +88,7 @@ export default function FirmPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <a href="/auto" className="font-black tracking-tight text-sm sm:text-base">Consulting OS <span className="text-indigo-600">· Firm Cockpit</span></a>
           <div className="flex items-center gap-1 text-sm">
+            <a href="/clients" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 font-semibold">Clients</a>
             <a href="/engage" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 font-semibold">Engagements</a>
             <a href="/catalog" className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 font-semibold">Catalog</a>
           </div>
