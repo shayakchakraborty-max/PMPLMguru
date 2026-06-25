@@ -107,16 +107,34 @@ export default function LandingPage() {
             A consulting firm that lives in your pocket.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-9">
-            <a href="/ceo" className="px-7 py-4 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl font-black text-lg hover:opacity-90 transition shadow-lg shadow-indigo-900/40">
-              Open my CEO Office →
+            <a href="/engage" className="px-7 py-4 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl font-black text-lg hover:opacity-90 transition shadow-lg shadow-indigo-900/40">
+              Run an engagement →
             </a>
-            <a href="/playbooks" className="px-7 py-4 bg-white/10 border border-white/20 rounded-xl font-bold text-lg hover:bg-white/20 transition">
-              Start a full engagement
+            <a href="/firm" className="px-7 py-4 bg-white/10 border border-white/20 rounded-xl font-bold text-lg hover:bg-white/20 transition">
+              Open the Firm Cockpit
             </a>
           </div>
           <p className="text-xs text-slate-400 mt-6">
             Research-grade · citation-backed · India-aware (GST · Udyam · DPIIT · ₹) · sub-second
           </p>
+
+          {/* Firm OS module grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 max-w-4xl mx-auto mt-10 text-left">
+            {[
+              ["🛰️", "Engage", "Run a typed engagement", "/engage"],
+              ["📊", "Intelligence", "Market data by business type", "/market"],
+              ["📚", "Services", "16 towers · 90+ lines", "/catalog"],
+              ["💼", "Firm Cockpit", "Billing · CAGR · utilization", "/firm"],
+              ["🏢", "Clients", "Master data + contracts", "/clients"],
+              ["🤖", "Advisors", "32 specialist AI agents", "/advisor"],
+            ].map(([icon, t, d, href]) => (
+              <a key={t} href={href} className="bg-white/5 border border-white/10 rounded-2xl p-3 hover:bg-white/10 hover:border-indigo-400/50 transition">
+                <div className="text-2xl">{icon}</div>
+                <div className="font-black text-sm mt-1">{t}</div>
+                <div className="text-[11px] text-slate-400 leading-tight">{d}</div>
+              </a>
+            ))}
+          </div>
         </div>
       </header>
 

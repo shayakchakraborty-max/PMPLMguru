@@ -6,10 +6,7 @@
 
 import { useEffect, useState } from "react";
 
-function ownerId() {
-  try { let o = localStorage.getItem("pmguru_owner"); if (!o) { o = "u-" + Math.random().toString(36).slice(2, 11); localStorage.setItem("pmguru_owner", o); } return o; }
-  catch { return "demo"; }
-}
+function ownerId() { return "demo-firm"; } // prototype: shared firm tenant
 const ST = { Signed: "bg-emerald-100 text-emerald-700", Active: "bg-emerald-100 text-emerald-700", Sent: "bg-amber-100 text-amber-700", Draft: "bg-slate-100 text-slate-600", Closed: "bg-slate-200 text-slate-600" };
 
 export default function ClientsPage() {

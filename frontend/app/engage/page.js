@@ -20,13 +20,7 @@ const POSTURE = {
 };
 const LS = "pmguru_engagements";
 
-function ownerId() {
-  try {
-    let o = localStorage.getItem("pmguru_owner");
-    if (!o) { o = "u-" + Math.random().toString(36).slice(2, 11); localStorage.setItem("pmguru_owner", o); }
-    return o;
-  } catch { return "demo"; }
-}
+function ownerId() { return "demo-firm"; } // prototype: shared firm tenant
 
 export default function EngagePage() {
   const [threads, setThreads] = useState([]);

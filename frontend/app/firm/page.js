@@ -7,10 +7,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-function ownerId() {
-  try { let o = localStorage.getItem("pmguru_owner"); if (!o) { o = "u-" + Math.random().toString(36).slice(2, 11); localStorage.setItem("pmguru_owner", o); } return o; }
-  catch { return "demo"; }
-}
+function ownerId() { return "demo-firm"; } // prototype: shared firm tenant
 
 const NEXT_APPROVER = { junior_consultant: "Consultant", consultant: "Senior Consultant", senior_consultant: "Engagement Manager", engagement_manager: "Engagement Director", engagement_director: "Partner" };
 const APPR_LABEL = (role) => NEXT_APPROVER[role] || "approver";
